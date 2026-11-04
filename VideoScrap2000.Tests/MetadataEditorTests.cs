@@ -79,6 +79,11 @@ public class MetadataEditorTests
             }
             finally { window.Hide(); }
             await model.SaveCommand.ExecuteAsync(null);
+            // Saving refreshes the selected movie asynchronously. Wait before cleaning up SQLite.
+            for (var i = 0; (!model.IsDetailReady || model.IsImagesLoading) && i < 500; i++)
+                await Task.Delay(10, TestContext.Current.CancellationToken);
+            Assert.True(model.IsDetailReady);
+            Assert.False(model.IsImagesLoading);
             var xml = XDocument.Load(Path.Combine(root, "Film.nfo"));
             Assert.Equal("Film, Der", xml.Root!.Element("sorttitle")!.Value);
             Assert.Equal("2020-02-03", xml.Root.Element("premiered")!.Value);
