@@ -23,7 +23,10 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     [ObservableProperty] private string query = "";
     [ObservableProperty] private SeriesShowRow? selectedShow;
     [ObservableProperty] private SeriesSeason? selectedSeason;
-    [ObservableProperty] private SeriesEpisodeRow? selectedEpisode;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedEpisode))]
+    private SeriesEpisodeRow? selectedEpisode;
+    public bool HasSelectedEpisode => SelectedEpisode is not null;
     [ObservableProperty] private SeriesNfoEditor? showEditor;
     [ObservableProperty] private SeriesNfoEditor? episodeEditor;
 
@@ -236,37 +239,6 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
                 main.Status = "Kein Treffer";
             }
         }, reloadAfterCancellation: false);
-    }
-
-    public async Task<IReadOnlyList<ActorEditor>> FindSeasonCastAsync()
-    {
-        if (SelectedSeason?.Number is not { } season)
-        {
-            main.Status = "Wähle zuerst eine Staffel aus.";
-            return [];
-        }
-        if (!int.TryParse(ShowEditor?.TmdbId, out var id) || id <= 0)
-        {
-            main.Status = "Ordne die Serie zuerst einem TMDB-Treffer zu.";
-            return [];
-        }
-        IReadOnlyList<ActorEditor> cast = [];
-        await main.RunAsync(async token =>
-        {
-            main.Status = "Staffelbesetzung wird geladen …";
-            using var scraper = CreateScraper();
-            try
-            {
-                var data = await scraper.GetSeasonCastAsync(id, season, main.MetadataLanguage, token);
-                cast = SeriesNfoEditor.ReadCast(data);
-                main.Status = cast.Count == 0 ? "Keine Staffelbesetzung gefunden." : "Staffelbesetzung geladen.";
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                main.Status = "Keine Staffelbesetzung gefunden.";
-            }
-        }, reloadAfterCancellation: false);
-        return cast;
     }
 }
 

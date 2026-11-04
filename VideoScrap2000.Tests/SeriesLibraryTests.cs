@@ -56,6 +56,8 @@ public sealed class SeriesLibraryTests
                 window.UpdateLayout();
                 Assert.NotNull(banner.Source);
                 Assert.True(banner.Bounds.Width > 400, $"Banner bounds: {banner.Bounds}");
+                Assert.True(((Control)banner.Parent!).Bounds.X >= 200);
+                Assert.False(seriesView.FindControl<TextBlock>("EpisodeEmptyHint")!.IsVisible);
                 main.Series.SelectedSeason = main.Series.Seasons.Single(season => season.Number == 0);
                 Assert.Null(main.Series.SeasonBannerPreview);
                 main.Series.SelectedSeason = main.Series.Seasons.Single(season => season.Number == 1);
@@ -123,8 +125,6 @@ public sealed class SeriesLibraryTests
             Assert.NotNull(series.SeasonBannerPreview?.PendingData);
             Assert.Equal("season02-fanart", series.BackgroundPreview?.Path);
             Assert.Contains(series.ArtworkTiles, tile => tile.Picture.Path == "season02-poster");
-            var seasonActor = Assert.Single(await series.FindSeasonCastAsync());
-            Assert.Equal("Season role / Guest role", seasonActor.Role);
             var actor = Assert.Single(series.ShowEditor!.Actors);
             Assert.Equal(123, actor.TmdbId);
             Assert.EndsWith("/portrait.jpg", actor.Thumb);
@@ -156,9 +156,7 @@ public sealed class SeriesLibraryTests
                 Downloads.Add(uri.AbsolutePath);
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(image) });
             }
-            var json = uri.AbsolutePath.EndsWith("/season/2/aggregate_credits", StringComparison.Ordinal) ? """
-                {"cast":[{"name":"Season Actor","roles":[{"character":"Season role"},{"character":"Guest role"}]}]}
-                """ : uri.Host == "webservice.fanart.tv" && uri.Query == "?source=tmdb" ? """
+            var json = uri.Host == "webservice.fanart.tv" && uri.Query == "?source=tmdb" ? """
                 {"showbackground":[{"url":"https://images.test/fanart-en.png","lang":"en"},{"url":"https://images.test/fanart-de.png","lang":"de"},{"url":"https://images.test/season-2-fanart.png","season":"2","lang":"de"}],
                  "seasonposter":[{"url":"https://images.test/season-2-poster.png","season":"2"}],
                  "seasonbanner":[{"url":"https://images.test/season-1.png","season":"1"},{"url":"https://images.test/season-2.png","season":"2"}]}

@@ -73,26 +73,6 @@ public partial class SeriesView : UserControl
         if (DataContext is SeriesViewModel model) await model.FindEpisodeAsync();
     }
 
-    private async void ShowSeasonCast(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not SeriesViewModel model || TopLevel.GetTopLevel(this) is not Window owner) return;
-        var season = model.SelectedSeason;
-        var cast = await model.FindSeasonCastAsync();
-        if (cast.Count == 0 || !ReferenceEquals(season, model.SelectedSeason) || !owner.IsVisible) return;
-
-        var dialog = new Window
-        {
-            Title = $"{Locale.T("Staffelbesetzung")} · {season!.Name}", Width = 480, Height = 450,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner, ShowInTaskbar = false
-        };
-        var list = new ListBox { ItemsSource = cast.Select(actor => string.IsNullOrWhiteSpace(actor.Role) ? actor.Name : $"{actor.Name} · {actor.Role}").ToArray() };
-        var close = new Button { Content = Locale.T("Schließen"), IsCancel = true, IsDefault = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
-        close.Click += (_, _) => dialog.Close();
-        Grid.SetRow(close, 1);
-        dialog.Content = new Grid { RowDefinitions = new RowDefinitions("*,Auto"), Margin = new Thickness(20), Children = { list, close } };
-        await dialog.ShowDialog(owner);
-    }
-
     private async void AddActor(object? sender, RoutedEventArgs e) => await EditActorAsync(null);
 
     private async void EditActor(object? sender, RoutedEventArgs e)
