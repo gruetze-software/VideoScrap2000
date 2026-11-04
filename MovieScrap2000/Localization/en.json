@@ -221,5 +221,10 @@
   "Keine fehlenden Serienbilder gefunden.": "No missing TV artwork found.",
   "Serienbilder übernommen. Speichere, um sie abzulegen.": "TV artwork selected. Save to write it to the show folder.",
   "Seriendaten und Bilder übernommen. Speichere, um sie abzulegen.": "Show metadata and artwork imported. Save to write them to the show folder.",
-  "Episodentitel": "Episode title"
+  "Episodentitel": "Episode title",
+  "Alle Episoden suchen": "Find all episodes",
+  "Gefundene speichern": "Save fetched episodes",
+  "{0} Episoden übernommen, {1} übersprungen.": "{0} episodes fetched, {1} skipped.",
+  "Episoden werden gespeichert …": "Saving episodes …",
+  "{0} Episoden gespeichert, {1} übersprungen.": "{0} episodes saved, {1} skipped."
 }

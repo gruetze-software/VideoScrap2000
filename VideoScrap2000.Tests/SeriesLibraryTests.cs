@@ -56,7 +56,7 @@ public sealed class SeriesLibraryTests
                 window.UpdateLayout();
                 Assert.NotNull(banner.Source);
                 Assert.True(banner.Bounds.Width > 400, $"Banner bounds: {banner.Bounds}");
-                Assert.True(((Control)banner.Parent!).Bounds.X >= 200);
+                Assert.True(((Control)((Control)banner.Parent!).Parent!).Bounds.X >= 200);
                 Assert.False(seriesView.FindControl<TextBlock>("EpisodeEmptyHint")!.IsVisible);
                 main.Series.SelectedSeason = main.Series.Seasons.Single(season => season.Number == 0);
                 Assert.Null(main.Series.SeasonBannerPreview);
@@ -125,6 +125,13 @@ public sealed class SeriesLibraryTests
             Assert.NotNull(series.SeasonBannerPreview?.PendingData);
             Assert.Equal("season02-fanart", series.BackgroundPreview?.Path);
             Assert.Contains(series.ArtworkTiles, tile => tile.Picture.Path == "season02-poster");
+            Assert.Equal("season02-poster", series.SelectedShow?.Poster?.Path);
+            series.SelectedSeason = series.Seasons.First(season => season.Number is null);
+            series.SelectedEpisode = series.Episodes.Single(row => row.Editor.SeasonNumber == 2);
+            Assert.Equal("season02-poster", series.SeasonPosterPreview?.Path);
+            Assert.Equal("season02-banner", series.SeasonBannerPreview?.Path);
+            series.SelectedEpisode = null;
+            Assert.Equal(existing, series.SeasonBannerPreview?.Path);
             var actor = Assert.Single(series.ShowEditor!.Actors);
             Assert.Equal(123, actor.TmdbId);
             Assert.EndsWith("/portrait.jpg", actor.Thumb);
@@ -140,6 +147,14 @@ public sealed class SeriesLibraryTests
             var savedActor = XDocument.Load(Path.Combine(folder, "tvshow.nfo")).Root!.Element("actor")!;
             Assert.Equal("Edited role", (string?)savedActor.Element("role"));
             Assert.Equal("123", (string?)savedActor.Element("tmdbid"));
+
+            await series.FindAllEpisodesCommand.ExecuteAsync(null);
+            Assert.Equal(2, handler.SeasonRequests);
+            Assert.True(series.HasPendingEpisodeUpdates);
+            Assert.False(File.Exists(Path.Combine(folder, "Example S02E01.nfo")));
+            await series.SaveEpisodeUpdatesCommand.ExecuteAsync(null);
+            Assert.False(series.HasPendingEpisodeUpdates);
+            Assert.Equal("Fetched episode", (string?)XDocument.Load(Path.Combine(folder, "Example S02E01.nfo")).Root!.Element("title"));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
@@ -147,10 +162,19 @@ public sealed class SeriesLibraryTests
     private sealed class SeriesArtworkHandler(byte[] image) : HttpMessageHandler
     {
         public List<string> Downloads { get; } = [];
+        public int SeasonRequests { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var uri = request.RequestUri!;
+            if (uri.AbsolutePath.Contains("/season/", StringComparison.Ordinal))
+            {
+                SeasonRequests++;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"episodes\":[{\"episode_number\":1,\"name\":\"Fetched episode\"}]}")
+                });
+            }
             if (uri.Host == "images.test")
             {
                 Downloads.Add(uri.AbsolutePath);

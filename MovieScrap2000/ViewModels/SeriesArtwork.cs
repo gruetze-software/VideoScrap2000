@@ -18,6 +18,7 @@ public partial class SeriesViewModel
     [ObservableProperty] private SeriesPicture? fanartPreview;
     [ObservableProperty] private SeriesPicture? backgroundPreview;
     [ObservableProperty] private SeriesPicture? seasonBannerPreview;
+    [ObservableProperty] private SeriesPicture? seasonPosterPreview;
     [ObservableProperty] private IReadOnlyList<SeriesArtworkTile> artworkTiles = [];
     [ObservableProperty] private ActorEditor? selectedActor;
     [ObservableProperty] private SeriesPicture? actorPreview;
@@ -25,7 +26,7 @@ public partial class SeriesViewModel
     public bool UseFanartBackground => main.UseFanartBackground;
     internal void RefreshAppearance() => OnPropertyChanged(nameof(UseFanartBackground));
 
-    private static string SeasonArtworkName(int? season, string type) => season switch
+    internal static string SeasonArtworkName(int? season, string type) => season switch
     {
         null => $"season-all-{type}",
         0 => $"season-specials-{type}",
@@ -35,13 +36,24 @@ public partial class SeriesViewModel
     private void RefreshArtworkPreviews(bool refreshTiles = false)
     {
         var artwork = SelectedShow?.Artwork;
-        var season = SelectedSeason?.Number;
+        var filterSeason = SelectedSeason?.Number;
+        var season = filterSeason ?? SelectedEpisode?.Editor.SeasonNumber;
         FanartPreview = artwork?.GetValueOrDefault(FanartName);
         BackgroundPreview = artwork?.GetValueOrDefault(SeasonArtworkName(season, FanartName)) ?? FanartPreview;
         SeasonBannerPreview = artwork?.GetValueOrDefault(SeasonArtworkName(season, "banner"));
+        SeasonPosterPreview = artwork?.GetValueOrDefault(SeasonArtworkName(season, "poster"));
+        if (filterSeason is null && SelectedShow is { } show)
+        {
+            SeasonBannerPreview ??= artwork?.GetValueOrDefault("season-all-banner")
+                ?? artwork?.GetValueOrDefault("banner") ?? show.FirstSeasonPicture("banner");
+            SeasonPosterPreview ??= show.Poster;
+        }
         if (refreshTiles)
+        {
+            SelectedShow?.RefreshPoster();
             ArtworkTiles = artwork is null ? [] : artwork.OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
                 .Select(item => new SeriesArtworkTile(ArtworkLabel(item.Key), item.Value)).ToArray();
+        }
     }
 
     private static string ArtworkLabel(string name)

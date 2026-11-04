@@ -76,6 +76,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         ShowEditor = value?.Editor;
         RefreshSeasons();
         RefreshArtworkPreviews(refreshTiles: true);
+        OnPropertyChanged(nameof(HasPendingEpisodeUpdates));
     }
 
     private void RefreshSeasons()
@@ -108,7 +109,11 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         SelectedEpisode = previous is not null && Episodes.Contains(previous) ? previous : Episodes.FirstOrDefault();
     }
 
-    partial void OnSelectedEpisodeChanged(SeriesEpisodeRow? value) => EpisodeEditor = value?.Editor;
+    partial void OnSelectedEpisodeChanged(SeriesEpisodeRow? value)
+    {
+        EpisodeEditor = value?.Editor;
+        RefreshArtworkPreviews();
+    }
 
     public async Task AddEpisodeAsync(string file)
     {
@@ -144,7 +149,12 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     private async Task SaveEpisodeAsync()
     {
         if (SelectedEpisode is not { } episode) return;
-        if (await SaveAsync(episode.Episode.NfoPath, episode.Editor, episode: true)) RefreshSeasons();
+        if (await SaveAsync(episode.Episode.NfoPath, episode.Editor, episode: true))
+        {
+            SelectedShow?.PendingEpisodeUpdates.Remove(episode);
+            OnPropertyChanged(nameof(HasPendingEpisodeUpdates));
+            RefreshSeasons();
+        }
     }
 
     private async Task<bool> SaveAsync(string path, SeriesNfoEditor editor, bool episode, SeriesShowRow? show = null)
@@ -240,17 +250,120 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
             }
         }, reloadAfterCancellation: false);
     }
+
+    public bool HasPendingEpisodeUpdates => SelectedShow?.PendingEpisodeUpdates.Count > 0;
+
+    [RelayCommand]
+    private async Task FindAllEpisodesAsync()
+    {
+        if (SelectedShow is not { } show) return;
+        if (!int.TryParse(show.Editor.TmdbId, out var id) || id <= 0)
+        {
+            main.Status = "Ordne die Serie zuerst einem TMDB-Treffer zu.";
+            return;
+        }
+        var groups = show.Episodes.Where(row => row.Editor.SeasonNumber.HasValue && row.Editor.EpisodeNumber.HasValue)
+            .GroupBy(row => row.Editor.SeasonNumber!.Value).ToArray();
+        if (groups.Length == 0) { main.Status = "Bitte gültige Staffel- und Episodennummern eingeben."; return; }
+
+        await main.RunAsync(async token =>
+        {
+            main.Status = "Episodendetails werden geladen …";
+            using var scraper = CreateScraper();
+            var loaded = 0;
+            try
+            {
+                for (var index = 0; index < groups.Length; index++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var group = groups[index];
+                    JsonElement season;
+                    try { season = await scraper.GetSeasonDetailsAsync(id, group.Key, main.MetadataLanguage, token); }
+                    catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    {
+                        main.Progress = (index + 1) * 100 / groups.Length;
+                        continue;
+                    }
+                    var episodes = SeriesNfoEditor.Array(season, "episodes")
+                        .ToLookup(item => SeriesNfoEditor.Text(item, "episode_number"), StringComparer.Ordinal);
+                    foreach (var row in group)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        var number = row.Editor.EpisodeNumber!.Value.ToString(CultureInfo.InvariantCulture);
+                        var result = episodes[number].FirstOrDefault();
+                        if (result.ValueKind != JsonValueKind.Object) continue;
+                        row.Editor.ApplyEpisode(result);
+                        show.PendingEpisodeUpdates.Add(row);
+                        loaded++;
+                    }
+                    main.Progress = (index + 1) * 100 / groups.Length;
+                }
+                main.Status = $"{loaded} Episoden übernommen, {show.Episodes.Count - loaded} übersprungen.";
+            }
+            finally { OnPropertyChanged(nameof(HasPendingEpisodeUpdates)); }
+        }, reloadAfterCancellation: false);
+    }
+
+    [RelayCommand]
+    private async Task SaveEpisodeUpdatesAsync()
+    {
+        if (SelectedShow is not { } show || show.PendingEpisodeUpdates.Count == 0) return;
+        var updates = show.PendingEpisodeUpdates.ToArray();
+        await main.RunAsync(async token =>
+        {
+            main.Status = "Episoden werden gespeichert …";
+            var saved = 0;
+            try
+            {
+                for (var index = 0; index < updates.Length; index++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var row = updates[index];
+                    if (row.Editor.SeasonNumber.HasValue && row.Editor.EpisodeNumber.HasValue && !string.IsNullOrWhiteSpace(row.Editor.Title))
+                    {
+                        var data = row.Editor.ToXml(isEpisode: true);
+                        try
+                        {
+                            await Task.Run(() => SeriesLibrary.SaveAsync(row.Episode.NfoPath, data, SeriesNfoEditor.EpisodeFields, token), token);
+                            row.Editor.HasNfo = true;
+                            show.PendingEpisodeUpdates.Remove(row);
+                            saved++;
+                        }
+                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Xml.XmlException or System.Text.DecoderFallbackException)
+                        {
+                            System.Diagnostics.Trace.WriteLine(ex);
+                        }
+                    }
+                    main.Progress = (index + 1) * 100 / updates.Length;
+                }
+                main.Status = $"{saved} Episoden gespeichert, {updates.Length - saved} übersprungen.";
+            }
+            finally { OnPropertyChanged(nameof(HasPendingEpisodeUpdates)); }
+        }, reloadAfterCancellation: false);
+    }
 }
 
 public sealed record SeriesSeason(int? Number, string Name);
 
-public sealed class SeriesShowRow(SeriesShow show)
+public sealed class SeriesShowRow(SeriesShow show) : ObservableObject
 {
     public SeriesShow Show { get; } = show;
     public SeriesNfoEditor Editor { get; } = new(show.Metadata, show.HasNfo);
     public ObservableCollection<SeriesEpisodeRow> Episodes { get; } = new(show.Episodes.Select(episode => new SeriesEpisodeRow(episode)));
+    internal HashSet<SeriesEpisodeRow> PendingEpisodeUpdates { get; } = [];
     public Dictionary<string, SeriesPicture> Artwork { get; } = ReadArtwork(show.FolderPath);
     public string Title => Editor.Title;
+    public SeriesPicture? Poster => Artwork.GetValueOrDefault("poster") ?? FirstSeasonPicture("poster");
+
+    internal SeriesPicture? FirstSeasonPicture(string type) => Episodes.Select(episode => episode.Editor.SeasonNumber)
+        .Where(season => season.HasValue).Distinct().OrderBy(season => season == 0 ? int.MaxValue : season)
+        .Select(season => Artwork.GetValueOrDefault(SeriesViewModel.SeasonArtworkName(season, type)))
+        .FirstOrDefault(picture => picture is not null)
+        ?? Artwork.Where(item => item.Key.StartsWith("season", StringComparison.OrdinalIgnoreCase)
+                && item.Key.EndsWith("-" + type, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase).Select(item => item.Value).FirstOrDefault();
+
+    internal void RefreshPoster() => OnPropertyChanged(nameof(Poster));
 
     private static Dictionary<string, SeriesPicture> ReadArtwork(string folder)
     {

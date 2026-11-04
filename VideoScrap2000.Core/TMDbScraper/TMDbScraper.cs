@@ -105,6 +105,9 @@ namespace MovieScrap2000.TMDbScraper
         public Task<JsonElement> GetEpisodeDetailsAsync(int id, int season, int episode, string language, CancellationToken token) =>
             GetSeriesJsonAsync($"tv/{id}/season/{season}/episode/{episode}?language={Uri.EscapeDataString(language)}", token);
 
+        public Task<JsonElement> GetSeasonDetailsAsync(int id, int season, string language, CancellationToken token) =>
+            GetSeriesJsonAsync($"tv/{id}/season/{season}?language={Uri.EscapeDataString(language)}", token);
+
         public Task<JsonElement> GetSeriesArtworkAsync(int tmdbId, int tvdbId, CancellationToken token) =>
             _fanartScraper.GetSeriesArtworkAsync(tmdbId, tvdbId, token);
 
