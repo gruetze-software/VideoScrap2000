@@ -215,5 +215,10 @@
   "Ordne die Serie zuerst einem TMDB-Treffer zu.": "Match the show with TMDB first.",
   "Episodendetails werden geladen …": "Loading episode details …",
   "Episodendaten übernommen. Speichere, um die NFO zu schreiben.": "Episode metadata imported. Save to write the NFO.",
-  "Videodateien": "Video files"
+  "Videodateien": "Video files",
+  "Für die Bildsuche braucht die Serie eine TMDB- oder TVDB-ID.": "TV artwork search requires a TMDB or TVDB ID.",
+  "Serienbilder werden gesucht …": "Searching for TV artwork …",
+  "Keine fehlenden Serienbilder gefunden.": "No missing TV artwork found.",
+  "Serienbilder übernommen. Speichere, um sie abzulegen.": "TV artwork selected. Save to write it to the show folder.",
+  "Seriendaten und Bilder übernommen. Speichere, um sie abzulegen.": "Show metadata and artwork imported. Save to write them to the show folder."
 }

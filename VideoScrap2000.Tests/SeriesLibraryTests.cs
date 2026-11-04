@@ -80,6 +80,71 @@ public sealed class SeriesLibraryTests
         Assert.Equal("S00E02", editor.EpisodeCode);
     }
 
+    [AvaloniaFact]
+    public async Task MatchingSeriesStagesCastFanartAndOnlyMissingSeasonBanners()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var folder = Path.Combine(root, "Example");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            using var resource = typeof(Movie).Assembly.GetManifestResourceStream("VideoScrap2000.Empty.png")!;
+            using var memory = new MemoryStream(); resource.CopyTo(memory);
+            var image = memory.ToArray();
+            var existing = Path.Combine(folder, "season01-banner.png");
+            File.WriteAllBytes(existing, image);
+            foreach (var name in new[] { "Example S01E01.mkv", "Example S02E01.mkv" }) File.WriteAllBytes(Path.Combine(folder, name), [0]);
+            using var handler = new SeriesArtworkHandler(image);
+            using var main = new MainViewModel(settings: new AppSettings { SeriesPath = root, Language = "de" });
+            var series = new SeriesViewModel(main, () => new TMDbScraperManager(new HttpClient(handler, false),
+                new MovieScrap2000.FanArtTvScraper.FanArtTvScraper(new HttpClient(handler, false))));
+            await series.ScanAsync();
+            await series.ApplyShowMatchAsync(345);
+            Assert.Equal(new[] { "/fanart-de.png", "/season-2.png" }, handler.Downloads);
+            Assert.NotNull(series.FanartPreview?.PendingData);
+            series.SelectedSeason = series.Seasons.Single(season => season.Number == 1);
+            Assert.Equal(existing, series.SeasonBannerPreview?.Path);
+            series.SelectedSeason = series.Seasons.Single(season => season.Number == 2);
+            Assert.NotNull(series.SeasonBannerPreview?.PendingData);
+            var actor = Assert.Single(series.ShowEditor!.Actors);
+            Assert.Equal(123, actor.TmdbId);
+            Assert.EndsWith("/portrait.jpg", actor.Thumb);
+            actor.Role = "Edited role";
+            Assert.False(File.Exists(Path.Combine(folder, "fanart.png")));
+
+            await series.SaveShowCommand.ExecuteAsync(null);
+            Assert.True(File.Exists(Path.Combine(folder, "fanart.png")));
+            Assert.True(File.Exists(Path.Combine(folder, "season02-banner.png")));
+            Assert.False(File.Exists(existing + ".bak"));
+            var savedActor = XDocument.Load(Path.Combine(folder, "tvshow.nfo")).Root!.Element("actor")!;
+            Assert.Equal("Edited role", (string?)savedActor.Element("role"));
+            Assert.Equal("123", (string?)savedActor.Element("tmdbid"));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    private sealed class SeriesArtworkHandler(byte[] image) : HttpMessageHandler
+    {
+        public List<string> Downloads { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var uri = request.RequestUri!;
+            if (uri.Host == "images.test")
+            {
+                Downloads.Add(uri.AbsolutePath);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(image) });
+            }
+            var json = uri.Host == "webservice.fanart.tv" && uri.Query == "?source=tmdb" ? """
+                {"showbackground":[{"url":"https://images.test/fanart-en.png","lang":"en"},{"url":"https://images.test/fanart-de.png","lang":"de"}],
+                 "seasonbanner":[{"url":"https://images.test/season-1.png","season":"1"},{"url":"https://images.test/season-2.png","season":"2"}]}
+                """ : """
+                {"name":"Example","credits":{"cast":[{"name":"Example Actor","character":"Lead","id":123,"profile_path":"/portrait.jpg"}]}}
+                """;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) });
+        }
+    }
+
     private sealed class EpisodeHandler : HttpMessageHandler
     {
         public string? PathAndQuery { get; private set; }

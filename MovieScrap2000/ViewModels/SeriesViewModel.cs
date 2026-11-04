@@ -10,10 +10,11 @@ using VideoScrap2000.Localization;
 
 namespace VideoScrap2000.ViewModels;
 
-public partial class SeriesViewModel(MainViewModel main) : ObservableObject
+public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager>? createScraper = null) : ObservableObject
 {
     private List<SeriesShowRow> allShows = [];
     private string? scannedPath;
+    private TMDbScraperManager CreateScraper() => createScraper?.Invoke() ?? new TMDbScraperManager();
 
     public ObservableCollection<SeriesShowRow> Shows { get; } = [];
     public ObservableCollection<SeriesSeason> Seasons { get; } = [];
@@ -47,9 +48,9 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
         await main.RunAsync(async token =>
         {
             main.Status = "Serien werden eingelesen …";
-            var shows = await Task.Run(() => SeriesLibrary.Scan(path, token), token);
+            var shows = await Task.Run(() => SeriesLibrary.Scan(path, token).Select(show => new SeriesShowRow(show)).ToList(), token);
             var previous = SelectedShow?.Show.FolderPath;
-            allShows = shows.Select(show => new SeriesShowRow(show)).ToList();
+            allShows = shows;
             scannedPath = path;
             FilterShows(previous);
             main.Status = shows.Count == 0 ? "Keine Serien gefunden." : "Seriensammlung geladen.";
@@ -68,8 +69,10 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
 
     partial void OnSelectedShowChanged(SeriesShowRow? value)
     {
+        SelectedActor = null;
         ShowEditor = value?.Editor;
         RefreshSeasons();
+        RefreshArtworkPreviews();
     }
 
     private void RefreshSeasons()
@@ -83,7 +86,11 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
         SelectedSeason = Seasons.FirstOrDefault(season => season.Number == previousSeason) ?? Seasons[0];
     }
 
-    partial void OnSelectedSeasonChanged(SeriesSeason? value) => RefreshEpisodes();
+    partial void OnSelectedSeasonChanged(SeriesSeason? value)
+    {
+        RefreshEpisodes();
+        RefreshArtworkPreviews();
+    }
 
     private void RefreshEpisodes()
     {
@@ -127,7 +134,7 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
     private async Task SaveShowAsync()
     {
         if (SelectedShow is not { } show) return;
-        await SaveAsync(show.Show.NfoPath, show.Editor, episode: false);
+        await SaveAsync(show.Show.NfoPath, show.Editor, episode: false, show);
     }
 
     [RelayCommand]
@@ -137,7 +144,7 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
         if (await SaveAsync(episode.Episode.NfoPath, episode.Editor, episode: true)) RefreshSeasons();
     }
 
-    private async Task<bool> SaveAsync(string path, SeriesNfoEditor editor, bool episode)
+    private async Task<bool> SaveAsync(string path, SeriesNfoEditor editor, bool episode, SeriesShowRow? show = null)
     {
         if (string.IsNullOrWhiteSpace(editor.Title)) { main.Status = "Bitte einen Titel eingeben."; return false; }
         if (episode && (editor.SeasonNumber is null || editor.EpisodeNumber is null))
@@ -151,9 +158,17 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
         {
             main.Status = "Metadaten werden gespeichert …";
             var fields = episode ? SeriesNfoEditor.EpisodeFields : SeriesNfoEditor.ShowFields;
-            if (data.Element("actor") is not null) fields = [.. fields, "actor"];
             await Task.Run(() => SeriesLibrary.SaveAsync(path, data, fields, token), token);
             editor.HasNfo = true;
+            if (show is not null)
+            {
+                foreach (var (name, picture) in show.Artwork.Where(item => item.Value.PendingData is not null).ToArray())
+                {
+                    var file = await Task.Run(() => ArtworkFiles.SaveNamedAsync(show.Show.FolderPath, name, picture.PendingData!, token), token);
+                    show.Artwork[name] = new(file);
+                }
+                RefreshArtworkPreviews();
+            }
             saved = true;
             main.Status = episode ? "Episode gespeichert." : "Serie gespeichert.";
         }, reloadAfterCancellation: false);
@@ -168,7 +183,7 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
         await main.RunAsync(async token =>
         {
             main.Status = "TMDb wird durchsucht …";
-            using var scraper = new TMDbScraperManager();
+            using var scraper = CreateScraper();
             results = await scraper.SearchSeriesAsync(query, main.MetadataLanguage, token);
             main.Status = results.Count switch { 0 => "Kein Treffer", 1 => "Ein Treffer", _ => $"{results.Count} Treffer" };
         }, reloadAfterCancellation: false);
@@ -177,15 +192,18 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
 
     public async Task ApplyShowMatchAsync(int id)
     {
-        if (ShowEditor is not { } editor) return;
+        if (SelectedShow is not { } show) return;
         await main.RunAsync(async token =>
         {
             main.Status = "Seriendetails werden geladen …";
-            using var scraper = new TMDbScraperManager();
+            using var scraper = CreateScraper();
             var result = await scraper.GetSeriesDetailsAsync(id, main.MetadataLanguage, token);
             token.ThrowIfCancellationRequested();
-            editor.ApplyShow(result, id, main.MetadataLanguage);
-            main.Status = "Seriendaten übernommen. Speichere, um die NFO zu schreiben.";
+            SelectedActor = null;
+            show.Editor.ApplyShow(result, id, main.MetadataLanguage);
+            var count = await DownloadArtworkAsync(show, id, result, scraper, token);
+            main.Status = count > 0 ? "Seriendaten und Bilder übernommen. Speichere, um sie abzulegen."
+                : "Seriendaten übernommen. Speichere, um die NFO zu schreiben.";
         }, reloadAfterCancellation: false);
     }
 
@@ -205,7 +223,7 @@ public partial class SeriesViewModel(MainViewModel main) : ObservableObject
         await main.RunAsync(async token =>
         {
             main.Status = "Episodendetails werden geladen …";
-            using var scraper = new TMDbScraperManager();
+            using var scraper = CreateScraper();
             try
             {
                 var result = await scraper.GetEpisodeDetailsAsync(id, season, number, main.MetadataLanguage, token);
@@ -228,7 +246,27 @@ public sealed class SeriesShowRow(SeriesShow show)
     public SeriesShow Show { get; } = show;
     public SeriesNfoEditor Editor { get; } = new(show.Metadata, show.HasNfo);
     public ObservableCollection<SeriesEpisodeRow> Episodes { get; } = new(show.Episodes.Select(episode => new SeriesEpisodeRow(episode)));
+    public Dictionary<string, SeriesPicture> Artwork { get; } = ReadArtwork(show.FolderPath);
     public string Title => Editor.Title;
+
+    private static Dictionary<string, SeriesPicture> ReadArtwork(string folder)
+    {
+        var artwork = new Dictionary<string, SeriesPicture>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var path in Directory.EnumerateFiles(folder))
+            {
+                if (Path.GetExtension(path).ToLowerInvariant() is not (".jpg" or ".jpeg" or ".png" or ".webp")) continue;
+                var stem = Path.GetFileNameWithoutExtension(path);
+                if (stem.Equals("tvshow-fanart", StringComparison.OrdinalIgnoreCase)) stem = "fanart";
+                if (stem.Equals("season00-banner", StringComparison.OrdinalIgnoreCase)) stem = "season-specials-banner";
+                if (stem.Equals("fanart", StringComparison.OrdinalIgnoreCase) || stem.StartsWith("season", StringComparison.OrdinalIgnoreCase)
+                    && stem.EndsWith("-banner", StringComparison.OrdinalIgnoreCase)) artwork.TryAdd(stem, new(path));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.WriteLine(ex); }
+        return artwork;
+    }
 }
 
 public sealed class SeriesEpisodeRow(SeriesEpisode episode)
@@ -240,7 +278,7 @@ public sealed class SeriesEpisodeRow(SeriesEpisode episode)
 
 public partial class SeriesNfoEditor : ObservableObject
 {
-    internal static readonly string[] ShowFields = ["title", "originaltitle", "plot", "premiered", "status", "genre", "studio", "country", "tag", "mpaa", "uniqueid"];
+    internal static readonly string[] ShowFields = ["title", "originaltitle", "plot", "premiered", "status", "genre", "studio", "country", "tag", "mpaa", "uniqueid", "actor"];
     internal static readonly string[] EpisodeFields = ["title", "plot", "season", "episode", "aired", "runtime", "director", "credits", "uniqueid"];
 
     [ObservableProperty] private string title;
@@ -262,8 +300,8 @@ public partial class SeriesNfoEditor : ObservableObject
     [ObservableProperty] private string directors;
     [ObservableProperty] private string writers;
     [ObservableProperty] private bool hasNfo;
-    [ObservableProperty] private string cast;
-    private XElement[]? importedCast;
+    public ObservableCollection<ActorEditor> Actors { get; } = [];
+    private readonly Dictionary<ActorEditor, XElement> originalActors = [];
 
     public int? SeasonNumber => ReadNumber(Season);
     public int? EpisodeNumber => ReadNumber(Episode);
@@ -285,20 +323,25 @@ public partial class SeriesNfoEditor : ObservableObject
         imdbId = ReadId("imdb"); tmdbId = ReadId("tmdb"); tvdbId = ReadId("tvdb");
         season = Read("season"); episode = Read("episode"); runtime = Read("runtime");
         directors = ReadList("director"); writers = ReadList("credits"); hasNfo = exists;
-        cast = FormatCast(metadata.Elements("actor"));
+        foreach (var element in metadata.Elements("actor"))
+        {
+            var actor = new ActorEditor
+            {
+                Name = (string?)element.Element("name") ?? "",
+                Role = (string?)element.Element("role") ?? "",
+                Thumb = (string?)element.Element("thumb") ?? "",
+                TmdbId = ReadNumber((string?)element.Element("tmdbid") ?? ""),
+                Order = ReadNumber((string?)element.Element("order") ?? "") ?? Actors.Count
+            };
+            originalActors[actor] = new(element);
+            Actors.Add(actor);
+        }
     }
 
-    private static string FormatCast(IEnumerable<XElement> actors) => string.Join(Environment.NewLine, actors.Select(actor =>
-        {
-            var name = (string?)actor.Element("name") ?? "";
-            var role = (string?)actor.Element("role");
-            return string.IsNullOrWhiteSpace(role) ? name : $"{name} · {role}";
-        }));
-
-    private static string? Text(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var field)
+    internal static string? Text(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var field)
         && field.ValueKind is JsonValueKind.String or JsonValueKind.Number ? field.ToString() : null;
 
-    private static IEnumerable<JsonElement> Array(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var array)
+    internal static IEnumerable<JsonElement> Array(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var array)
         && array.ValueKind == JsonValueKind.Array ? array.EnumerateArray() : [];
 
     public void ApplyShow(JsonElement data, int id, string language)
@@ -326,10 +369,19 @@ public partial class SeriesNfoEditor : ObservableObject
                 .Select(item => Text(item, "rating")).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? Certification;
         if (data.TryGetProperty("credits", out var credits))
         {
-            var actors = Array(credits, "cast").Where(actor => !string.IsNullOrWhiteSpace(Text(actor, "name")))
-                .Select((actor, index) => new XElement("actor", new XElement("name", Text(actor, "name")),
-                    new XElement("role", Text(actor, "character")), new XElement("order", index))).ToArray();
-            if (actors.Length > 0) { importedCast = actors; Cast = FormatCast(actors); }
+            var actors = Array(credits, "cast").Where(actor => !string.IsNullOrWhiteSpace(Text(actor, "name"))).ToArray();
+            if (actors.Length > 0)
+            {
+                Actors.Clear();
+                originalActors.Clear();
+                foreach (var actor in actors)
+                    Actors.Add(new()
+                    {
+                        Name = Text(actor, "name") ?? "", Role = Text(actor, "character") ?? "",
+                        TmdbId = ReadNumber(Text(actor, "id") ?? ""), Order = Actors.Count,
+                        Thumb = Text(actor, "profile_path") is { Length: > 0 } profile ? "https://image.tmdb.org/t/p/w185" + profile : ""
+                    });
+            }
         }
     }
 
@@ -371,7 +423,20 @@ public partial class SeriesNfoEditor : ObservableObject
         }
         foreach (var (type, value) in new[] { ("imdb", ImdbId), ("tmdb", TmdbId), ("tvdb", TvdbId) })
             root.Add(new XElement("uniqueid", new XAttribute("type", type), value.Trim()));
-        if (!isEpisode && importedCast is not null) root.Add(importedCast.Select(actor => new XElement(actor)));
+        if (!isEpisode)
+        {
+            var index = 0;
+            foreach (var actor in Actors.Where(actor => !string.IsNullOrWhiteSpace(actor.Name)))
+            {
+                var node = originalActors.TryGetValue(actor, out var original) ? new XElement(original) : new XElement("actor");
+                node.SetElementValue("name", actor.Name.Trim());
+                node.SetElementValue("role", actor.Role);
+                node.SetElementValue("thumb", string.IsNullOrWhiteSpace(actor.Thumb) ? null : actor.Thumb);
+                node.SetElementValue("tmdbid", actor.TmdbId);
+                node.SetElementValue("order", index++);
+                root.Add(node);
+            }
+        }
         return root;
     }
 }

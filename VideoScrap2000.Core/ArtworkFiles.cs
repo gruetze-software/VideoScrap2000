@@ -2,7 +2,7 @@ namespace MovieScrap2000;
 
 public static class ArtworkFiles
 {
-    public static async Task SaveAsync(string folder, string videoName, ImageCacheItem image, CancellationToken token)
+    public static Task SaveAsync(string folder, string videoName, ImageCacheItem image, CancellationToken token)
     {
         var suffix = image.Type switch
         {
@@ -10,12 +10,16 @@ public static class ArtworkFiles
             ImageTypes.ClearArt => "clearart", ImageTypes.Banner => "banner", ImageTypes.Landscape => "landscape",
             ImageTypes.KeyArt => "keyart", ImageTypes.DiskArt => "discart", _ => throw new ArgumentException("Unbekannter Bildtyp.")
         };
-        var bytes = image.Data;
+        return SaveNamedAsync(folder, videoName + "-" + suffix, image.Data, token);
+    }
+
+    public static async Task<string> SaveNamedAsync(string folder, string name, byte[] bytes, CancellationToken token)
+    {
         var extension = bytes.Length >= 8 && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) ? ".png"
             : bytes.Length >= 3 && bytes[0] == 255 && bytes[1] == 216 && bytes[2] == 255 ? ".jpg"
             : bytes.Length >= 12 && System.Text.Encoding.ASCII.GetString(bytes, 0, 4) == "RIFF" && System.Text.Encoding.ASCII.GetString(bytes, 8, 4) == "WEBP" ? ".webp"
             : throw new InvalidDataException("Unterstützt werden PNG-, JPEG- und WebP-Bilder.");
-        var stem = Path.Combine(folder, videoName + "-" + suffix);
+        var stem = Path.Combine(folder, name);
         var path = stem + extension;
         var temporary = path + ".tmp";
         try
@@ -30,5 +34,6 @@ public static class ArtworkFiles
             File.Move(temporary, path, true);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        return path;
     }
 }

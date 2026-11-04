@@ -31,6 +31,35 @@ namespace MovieScrap2000.FanArtTvScraper
       Client = client ?? new HttpClient();
     }
 
+    private static HttpRequestMessage CreateRequest(string url)
+    {
+      var request = new HttpRequestMessage(HttpMethod.Get, url);
+      var projectKey = Environment.GetEnvironmentVariable("FANART_TV_PROJECT_API_KEY")?.Trim();
+      if (string.IsNullOrWhiteSpace(projectKey)) projectKey = BundledProjectKey;
+      if (!string.IsNullOrWhiteSpace(projectKey)) request.Headers.Add("api-key", projectKey);
+      var personalKey = Environment.GetEnvironmentVariable("FANART_TV_API_KEY")?.Trim();
+      if (!string.IsNullOrWhiteSpace(personalKey)) request.Headers.Add("client-key", personalKey);
+      return request;
+    }
+
+    public async Task<JsonElement> GetSeriesArtworkAsync(int tmdbId, int tvdbId, CancellationToken token)
+    {
+      if (tvdbId > 0)
+      {
+        var byTvdb = await ReadSeriesArtworkAsync($"{_baseurl}tv/{tvdbId}", token);
+        if (byTvdb.ValueKind == JsonValueKind.Object) return byTvdb;
+      }
+      return tmdbId > 0 ? await ReadSeriesArtworkAsync($"{_baseurl}tv/{tmdbId}?source=tmdb", token) : default;
+    }
+
+    private async Task<JsonElement> ReadSeriesArtworkAsync(string url, CancellationToken token)
+    {
+      using var request = CreateRequest(url);
+      using var response = await Client.SendAsync(request, token);
+      if (!response.IsSuccessStatusCode) return default;
+      return JsonSerializer.Deserialize<JsonElement>(await response.Content.ReadAsStringAsync(token));
+    }
+
     /// <summary>
     /// Ruft asynchron alle verfügbaren Fanart-Artworks für einen Film von Fanart.tv ab.
     /// </summary>
@@ -50,13 +79,7 @@ namespace MovieScrap2000.FanArtTvScraper
         cancellationToken.ThrowIfCancellationRequested();
 
         // 2. Asynchronen HTTP-Aufruf durchführen
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        var projectKey = Environment.GetEnvironmentVariable("FANART_TV_PROJECT_API_KEY")?.Trim();
-        if (string.IsNullOrWhiteSpace(projectKey)) projectKey = BundledProjectKey;
-        if (!string.IsNullOrWhiteSpace(projectKey)) request.Headers.Add("api-key", projectKey);
-
-        var personalKey = Environment.GetEnvironmentVariable("FANART_TV_API_KEY")?.Trim();
-        if (!string.IsNullOrWhiteSpace(personalKey)) request.Headers.Add("client-key", personalKey);
+        using var request = CreateRequest(url);
         using var response = await Client.SendAsync(request, cancellationToken);
 
         // 3. Statuscode prüfen

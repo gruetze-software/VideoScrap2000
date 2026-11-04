@@ -16,7 +16,7 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 - **Choose images while previews load.** Pick a result and apply it while other previews are still downloading. Double-click a local artwork tile to open the image in your default viewer.
 - **Save changes in the movie folder.** Metadata and selected artwork are staged until you choose **Save changes**. Existing NFOs and replaced artwork are backed up as `.bak` files. NFO fields managed by other tools are preserved when possible.
 - **Customize the interface.** Use light, dark, or system appearance and optionally show dimmed fanart behind the movie details. The interface supports English and German. Metadata and artwork language preferences can be set separately, and preferred artwork languages rank ahead of other matches.
-- **Manage TV shows separately.** The **TV shows** tab groups videos by show and season. Edit show and episode metadata separately or fetch it from TMDB. Existing show posters appear beside the entries in the library.
+- **Manage TV shows separately.** The **TV shows** tab groups videos by show and season. Edit show and episode metadata separately or fetch it from TMDB. Manage the cast in its own tab with roles, TMDB IDs, and portraits. See show fanart and season banners. Matching a show also looks for missing artwork from Fanart.tv, with a TMDB backdrop as a fallback for fanart.
 - **Draft a short outline in your browser.** The ChatGPT button copies the plot with a prompt for a spoiler-free outline of up to 239 characters and opens ChatGPT in your browser. You choose whether to send the prompt and paste the result back into the app.
 
 ## Get started

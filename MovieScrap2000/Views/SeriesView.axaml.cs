@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Platform.Storage;
@@ -70,6 +71,79 @@ public partial class SeriesView : UserControl
     private async void SearchEpisode(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SeriesViewModel model) await model.FindEpisodeAsync();
+    }
+
+    private async void AddActor(object? sender, RoutedEventArgs e) => await EditActorAsync(null);
+
+    private async void EditActor(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is ActorEditor actor) await EditActorAsync(actor);
+    }
+
+    private async Task EditActorAsync(ActorEditor? actor)
+    {
+        if (DataContext is not SeriesViewModel { ShowEditor: { } editor } model || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var dialog = new ActorEditWindow(actor ?? new ActorEditor());
+        await dialog.ShowDialog(owner);
+        if (!dialog.IsAccepted || !ReferenceEquals(editor, model.ShowEditor)) return;
+        if (actor is null)
+        {
+            actor = dialog.Draft;
+            editor.Actors.Add(actor);
+        }
+        else
+        {
+            actor.Name = dialog.Draft.Name;
+            actor.Role = dialog.Draft.Role;
+            actor.TmdbId = dialog.Draft.TmdbId;
+        }
+        model.SelectedActor = actor;
+        model.RefreshActorPreview();
+    }
+
+    private void RemoveActor(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SeriesViewModel { ShowEditor: { } editor } && (sender as Control)?.DataContext is ActorEditor actor)
+            editor.Actors.Remove(actor);
+        e.Handled = true;
+    }
+
+    private async void ActorKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not SeriesViewModel { ShowEditor: { } editor }) return;
+        var selected = SeriesCast.SelectedItems?.OfType<ActorEditor>().ToArray() ?? [];
+        if (e.Key == Key.Delete)
+        {
+            foreach (var actor in selected) editor.Actors.Remove(actor);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F2 && selected.Length == 1)
+        {
+            e.Handled = true;
+            await EditActorAsync(selected[0]);
+        }
+    }
+
+    private async void OpenPicture(object? sender, TappedEventArgs e)
+    {
+        if (sender is MoviePosterThumbnail picture && TopLevel.GetTopLevel(this) is { } owner) await OpenPictureAsync(picture, owner);
+        e.Handled = true;
+    }
+
+    private async void OpenActorPicture(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SeriesViewModel model && (sender as Control)?.DataContext is ActorEditor actor && TopLevel.GetTopLevel(this) is { } owner)
+        {
+            model.SelectedActor = actor;
+            await OpenPictureAsync(SeriesActorPhoto, owner);
+        }
+        e.Handled = true;
+    }
+
+    private static async Task OpenPictureAsync(MoviePosterThumbnail picture, TopLevel owner)
+    {
+        try { await picture.OpenImageAsync(owner); }
+        catch (Exception ex) { System.Diagnostics.Trace.WriteLine(ex); }
     }
 
     private sealed record ShowMatch(SearchTv Show)
