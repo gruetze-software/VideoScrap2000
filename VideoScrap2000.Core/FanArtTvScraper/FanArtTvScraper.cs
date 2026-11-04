@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -20,6 +21,9 @@ namespace MovieScrap2000.FanArtTvScraper
      *
      */
     private readonly static string _baseurl = "https://webservice.fanart.tv/v3.2/";
+    private static readonly string? BundledProjectKey = typeof(FanArtTvScraper).Assembly
+      .GetCustomAttributes<AssemblyMetadataAttribute>()
+      .FirstOrDefault(attribute => attribute.Key == "FanartTvProjectApiKey")?.Value;
     public HttpClient Client { get; private set; }
 
     public FanArtTvScraper(HttpClient? client = null)
@@ -47,8 +51,12 @@ namespace MovieScrap2000.FanArtTvScraper
 
         // 2. Asynchronen HTTP-Aufruf durchführen
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        var apiKey = Environment.GetEnvironmentVariable("FANART_TV_API_KEY")?.Trim();
-        if (!string.IsNullOrWhiteSpace(apiKey)) request.Headers.Add("client-key", apiKey);
+        var projectKey = Environment.GetEnvironmentVariable("FANART_TV_PROJECT_API_KEY")?.Trim();
+        if (string.IsNullOrWhiteSpace(projectKey)) projectKey = BundledProjectKey;
+        if (!string.IsNullOrWhiteSpace(projectKey)) request.Headers.Add("api-key", projectKey);
+
+        var personalKey = Environment.GetEnvironmentVariable("FANART_TV_API_KEY")?.Trim();
+        if (!string.IsNullOrWhiteSpace(personalKey)) request.Headers.Add("client-key", personalKey);
         using var response = await Client.SendAsync(request, cancellationToken);
 
         // 3. Statuscode prüfen

@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'"><DebugType>none</DebugType><DebugSymbols>false</DebugSymbols></PropertyGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Release' And $([System.Text.RegularExpressions.Regex]::IsMatch('$(FANART_TV_PROJECT_API_KEY)', '^[0-9a-fA-F]{32}$'))">
+    <AssemblyMetadata Include="FanartTvProjectApiKey" Value="$(FANART_TV_PROJECT_API_KEY)" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />

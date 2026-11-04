@@ -31,6 +31,9 @@ jobs:
           testResultsFiles: '**/*.trx'
       - pwsh: ./scripts/Publish.ps1 -Runtime '$(rid)'
         displayName: Publish and verify platform package
+        ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+          env:
+            FANART_TV_PROJECT_API_KEY: $(FANART_TV_PROJECT_API_KEY)
       - task: CopyFiles@2
         inputs:
           SourceFolder: artifacts
