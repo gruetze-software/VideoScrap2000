@@ -1,0 +1,45 @@
+trigger:
+  branches:
+    include:
+      - '*'
+jobs:
+  - job: VerifyAndPackage
+    strategy:
+      matrix:
+        Windows:
+          image: windows-latest
+          rid: win-x64
+        Linux:
+          image: ubuntu-latest
+          rid: linux-x64
+        macOS:
+          image: macos-latest
+          rid: osx-x64
+    pool:
+      vmImage: $(image)
+    steps:
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          version: 10.0.x
+      - pwsh: dotnet test VideoScrap2000.Tests/VideoScrap2000.Tests.csproj -c Release -m:1 --logger trx
+        displayName: Test core and Avalonia views
+      - task: PublishTestResults@2
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: '**/*.trx'
+      - pwsh: ./scripts/Publish.ps1 -Runtime '$(rid)'
+        displayName: Publish and verify platform package
+      - task: CopyFiles@2
+        inputs:
+          SourceFolder: artifacts
+          Contents: |
+            **/*.zip
+            **/*.tar.gz
+            **/manifest.json
+          TargetFolder: $(Build.ArtifactStagingDirectory)
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: $(Build.ArtifactStagingDirectory)
+          artifact: VideoScrap2000-$(rid)

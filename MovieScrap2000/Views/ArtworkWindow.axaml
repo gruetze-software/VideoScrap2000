@@ -1,0 +1,12 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="VideoScrap2000.Views.ArtworkWindow" x:CompileBindings="False"
+        Title="{DynamicResource L38B0391AE790}" Width="860" Height="680" MinWidth="640" MinHeight="480" WindowStartupLocation="CenterOwner">
+  <Grid Margin="24" RowDefinitions="Auto,*,Auto,Auto">
+    <Grid ColumnDefinitions="*,Auto"><ComboBox x:Name="ImageType" MinWidth="180"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding ., Converter={StaticResource Translate}}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox><Button Grid.Column="1" x:Name="LoadButton" Content="{DynamicResource L1B8B908F6EE9}" Click="LoadImages"/></Grid>
+    <ListBox x:Name="Candidates" Grid.Row="1" Margin="0,16" Background="Transparent" SelectionChanged="SelectionChanged">
+      <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+      <ListBox.ItemTemplate><DataTemplate><StackPanel Width="210" Spacing="6" Margin="6" DoubleTapped="OpenPreview" ToolTip.Tip="{DynamicResource LFB46D5462A45}"><Image Source="{Binding Preview}" Height="180" Stretch="Uniform"/><TextBlock Text="{Binding Caption}" Classes="secondary" FontSize="12" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+    </ListBox>
+    <StackPanel Grid.Row="2" Spacing="8" Margin="0,0,0,12"><ProgressBar x:Name="LoadingProgress" IsVisible="False" IsIndeterminate="True" Height="4"/><TextBlock x:Name="StatusText" Classes="secondary" TextWrapping="Wrap"/></StackPanel>
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button Content="{DynamicResource LF7FF1178AF20}" Click="Cancel" IsCancel="True"/><Button x:Name="StopLoadingButton" Content="{DynamicResource L656F3B374409}" Click="StopLoading" IsVisible="False"/><Button x:Name="AcceptButton" Content="{DynamicResource L84032126AD32}" Click="Accept" Classes="primary" IsEnabled="False"/></StackPanel>
+  </Grid>
+</Window>

@@ -1,38 +1,47 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AssemblyName>VideoScrap2000</AssemblyName>
+    <Product>VideoScrap 2000</Product>
+    <ApplicationIcon>Assets/videoscrap-2000.ico</ApplicationIcon>
+    <Company>Grütze-Software</Company>
+    <Version>0.2.0</Version>
+    <Copyright>© 2026 Grütze-Software</Copyright>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
-
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Avalonia's XAML compiler uses symbols during compilation. Publish removes
+         them from the deliverable below, including symbols from dependencies. -->
+    <DebugType>portable</DebugType><DebugSymbols>true</DebugSymbols>
+    <CopyDebugSymbolFilesFromPackages>false</CopyDebugSymbolFilesFromPackages>
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+  </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="FluentListView" Version="4.0.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
-    <PackageReference Include="System.Text.Json" Version="10.0.0" />
+    <Compile Remove="Properties/**/*.cs" />
+    <EmbeddedResource Remove="Properties/**/*.resx" />
+    <AvaloniaResource Include="Assets/**" Exclude="Assets/*.ico" />
+    <EmbeddedResource Include="Localization/en.json" LogicalName="VideoScrap2000.Localization.en.json" />
+    <ProjectReference Include="../VideoScrap2000.Core/VideoScrap2000.Core.csproj" />
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" Condition="'$(RuntimeIdentifier)' == ''" />
+    <PackageReference Include="Avalonia.Win32" Version="12.1.4" Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))" />
+    <PackageReference Include="Avalonia.X11" Version="12.1.4" Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))" />
+    <PackageReference Include="Avalonia.Native" Version="12.1.4" Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-'))" />
+    <PackageReference Include="Avalonia.Skia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Resources\loading.gif">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
+  <PropertyGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))"><DefineConstants>$(DefineConstants);TARGET_WINDOWS</DefineConstants></PropertyGroup>
+  <PropertyGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))"><DefineConstants>$(DefineConstants);TARGET_LINUX</DefineConstants></PropertyGroup>
+  <PropertyGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-'))"><DefineConstants>$(DefineConstants);TARGET_MACOS</DefineConstants></PropertyGroup>
+  <Target Name="RemoveReleaseSymbols" AfterTargets="ComputeResolvedFilesToPublishList" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb' Or '%(Extension)' == '.dbg' Or '%(Extension)' == '.debug' Or '%(Extension)' == '.lib' Or '%(Extension)' == '.exp' Or '%(Extension)' == '.a' Or $([System.String]::Copy('%(RelativePath)').Contains('.dSYM'))" />
+    </ItemGroup>
+  </Target>
 </Project>

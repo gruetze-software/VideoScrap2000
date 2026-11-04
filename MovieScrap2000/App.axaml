@@ -1,0 +1,45 @@
+<Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:loc="using:VideoScrap2000.Localization" x:Class="VideoScrap2000.App" RequestedThemeVariant="Default">
+  <Application.Resources>
+    <ResourceDictionary>
+      <loc:TranslateConverter x:Key="Translate"/>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="PageBrush" Color="#F4F6F7"/>
+          <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="SubtleBrush" Color="#EAF0F0"/>
+          <SolidColorBrush x:Key="SecondaryBrush" Color="#53646A"/>
+          <SolidColorBrush x:Key="StrokeBrush" Color="#DDE4E6"/>
+          <SolidColorBrush x:Key="AccentBrush" Color="#216F69"/>
+          <SolidColorBrush x:Key="MissingMetadataBrush" Color="#19733B"/>
+          <SolidColorBrush x:Key="UnavailableMovieBrush" Color="#A62335"/>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="PageBrush" Color="#151C21"/>
+          <SolidColorBrush x:Key="CardBrush" Color="#202A30"/>
+          <SolidColorBrush x:Key="SubtleBrush" Color="#29373D"/>
+          <SolidColorBrush x:Key="SecondaryBrush" Color="#B1C1C6"/>
+          <SolidColorBrush x:Key="StrokeBrush" Color="#37454C"/>
+          <SolidColorBrush x:Key="AccentBrush" Color="#68CBBE"/>
+          <SolidColorBrush x:Key="MissingMetadataBrush" Color="#83E3A1"/>
+          <SolidColorBrush x:Key="UnavailableMovieBrush" Color="#FF9AA6"/>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#216F69"/>
+        <ColorPaletteResources x:Key="Dark" Accent="#68CBBE"/>
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <Style Selector="Window"><Setter Property="Background" Value="{DynamicResource PageBrush}"/></Style>
+    <Style Selector="Button"><Setter Property="CornerRadius" Value="7"/><Setter Property="Padding" Value="14,9"/><Setter Property="HorizontalContentAlignment" Value="Center"/></Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="#216F69"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="TextBlock.secondary"><Setter Property="Foreground" Value="{DynamicResource SecondaryBrush}"/></Style>
+    <Style Selector="TextBlock.missing"><Setter Property="Foreground" Value="{DynamicResource MissingMetadataBrush}"/></Style>
+    <Style Selector="TextBlock.unavailable"><Setter Property="Foreground" Value="{DynamicResource UnavailableMovieBrush}"/></Style>
+    <Style Selector="TextBlock.label"><Setter Property="FontSize" Value="12"/><Setter Property="Foreground" Value="{DynamicResource SecondaryBrush}"/><Setter Property="Margin" Value="0,8,0,4"/></Style>
+    <Style Selector="Border.card"><Setter Property="Background" Value="{DynamicResource CardBrush}"/><Setter Property="CornerRadius" Value="12"/><Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}"/><Setter Property="BorderThickness" Value="1"/></Style>
+  </Application.Styles>
+</Application>

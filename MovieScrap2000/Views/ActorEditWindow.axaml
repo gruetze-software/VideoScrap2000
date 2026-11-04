@@ -1,0 +1,11 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:VideoScrap2000.ViewModels"
+        x:Class="VideoScrap2000.Views.ActorEditWindow" x:DataType="vm:ActorEditor" Title="{DynamicResource L425D57FA4B15}" Width="440" Height="320" CanResize="False" WindowStartupLocation="CenterOwner">
+  <Grid Margin="24" RowDefinitions="*,Auto">
+    <StackPanel Spacing="5">
+      <TextBlock Text="{DynamicResource LDCD1D5223F73}" Classes="label"/><TextBox Text="{Binding Name}"/>
+      <TextBlock Text="{DynamicResource L0038A9CF8661}" Classes="label"/><TextBox Text="{Binding Role}"/>
+      <TextBlock Text="ID" Classes="label"/><NumericUpDown Value="{Binding TmdbId}" Minimum="0" FormatString="0"/>
+    </StackPanel>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0"><Button Content="{DynamicResource LF7FF1178AF20}" Click="Cancel" IsCancel="True"/><Button Content="{DynamicResource LF6B2FF39F540}" Click="Save" IsDefault="True" Classes="primary"/></StackPanel>
+  </Grid>
+</Window>

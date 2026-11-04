@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="using:VideoScrap2000.Views"
+        x:Class="VideoScrap2000.Views.ScrapeWindow" x:CompileBindings="False" Title="{DynamicResource LF5009A6C802B}" Width="760" Height="580" MinWidth="580" MinHeight="450" WindowStartupLocation="CenterOwner">
+  <Grid Margin="24" RowDefinitions="Auto,*,Auto,Auto">
+    <Grid ColumnDefinitions="*,90,Auto"><TextBox x:Name="SearchText" PlaceholderText="{DynamicResource L21F8BCCC0C75}"/><TextBox Grid.Column="1" x:Name="YearText" PlaceholderText="{DynamicResource LED1AD93B8967}" AutomationProperties.Name="{DynamicResource L5ABCD5D493B6}" Margin="8,0,0,0"/><Button Grid.Column="2" x:Name="SearchButton" Content="{DynamicResource LDD097E77DD73}" Click="Search" Classes="primary" Margin="10,0,0,0"/></Grid>
+    <ListBox Grid.Row="1" x:Name="Results" Margin="0,16" SelectionChanged="SelectionChanged">
+      <ListBox.ItemTemplate>
+        <DataTemplate DataType="views:MovieSearchResult">
+          <Grid ColumnDefinitions="44,12,*" Margin="6">
+            <Border Height="66" CornerRadius="4" ClipToBounds="True" Background="{DynamicResource SubtleBrush}">
+              <Image Source="{Binding Poster}" Stretch="Uniform"/>
+            </Border>
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="5">
+              <TextBlock Text="{Binding Movie.Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding Movie.ReleaseDate, StringFormat={}{0:yyyy}}" Classes="secondary"/>
+            </StackPanel>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <TextBlock Grid.Row="2" x:Name="StatusText" Classes="secondary" TextWrapping="Wrap" Margin="0,0,0,12"/>
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button Content="{DynamicResource LF7FF1178AF20}" IsCancel="True" Click="Cancel"/><Button x:Name="AcceptButton" Content="{DynamicResource LF54D369A0509}" IsEnabled="False" Classes="primary" Click="Accept"/></StackPanel>
+  </Grid>
+</Window>

@@ -1,0 +1,36 @@
+name: Build and platform packages
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test VideoScrap2000.Tests/VideoScrap2000.Tests.csproj -c Release -m:1
+      - shell: pwsh
+        run: ./scripts/Publish.ps1 -Runtime '${{ matrix.rid }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VideoScrap2000-${{ matrix.rid }}
+          path: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
+            artifacts/**/manifest.json
+          if-no-files-found: error

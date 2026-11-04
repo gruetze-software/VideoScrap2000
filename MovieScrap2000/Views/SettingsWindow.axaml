@@ -1,0 +1,37 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:VideoScrap2000.ViewModels"
+        x:Class="VideoScrap2000.Views.SettingsWindow" x:DataType="vm:SettingsViewModel" Title="{DynamicResource LF5750A5D7231}" Width="680" Height="570" MinWidth="520" MinHeight="460" WindowStartupLocation="CenterOwner">
+  <Grid Margin="24" RowDefinitions="*,Auto">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Spacing="12">
+        <Border Classes="card" Padding="18"><StackPanel Spacing="8">
+          <TextBlock Text="{DynamicResource LF2A1CC71FA59}" FontSize="17" FontWeight="SemiBold"/>
+          <TextBlock Text="{DynamicResource L98AB8FC819BC}" Classes="label"/>
+          <ComboBox SelectedIndex="{Binding LanguageIndex}" MinWidth="240"><ComboBoxItem Content="{DynamicResource LC999E1E15DE4}"/><ComboBoxItem>Deutsch</ComboBoxItem><ComboBoxItem>English</ComboBoxItem></ComboBox>
+          <TextBlock Text="{Binding DetectedLanguage}" Classes="secondary" FontSize="12"/>
+          <Expander Header="{DynamicResource L25E56EE28C61}"><StackPanel Spacing="8">
+          <TextBlock Text="{DynamicResource L41C2D5CFB5D4}" Classes="label"/>
+          <ComboBox SelectedIndex="{Binding MetadataLanguageIndex}" MinWidth="240"><ComboBoxItem Content="{DynamicResource L54009809ED06}"/><ComboBoxItem>Deutsch</ComboBoxItem><ComboBoxItem>English</ComboBoxItem></ComboBox>
+          <TextBlock Text="{DynamicResource LE36AE5179B38}" Classes="label"/>
+          <ComboBox SelectedIndex="{Binding ArtworkLanguageIndex}" MinWidth="240"><ComboBoxItem Content="{DynamicResource L54009809ED06}"/><ComboBoxItem>Deutsch</ComboBoxItem><ComboBoxItem>English</ComboBoxItem></ComboBox>
+          <TextBlock Text="{DynamicResource L11DC2FFD4672}" Classes="secondary" TextWrapping="Wrap" FontSize="12"/>
+          </StackPanel></Expander>
+        </StackPanel></Border>
+        <Border Classes="card" Padding="18"><StackPanel Spacing="8">
+          <TextBlock Text="{DynamicResource L1DA7A3B4EEA2}" FontSize="17" FontWeight="SemiBold"/>
+          <ComboBox SelectedIndex="{Binding ThemeIndex}" MinWidth="180" AutomationProperties.Name="{DynamicResource L1DA7A3B4EEA2}"><ComboBoxItem Content="{DynamicResource L6725E7BBCD28}"/><ComboBoxItem Content="{DynamicResource L8D586F8B60DF}"/><ComboBoxItem Content="{DynamicResource L368B231BE48A}"/></ComboBox>
+          <CheckBox Content="{DynamicResource L021184804D3C}" IsChecked="{Binding UseFanartBackground}"/>
+        </StackPanel></Border>
+        <Border Classes="card" Padding="18"><StackPanel>
+          <TextBlock Text="{DynamicResource LDD0E6BDF21FC}" FontSize="17" FontWeight="SemiBold"/>
+          <TextBlock Text="{DynamicResource LF7913AD0BB91}" Classes="label"/>
+          <Grid ColumnDefinitions="*,Auto"><TextBox Text="{Binding LibraryPath}" AutomationProperties.Name="{DynamicResource LF7913AD0BB91}"/><Button Grid.Column="1" Content="{DynamicResource L0BF1EDDB22BF}" Click="ChooseMovies" Margin="8,0,0,0"/></Grid>
+          <TextBlock Text="{DynamicResource L5AE9A8131D9B}" Classes="label"/>
+          <Grid ColumnDefinitions="*,Auto"><TextBox Text="{Binding SeriesPath}" AutomationProperties.Name="{DynamicResource L5AE9A8131D9B}"/><Button Grid.Column="1" Content="{DynamicResource L0BF1EDDB22BF}" Click="ChooseSeries" Margin="8,0,0,0"/></Grid>
+          <TextBlock Text="{DynamicResource LAE825760FAA7}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"/>
+        </StackPanel></Border>
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Classes="secondary"/>
+      </StackPanel>
+    </ScrollViewer>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,18,0,0"><Button Content="{DynamicResource LF7FF1178AF20}" IsCancel="True" Click="Cancel"/><Button Content="{DynamicResource LF6B2FF39F540}" Classes="primary" IsDefault="True" Click="Save"/></StackPanel>
+  </Grid>
+</Window>

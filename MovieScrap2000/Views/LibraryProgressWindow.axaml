@@ -1,0 +1,12 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VideoScrap2000.ViewModels"
+        x:Class="VideoScrap2000.Views.LibraryProgressWindow" x:DataType="vm:MainViewModel"
+        Width="380" SizeToContent="Height" CanResize="False" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="24" Spacing="14">
+    <TextBlock Text="{Binding Status}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/>
+    <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress}" Height="6"
+                 Foreground="{DynamicResource AccentBrush}" IsIndeterminate="{Binding IsProgressIndeterminate}"/>
+    <Button x:Name="CancelButton" HorizontalAlignment="Right" Content="{DynamicResource LF7FF1178AF20}"
+            IsCancel="True" Click="Cancel"/>
+  </StackPanel>
+</Window>

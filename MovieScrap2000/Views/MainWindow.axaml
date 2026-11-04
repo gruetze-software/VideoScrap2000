@@ -1,0 +1,206 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VideoScrap2000.ViewModels" xmlns:models="using:"
+        xmlns:views="using:VideoScrap2000.Views" xmlns:media="using:Avalonia.Media"
+        x:Class="VideoScrap2000.Views.MainWindow" x:DataType="vm:MainViewModel"
+        Title="VideoScrap 2000" Width="1280" Height="860" MinWidth="920" MinHeight="640" WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <views:RatingStarsConverter x:Key="RatingStars"/>
+    <ItemsPanelTemplate x:Key="RatingStarsPanel"><StackPanel Orientation="Horizontal" Spacing="3"/></ItemsPanelTemplate>
+    <DataTemplate x:Key="RatingStar" x:DataType="media:Geometry">
+      <Path Width="16" Height="16" Data="{Binding .}" Fill="{DynamicResource AccentBrush}" Stretch="None"/>
+    </DataTemplate>
+  </Window.Resources>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,20">
+      <StackPanel Orientation="Horizontal" Spacing="14">
+        <Image Source="/Assets/videoscrap-2000.png" Width="56" Height="56"/>
+        <StackPanel VerticalAlignment="Center" Spacing="3">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="VideoScrap 2000" FontSize="27" FontWeight="SemiBold"/>
+            <Border Background="{DynamicResource SubtleBrush}" CornerRadius="5" Padding="8,3" VerticalAlignment="Center"><TextBlock Text="{Binding Version}" FontSize="12"/></Border>
+          </StackPanel>
+          <TextBlock Text="{DynamicResource LCC109912F214}" Classes="secondary" FontSize="13"/>
+        </StackPanel>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <Button Content="{DynamicResource L18DF9D34A2FA}" Classes="primary" Command="{Binding ScanCommand}" ToolTip.Tip="{Binding LibraryPath}"/>
+        <Button Content="{DynamicResource LF5750A5D7231}" Click="ShowSettings" IsEnabled="{Binding !IsBusy}"/>
+        <Button Content="{DynamicResource L15CC1DD8E47F}" Click="ShowAbout" IsEnabled="{Binding !IsBusy}"/>
+      </StackPanel>
+    </Grid>
+    <Grid Grid.Row="1" ColumnDefinitions="310,16,*">
+      <Border Classes="card" Padding="12">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <TextBox Text="{Binding Query, Delay=250}" PlaceholderText="{DynamicResource L76DC8BF8BA74}" AutomationProperties.Name="{DynamicResource LF1047535290F}"/>
+          <StackPanel Grid.Row="1" Spacing="6" Margin="0,8,0,8"><ComboBox SelectedIndex="{Binding MovieSortIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{DynamicResource L188CA34ADC8E}"><ComboBoxItem Content="{DynamicResource LB5BC23B377E2}"/><ComboBoxItem Content="{DynamicResource LDCD1D5223F73}"/><ComboBoxItem Content="{DynamicResource L5ABCD5D493B6}"/></ComboBox><TextBlock Text="{Binding CountLabel}" Classes="secondary" Margin="4,0,0,0" FontSize="12"/></StackPanel>
+          <ListBox Grid.Row="2" ItemsSource="{Binding Movies}" SelectedItem="{Binding SelectedMovie}" Background="Transparent" BorderThickness="0" IsEnabled="{Binding !IsBusy}"
+                   ContainerPrepared="PrepareMovieRow" ContainerClearing="ClearMovieRow">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="models:MovieViewModel">
+                <Grid Margin="4,7" ColumnDefinitions="42,10,*">
+                  <Border Width="42" Height="63" VerticalAlignment="Top" CornerRadius="4" ClipToBounds="True" Background="{DynamicResource SubtleBrush}">
+                    <views:MoviePosterThumbnail Stretch="UniformToFill"/>
+                  </Border>
+                <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" Classes.missing="{Binding MissingMetadata}" Classes.unavailable="{Binding IsFolderUnavailable}"/>
+                  <Grid ColumnDefinitions="Auto,*"><TextBlock Text="{Binding Year}" Classes="secondary" FontSize="12"/><TextBlock Grid.Column="1" Text="{Binding MetadataCapturedDateText}" Classes="secondary" FontSize="12" HorizontalAlignment="Right" ToolTip.Tip="{DynamicResource LB5BC23B377E2}"/></Grid>
+                  <TextBlock Text="{Binding MetadataStatus, Converter={StaticResource Translate}}" IsVisible="{Binding HasMetadataStatus}" Classes="secondary" Classes.missing="{Binding MissingMetadata}" Classes.unavailable="{Binding IsFolderUnavailable}" FontSize="11"/>
+                  <ItemsControl ItemsSource="{Binding Rating, Converter={StaticResource RatingStars}}" ItemsPanel="{StaticResource RatingStarsPanel}" ItemTemplate="{StaticResource RatingStar}"/>
+                </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+      <Border Grid.Column="2" Classes="card" IsVisible="{Binding ShowEmptyState}" Padding="40">
+        <StackPanel VerticalAlignment="Center" Spacing="12" MaxWidth="420">
+          <TextBlock Text="{Binding EmptyTitle}" FontSize="28" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding EmptyDescription}" Classes="secondary" TextWrapping="Wrap" FontSize="15"/>
+          <TextBlock Text="{DynamicResource L9DCE38799D48}" Classes="secondary" TextWrapping="Wrap" FontSize="12"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Classes="card" IsVisible="{Binding HasSelection}" ClipToBounds="True">
+        <Grid RowDefinitions="*,Auto">
+          <Image Grid.RowSpan="2" Source="{Binding FanartBackground}" IsVisible="{Binding UseFanartBackground}"
+                 Stretch="UniformToFill" Opacity="0.20" IsHitTestVisible="False"/>
+          <ScrollViewer Margin="0,0,12,0">
+            <StackPanel Margin="24,24,12,24" Spacing="12">
+              <Grid ColumnDefinitions="180,24,*">
+                <Border Background="{DynamicResource SubtleBrush}" CornerRadius="9" Height="270" ClipToBounds="True" DoubleTapped="OpenPoster" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}">
+                                    <Grid><TextBlock Text="POSTER" FontSize="13" Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Center"/><Image Source="{Binding Poster}" Stretch="UniformToFill"/>
+                    <Border VerticalAlignment="Bottom" Background="{DynamicResource CardBrush}" Padding="10" IsVisible="{Binding IsImagesLoading}"><StackPanel Spacing="7"><TextBlock Text="{DynamicResource LC69096728E8E}" FontSize="11"/><ProgressBar IsIndeterminate="True" Height="4"/></StackPanel></Border>
+                  </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="6">
+                  <TextBlock Text="{Binding Title}" FontSize="25" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding Tagline}" Classes="secondary" FontStyle="Italic" TextWrapping="Wrap"/>
+                  <TextBlock Text="{DynamicResource LD92244697AF0}" Classes="label"/><TextBox Text="{Binding OriginalTitle}" IsEnabled="{Binding CanEdit}"/>
+                  <Grid ColumnDefinitions="100,12,*,12,*">
+                    <StackPanel><TextBlock Text="{DynamicResource LED1AD93B8967}" Classes="label"/><TextBox Text="{Binding Year}" IsEnabled="{Binding CanEdit}"/></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L6AAA60B94AF9}" Classes="label"/><TextBox Text="{Binding Imdb}" IsEnabled="{Binding CanEdit}"/></StackPanel>
+                    <StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource L9A9E55D41F32}" Classes="label"/><TextBox Text="{Binding Tmdb}" IsEnabled="{Binding CanEdit}"/></StackPanel>
+                  </Grid>
+                </StackPanel>
+              </Grid>
+              <TabControl Classes="detailTabs">
+                <TabControl.Styles>
+                  <Style Selector="TabItem"><Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="12,9"/><Setter Property="Margin" Value="0,0,6,8"/><Setter Property="CornerRadius" Value="7"/><Setter Property="Background" Value="{DynamicResource SubtleBrush}"/><Setter Property="Foreground" Value="{DynamicResource SecondaryBrush}"/></Style>
+                  <Style Selector="TabItem:selected"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource PageBrush}"/></Style>
+                </TabControl.Styles>
+                <TabItem Header="{DynamicResource L7EE7AC4448B5}">
+                  <StackPanel Spacing="2" Margin="0,10,0,0" IsEnabled="{Binding CanEdit}">
+                    <TextBlock Text="{DynamicResource L652095EFC4C7}" Classes="label"/><TextBox Text="{Binding Title}"/>
+                    <Grid ColumnDefinitions="*,12,*">
+                      <StackPanel>
+                        <TextBlock Text="{DynamicResource L4894A5913E93}" Classes="label"/>
+                        <TextBox Text="{Binding SortTitle}"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2">
+                        <TextBlock Text="{DynamicResource LFDAB2C2F2BE2}" Classes="label"/>
+                        <TextBox Text="{Binding Tagline}"/>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{DynamicResource L3561ABFE8067}" Classes="label"/>
+                    <TextBox Text="{Binding Genres}" PlaceholderText="{DynamicResource L8972169A0D8C}" AutomationProperties.Name="{DynamicResource L3561ABFE8067}"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{DynamicResource L0E36090DF5FF}" Classes="label" VerticalAlignment="Center"/>
+                      <Button Grid.Column="1" Content="ChatGPT ↗" Click="OpenOutlinePrompt" IsEnabled="{Binding CanEdit}" MinWidth="115" Padding="16,9" Margin="12,4,0,4" ToolTip.Tip="{DynamicResource L0EA6BE8A6B6C}"/>
+                    </Grid>
+                    <TextBox Text="{Binding Outline}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70"/>
+                    <TextBlock Text="{DynamicResource L5C9FECD4DF0A}" Classes="label"/><TextBox Text="{Binding Plot}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="160"/>
+                  </StackPanel>
+                </TabItem>
+                <TabItem Header="{DynamicResource L425D57FA4B15}">
+                  <StackPanel Margin="0,12,0,0" Spacing="12">
+                    <Button Content="{DynamicResource LCBB95CF02B7D}" Click="AddActorEntry" IsEnabled="{Binding CanEdit}" HorizontalAlignment="Left"/>
+                    <Grid ColumnDefinitions="*,16,120" MinHeight="220">
+                      <Border x:Name="ActorTable" Classes="card" ClipToBounds="True" VerticalAlignment="Top">
+                        <Grid RowDefinitions="Auto,*">
+                          <Border Background="{DynamicResource SubtleBrush}" Padding="8,8">
+                            <Grid ColumnDefinitions="2*,2*,72,28"><TextBlock Text="{DynamicResource LDCD1D5223F73}" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{DynamicResource L0038A9CF8661}" FontWeight="SemiBold"/><TextBlock Grid.Column="2" Text="ID" FontWeight="SemiBold"/></Grid>
+                          </Border>
+                          <ListBox x:Name="ActorList" Grid.Row="1" ItemsSource="{Binding Actors}" SelectedItems="{Binding SelectedActors}" SelectionMode="Multiple" KeyDown="ActorListKeyDown" MaxHeight="330" Background="Transparent" BorderThickness="0">
+                            <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="MinHeight" Value="30"/><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.Styles>
+                            <ListBox.ItemTemplate>
+                              <DataTemplate x:DataType="vm:ActorEditor">
+                                <Grid ColumnDefinitions="2*,2*,72,28" Margin="8,3" DoubleTapped="OpenActorPhoto">
+                                  <Grid.ContextMenu><ContextMenu><MenuItem Header="{DynamicResource L84E45EE73411}" Click="EditActorEntry"/></ContextMenu></Grid.ContextMenu>
+                                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" Margin="0,0,8,0"/>
+                                  <TextBlock Grid.Column="1" Text="{Binding Role}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Role}" Margin="0,0,8,0"/>
+                                  <TextBlock Grid.Column="2" Text="{Binding TmdbId}" VerticalAlignment="Center" Classes="secondary"/>
+                                  <Button Grid.Column="3" Content="×" Click="RemoveActorEntry" Padding="0" MinWidth="24" Width="24" Height="24" MinHeight="24" Background="Transparent" ToolTip.Tip="{DynamicResource L3828375A2D45}"/>
+                                </Grid>
+                              </DataTemplate>
+                            </ListBox.ItemTemplate>
+                          </ListBox>
+                        </Grid>
+                      </Border>
+                      <Border x:Name="ActorPortrait" Grid.Column="2" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Height="180" VerticalAlignment="Top" DoubleTapped="OpenSelectedActorPhoto" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"><Grid><Image Source="{Binding ActorPhoto}" Stretch="Uniform"/><ProgressBar IsIndeterminate="True" IsVisible="{Binding IsActorPhotoLoading}" Height="4" VerticalAlignment="Bottom"/></Grid></Border>
+                    </Grid>
+                  </StackPanel>
+                </TabItem>
+                <TabItem Header="{DynamicResource L45989DE49FB7}">
+                  <StackPanel Margin="0,12,0,0" IsEnabled="{Binding CanEdit}" Spacing="2">
+                    <TextBlock Text="{DynamicResource L802F8F712AA7}" Classes="label"/><DatePicker SelectedDate="{Binding Premiere}" HorizontalAlignment="Left"/>
+                    <Grid ColumnDefinitions="*,12,*,12,Auto">
+                      <StackPanel><TextBlock Text="{DynamicResource L239B620FD67A}" Classes="label"/><TextBox Text="{Binding Runtime}"/></StackPanel>
+                      <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource LCA8A3F8ECED2}" Classes="label"/><TextBox Text="{Binding Rating}"/></StackPanel>
+                      <StackPanel Grid.Column="4" MinWidth="110">
+                        <TextBlock Text="{DynamicResource LCA8126E8592D}" Classes="label"/>
+                        <ItemsControl Height="32" Padding="0,8,0,0" ItemsSource="{Binding Rating, Converter={StaticResource RatingStars}}"
+                                      ItemsPanel="{StaticResource RatingStarsPanel}" ItemTemplate="{StaticResource RatingStar}"/>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{DynamicResource L98C628646F7C}" Classes="label"/><TextBox Text="{Binding Directors}"/>
+                    <TextBlock Text="{DynamicResource LD25E58A7A89D}" Classes="label"/><TextBox Text="{Binding Credits}"/>
+                    <TextBlock Text="{DynamicResource LEE1AD0C07BF2}" Classes="label"/><TextBox Text="{Binding Certification}"/>
+                    <TextBlock Text="{DynamicResource L0DB6193FEC07}" Classes="label"/><TextBox Text="{Binding Countries}"/>
+                    <Grid ColumnDefinitions="*,12,*">
+                      <StackPanel>
+                        <TextBlock Text="{DynamicResource L1C1FC37208A8}" Classes="label"/>
+                        <TextBox Text="{Binding Collection}"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2">
+                        <TextBlock Text="{DynamicResource LFADAE075D716}" Classes="label"/>
+                        <TextBox Text="{Binding CollectionId}"/>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{DynamicResource L9564EAD4C35A}" Classes="label"/><TextBox Text="{Binding Studios}"/>
+                    <TextBlock Text="{DynamicResource LBE2382585699}" Classes="label"/><TextBox Text="{Binding Tags}"/>
+                    <TextBlock Text="{DynamicResource LF798EA1FD3E6}" FontWeight="SemiBold" FontSize="16" Margin="0,22,0,8"/>
+                    <TextBlock Text="{Binding TechnicalDetails}" TextWrapping="Wrap" Classes="secondary"/>
+                    <TextBlock Text="{DynamicResource L410C089D3C78}" Classes="label"/><TextBox Text="{Binding SelectionPath}" IsReadOnly="True" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </TabItem>
+                <TabItem Header="{DynamicResource LD5FBB86ADD39}">
+                  <StackPanel Margin="0,12,0,0" Spacing="12">
+                    <WrapPanel IsEnabled="{Binding CanEdit}">
+                      <ComboBox ItemsSource="{Binding ArtworkTypes}" SelectedItem="{Binding ArtworkType}" MinWidth="130" VerticalAlignment="Stretch" Margin="0,0,8,8"><ComboBox.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding ., Converter={StaticResource Translate}}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+                      <Button Content="{DynamicResource LD58CC142EBAE}" Click="ChooseOnlineArtwork" Margin="0,0,8,8"/>
+                      <Button Content="{DynamicResource L748B21D7560D}" Click="ChooseLocalArtwork" Margin="0,0,0,8"/>
+                    </WrapPanel>
+                  <StackPanel IsVisible="{Binding IsImagesLoading}" Spacing="6"><TextBlock Text="{DynamicResource L73BF6AC897C3}" Classes="secondary"/><ProgressBar IsIndeterminate="True" Height="4"/></StackPanel>
+                  <ListBox Classes="artwork" ItemsSource="{Binding Artwork}" SelectedItem="{Binding SelectedArtwork}" Margin="0,14,0,0" Background="Transparent" BorderThickness="0">
+                    <ListBox.Styles>
+                      <Style Selector="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,12,12"/><Setter Property="Background" Value="Transparent"/></Style>
+                      <Style Selector="ListBoxItem:selected Border.card"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="BorderThickness" Value="3"/></Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:ArtworkViewModel"><Border DoubleTapped="OpenArtwork" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}" Classes="card" Width="220" Padding="10"><StackPanel Spacing="8"><Image Source="{Binding Image}" Height="140" Stretch="Uniform"/><TextBlock Text="{Binding Type}" FontWeight="SemiBold"/><TextBlock Text="{Binding Path}" Classes="secondary" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></StackPanel></Border></DataTemplate></ListBox.ItemTemplate>
+                  </ListBox>
+                  </StackPanel>
+                </TabItem>
+              </TabControl>
+              <TextBlock Text="{Binding SelectionPath}" Classes="secondary" FontSize="11" TextWrapping="Wrap"/>
+            </StackPanel>
+          </ScrollViewer>
+          <Border Grid.Row="1" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="0,1,0,0" Padding="16">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button Content="{DynamicResource LF5009A6C802B}" Click="ShowScrape" IsEnabled="{Binding CanEdit}"/><Button Content="{DynamicResource L6C86B99088D0}" Classes="primary" Command="{Binding SaveCommand}"/></StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+    </Grid>
+    <TextBlock Grid.Row="2" Margin="2,14,2,0" Text="{Binding Status}" IsVisible="{Binding !IsBusy}" Classes="secondary" FontSize="14" TextWrapping="Wrap"/>
+  </Grid>
+</Window>
