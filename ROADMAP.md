@@ -1,4 +1,4 @@
-# VideoScrap2000 – Zielbild
+# VideoScrap 2000 – Zielbild
 
 ## Technische Priorität
 
@@ -22,7 +22,7 @@ Referenz ist das lokale Projekt `../BingWallE/BingWallE`, insbesondere
   Copyright, Projektlink, Technologieangaben und Lizenzhinweisen.
 - Ko-fi-Schaltfläche wie in BingWallE: https://ko-fi.com/gruetzesoftware.
 - Herstellerlink: https://github.com/gruetze-software.
-- Projektlink erst mit verifizierter Repository-Adresse belegen.
+- Projekt und Downloads auf GitHub bereitstellen.
 - Tastaturbedienung, sichtbare Fokuszustände, lesbare Kontraste und skalierbare Dialoge.
 - Hauptfenster und Dialoge in beiden Themes sowie bei hoher Anzeigeskalierung visuell prüfen.
 

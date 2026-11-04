@@ -4,6 +4,8 @@
 
 Schlanker Filmmanager von Grütze-Software für lokale Sammlungen und Netzlaufwerke. VideoScrap 2000 bearbeitet Metadaten und Artwork direkt im jeweiligen Filmordner. Die App nutzt .NET 10 und Avalonia und unterstützt Deutsch und Englisch sowie helles, dunkles und systemabhängiges Design.
 
+[Downloads auf GitHub Releases](https://github.com/gruetze-software/VideoScrap2000/releases)
+
 ## Erste Schritte
 
 1. In **Einstellungen** den Filmordner auswählen. Lege jeden Film in einen eigenen Unterordner. Enthält ein Ordner mehrere unterstützte Videos, verwendet die App die größte Videodatei.
@@ -37,8 +39,10 @@ dotnet test VideoScrap2000.Tests/VideoScrap2000.Tests.csproj -m:1
 
 Weitere Release-Ziele sind `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64` und `osx-arm64`. Die Archive enthalten standardmäßig die passende .NET-Laufzeit und die nativen Bibliotheken des Zielsystems. `-FrameworkDependent` erstellt ein kleineres Paket für eine vorhandene .NET-10-Laufzeit. Das Skript prüft die Archive auf Debug-Symbole und Bibliotheken fremder Plattformen. Linux nutzt X11 oder XWayland. macOS-Archive enthalten ausführbare Verzeichnisse.
 
-Die Oberfläche liegt in `MovieScrap2000`, der Anwendungskern in `VideoScrap2000.Core`. Die vorhandene SQLite-Datei im Anwendungsdatenordner `MovieScrap2000` wird weiterverwendet. Azure Pipelines und der GitHub-Workflow sind für Builds auf Windows, Linux und macOS vorbereitet.
+Die Oberfläche liegt in `MovieScrap2000`, der Anwendungskern in `VideoScrap2000.Core`. Die vorhandene SQLite-Datei im Anwendungsdatenordner `MovieScrap2000` wird weiterverwendet. GitHub Actions testet auf Windows, Linux und macOS und erstellt die sechs Plattformarchive.
 
-Für Fanart.tv in verteilten Paketen den **Projekt-Key** als geschützte Pipeline-Variable bzw. als GitHub-Actions-Secret `FANART_TV_PROJECT_API_KEY` hinterlegen. Die Paket-Builds von `main` übernehmen ihn automatisch. Bei lokalen Release-Builds liest der Build dieselbe Umgebungsvariable. Der Wert steht damit nicht im Quellcode, ist aber Bestandteil des ausgelieferten Programms und kann daraus ausgelesen werden. Verwende hierfür ausschließlich den Projekt-Key der App.
+Für ein Release einen Versions-Tag wie `v0.2.0` auf GitHub pushen. Nach erfolgreichen Tests und Paketprüfungen legt GitHub Actions einen Release-Entwurf mit allen sechs Archiven an. Den Entwurf unter **Releases** prüfen und veröffentlichen. Über **Actions → Build and platform packages → Run workflow** lassen sich die Pakete vorab ohne Release erstellen.
+
+Für Fanart.tv in verteilten Paketen den **Projekt-Key** in den Repository-Einstellungen als GitHub-Actions-Secret `FANART_TV_PROJECT_API_KEY` hinterlegen. Paket-Builds von `main` und Versions-Tags übernehmen ihn automatisch. Bei lokalen Release-Builds liest der Build dieselbe Umgebungsvariable. Der Wert steht damit nicht im Quellcode, ist aber Bestandteil des ausgelieferten Programms und kann daraus ausgelesen werden. Verwende hierfür ausschließlich den Projekt-Key der App.
 
 [Icon-Vorlage für Paint.NET](docs/VideoScrap-2000-icon.png) · [Drittlizenzen](THIRD-PARTY-NOTICES.md) · [Grütze-Software](https://github.com/gruetze-software) · [Ko-fi](https://ko-fi.com/gruetzesoftware)

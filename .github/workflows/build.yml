@@ -1,6 +1,8 @@
 name: Build and platform packages
 on:
   push:
+    branches: ['**']
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -10,25 +12,45 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test VideoScrap2000.Tests/VideoScrap2000.Tests.csproj -c Release -m:1
+
+  package:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
         include:
           - os: windows-latest
             rid: win-x64
+          - os: windows-latest
+            rid: win-arm64
           - os: ubuntu-latest
             rid: linux-x64
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+          - os: macos-15-intel
+            rid: osx-x64
           - os: macos-latest
             rid: osx-arm64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.1.0
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet test VideoScrap2000.Tests/VideoScrap2000.Tests.csproj -c Release -m:1
       - shell: pwsh
         run: ./scripts/Publish.ps1 -Runtime '${{ matrix.rid }}'
         env:
-          FANART_TV_PROJECT_API_KEY: ${{ github.ref == 'refs/heads/main' && secrets.FANART_TV_PROJECT_API_KEY || '' }}
-      - uses: actions/upload-artifact@v4
+          FANART_TV_PROJECT_API_KEY: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.FANART_TV_PROJECT_API_KEY || '' }}
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: VideoScrap2000-${{ matrix.rid }}
           path: |
@@ -36,3 +58,27 @@ jobs:
             artifacts/**/*.tar.gz
             artifacts/**/manifest.json
           if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: VideoScrap2000-*
+          path: packages
+      - name: Create GitHub release draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $archives = @(Get-ChildItem packages -File -Recurse | Where-Object Name -Match '^VideoScrap2000-.*\.(zip|tar\.gz)$')
+          if ($archives.Count -ne 6) { throw "Expected six platform archives, found $($archives.Count)." }
+          $assets = $archives.FullName
+          gh release create $env:RELEASE_TAG --verify-tag --draft --generate-notes --title "VideoScrap 2000 $env:RELEASE_TAG" @assets
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
