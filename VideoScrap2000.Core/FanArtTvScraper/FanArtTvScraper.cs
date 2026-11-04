@@ -25,8 +25,6 @@ namespace MovieScrap2000.FanArtTvScraper
     public FanArtTvScraper(HttpClient? client = null)
     {
       Client = client ?? new HttpClient();
-      var apiKey = Environment.GetEnvironmentVariable("FANART_TV_API_KEY")?.Trim();
-      if (!string.IsNullOrWhiteSpace(apiKey)) Client.DefaultRequestHeaders.Add("api-key", apiKey);
     }
 
     /// <summary>
@@ -48,7 +46,10 @@ namespace MovieScrap2000.FanArtTvScraper
         cancellationToken.ThrowIfCancellationRequested();
 
         // 2. Asynchronen HTTP-Aufruf durchführen
-        HttpResponseMessage response = await Client.GetAsync(url, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        var apiKey = Environment.GetEnvironmentVariable("FANART_TV_API_KEY")?.Trim();
+        if (!string.IsNullOrWhiteSpace(apiKey)) request.Headers.Add("client-key", apiKey);
+        using var response = await Client.SendAsync(request, cancellationToken);
 
         // 3. Statuscode prüfen
         if (!response.IsSuccessStatusCode)

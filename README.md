@@ -19,7 +19,7 @@ Die Serienverwaltung ist noch in Vorbereitung. Der Serienordner kann bereits ges
 
 [<img src="docs/tmdb.svg" alt="TMDB" width="104" />](https://www.themoviedb.org/)
 
-[TMDB](https://www.themoviedb.org/) liefert Filmmetadaten, Darsteller und Bilder. [Fanart.tv](https://fanart.tv/) ergänzt weitere Artwork-Typen. Für Fanart.tv einen eigenen Schlüssel als Umgebungsvariable `FANART_TV_API_KEY` setzen. Starte die Anwendung danach neu.
+[TMDB](https://www.themoviedb.org/) liefert Filmmetadaten, Darsteller und Bilder. [Fanart.tv](https://fanart.tv/) ergänzt weitere Artwork-Typen. Für Fanart.tv einen [persönlichen API-Schlüssel](https://fanart.tv/get-an-api-key/) als Umgebungsvariable `FANART_TV_API_KEY` setzen. Starte die Anwendung danach neu.
 
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 
