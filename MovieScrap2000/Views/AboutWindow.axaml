@@ -1,20 +1,28 @@
 <Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="VideoScrap2000.Views.AboutWindow"
-        Title="{DynamicResource LF664871022F1}" Width="580" Height="660" MinWidth="480" MinHeight="500" WindowStartupLocation="CenterOwner">
-  <Grid RowDefinitions="*,Auto" Margin="30">
+        Title="{DynamicResource L1DA77F05579C}" Icon="/Assets/videoscrap-2000.png" Width="600" Height="680" CanResize="False" WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="*,Auto" Margin="28">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-      <StackPanel Spacing="14">
-        <Image Source="/Assets/videoscrap-2000.png" Width="96" Height="96" HorizontalAlignment="Center"/>
+      <StackPanel Spacing="12" Margin="22,0,22,4">
+        <Image Source="/Assets/videoscrap-2000.png" RenderOptions.BitmapInterpolationMode="HighQuality" Width="96" Height="96" HorizontalAlignment="Center"/>
         <TextBlock Text="VideoScrap 2000" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center"/>
         <TextBlock x:Name="VersionText" Classes="secondary" HorizontalAlignment="Center"/>
         <TextBlock Text="{DynamicResource LCC109912F214}" FontSize="16" HorizontalAlignment="Center"/>
         <TextBlock Text="{DynamicResource LE1489F7ADC70}" TextWrapping="Wrap" TextAlignment="Center" Classes="secondary"/>
-        <Separator Margin="0,5"/>
-        <Image Source="/Assets/gruetze-software.png" Width="36" Height="36" HorizontalAlignment="Center"/>
-        <TextBlock Text="Grütze-Software" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-        <TextBlock Text="© 2026 Grütze-Software" FontSize="12" Classes="secondary" HorizontalAlignment="Center"/>
-        <WrapPanel HorizontalAlignment="Center"><Button Content="{DynamicResource L40EBF93AF8D4}" Click="OpenProject" Margin="0,0,8,8"/><Button Content="{DynamicResource LE1D06A0FFD80}" Click="OpenManufacturer" Margin="0,0,0,8"/></WrapPanel>
+        <Separator Margin="0,6"/>
+        <Grid ColumnDefinitions="100,*" Margin="12,0">
+          <Image Source="/Assets/gruetze-software.png" RenderOptions.BitmapInterpolationMode="HighQuality" Width="100" Height="100"/>
+          <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center" Margin="14,0,0,0">
+            <TextBlock Text="{DynamicResource L828AB4AE1D7A}" FontSize="12" Classes="secondary"/>
+            <TextBlock Text="Grütze-Software" FontSize="19" FontWeight="SemiBold"/>
+            <TextBlock Text="© 2026 Grütze-Software" FontSize="12" Classes="secondary"/>
+          </StackPanel>
+        </Grid>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,6">
+          <Button Content="{DynamicResource L40EBF93AF8D4}" Click="OpenProject"/>
+          <Button Content="Grütze-Software" Click="OpenManufacturer"/>
+        </StackPanel>
         <Separator/>
-        <TextBlock Text="{DynamicResource LD7E090139F97}" TextWrapping="Wrap" TextAlignment="Center"/>
+        <TextBlock Text="{DynamicResource L243ED6E06F9E}" TextWrapping="Wrap" TextAlignment="Center"/>
         <Button Content="{DynamicResource L2B81499871E7}" Click="OpenKofi" Classes="primary" HorizontalAlignment="Center"/>
         <Separator/>
         <TextBlock Text="{DynamicResource LC28E8BFD923B}" FontWeight="SemiBold" TextAlignment="Center"/>

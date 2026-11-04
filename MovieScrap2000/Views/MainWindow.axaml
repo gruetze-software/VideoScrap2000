@@ -25,7 +25,7 @@
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <Button Content="{DynamicResource L18DF9D34A2FA}" Classes="primary" Command="{Binding ScanCommand}" ToolTip.Tip="{Binding LibraryPath}"/>
         <Button Content="{DynamicResource LF5750A5D7231}" Click="ShowSettings" IsEnabled="{Binding !IsBusy}"/>
-        <Button Content="{DynamicResource L15CC1DD8E47F}" Click="ShowAbout" IsEnabled="{Binding !IsBusy}"/>
+        <Button Content="Info" Click="ShowAbout" IsEnabled="{Binding !IsBusy}"/>
       </StackPanel>
     </Grid>
     <Grid Grid.Row="1" ColumnDefinitions="310,16,*">
