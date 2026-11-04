@@ -92,6 +92,26 @@ namespace MovieScrap2000.TMDbScraper
             return JsonSerializer.Deserialize<SearchContainer<SearchMovie>>(json)?.Results ?? [];
         }
 
+        public async Task<List<SearchTv>> SearchSeriesAsync(string query, string language, CancellationToken token)
+        {
+            using var response = await _httpClient.GetAsync($"search/tv?query={Uri.EscapeDataString(query)}&language={Uri.EscapeDataString(language)}&include_adult=false", token);
+            response.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<SearchContainer<SearchTv>>(await response.Content.ReadAsStringAsync(token))?.Results ?? [];
+        }
+
+        public Task<JsonElement> GetSeriesDetailsAsync(int id, string language, CancellationToken token) =>
+            GetSeriesJsonAsync($"tv/{id}?language={Uri.EscapeDataString(language)}&append_to_response=external_ids,credits,content_ratings", token);
+
+        public Task<JsonElement> GetEpisodeDetailsAsync(int id, int season, int episode, string language, CancellationToken token) =>
+            GetSeriesJsonAsync($"tv/{id}/season/{season}/episode/{episode}?language={Uri.EscapeDataString(language)}", token);
+
+        private async Task<JsonElement> GetSeriesJsonAsync(string path, CancellationToken token)
+        {
+            using var response = await _httpClient.GetAsync(path, token);
+            response.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<JsonElement>(await response.Content.ReadAsStringAsync(token));
+        }
+
         public async Task<MovieScrap2000.TMDbScraper.TMDbScraper.TMDbImages> GetMovieImagesAsync(int tmdbId, CancellationToken token = default)
         {
             // This endpoint must have no language filter: language only controls ranking in the UI.

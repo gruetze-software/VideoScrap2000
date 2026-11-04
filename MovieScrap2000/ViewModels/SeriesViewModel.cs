@@ -1,0 +1,377 @@
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Text.Json;
+using System.Xml.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using MovieScrap2000;
+using MovieScrap2000.TMDbScraper;
+using VideoScrap2000.Localization;
+
+namespace VideoScrap2000.ViewModels;
+
+public partial class SeriesViewModel(MainViewModel main) : ObservableObject
+{
+    private List<SeriesShowRow> allShows = [];
+    private string? scannedPath;
+
+    public ObservableCollection<SeriesShowRow> Shows { get; } = [];
+    public ObservableCollection<SeriesSeason> Seasons { get; } = [];
+    public ObservableCollection<SeriesEpisodeRow> Episodes { get; } = [];
+
+    [ObservableProperty] private string query = "";
+    [ObservableProperty] private SeriesShowRow? selectedShow;
+    [ObservableProperty] private SeriesSeason? selectedSeason;
+    [ObservableProperty] private SeriesEpisodeRow? selectedEpisode;
+    [ObservableProperty] private SeriesNfoEditor? showEditor;
+    [ObservableProperty] private SeriesNfoEditor? episodeEditor;
+
+    public bool NeedsScan => !string.IsNullOrWhiteSpace(main.SeriesPath) && scannedPath != main.SeriesPath;
+
+    internal void ResetLibrary()
+    {
+        scannedPath = null;
+        allShows = [];
+        FilterShows(null);
+    }
+
+    public async Task ScanAsync()
+    {
+        if (string.IsNullOrWhiteSpace(main.SeriesPath))
+        {
+            main.Status = "Wähle zuerst einen Serienordner in den Einstellungen.";
+            return;
+        }
+
+        var path = main.SeriesPath;
+        await main.RunAsync(async token =>
+        {
+            main.Status = "Serien werden eingelesen …";
+            var shows = await Task.Run(() => SeriesLibrary.Scan(path, token), token);
+            var previous = SelectedShow?.Show.FolderPath;
+            allShows = shows.Select(show => new SeriesShowRow(show)).ToList();
+            scannedPath = path;
+            FilterShows(previous);
+            main.Status = shows.Count == 0 ? "Keine Serien gefunden." : "Seriensammlung geladen.";
+        }, reloadAfterCancellation: false);
+    }
+
+    partial void OnQueryChanged(string value) => FilterShows(SelectedShow?.Show.FolderPath);
+
+    private void FilterShows(string? selectedPath)
+    {
+        var matches = allShows.Where(show => show.Title.Contains(Query.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        Shows.Clear();
+        foreach (var show in matches) Shows.Add(show);
+        SelectedShow = Shows.FirstOrDefault(show => show.Show.FolderPath == selectedPath) ?? Shows.FirstOrDefault();
+    }
+
+    partial void OnSelectedShowChanged(SeriesShowRow? value)
+    {
+        ShowEditor = value?.Editor;
+        RefreshSeasons();
+    }
+
+    private void RefreshSeasons()
+    {
+        var previousSeason = SelectedSeason?.Number;
+        Seasons.Clear();
+        Seasons.Add(new(null, Locale.T("Alle Staffeln")));
+        if (SelectedShow is { } show)
+            foreach (var number in show.Episodes.Select(episode => episode.Editor.SeasonNumber).OfType<int>().Distinct().Order())
+                Seasons.Add(new(number, number == 0 ? Locale.T("Spezialfolgen") : string.Format(Locale.T("Staffel {0}"), number)));
+        SelectedSeason = Seasons.FirstOrDefault(season => season.Number == previousSeason) ?? Seasons[0];
+    }
+
+    partial void OnSelectedSeasonChanged(SeriesSeason? value) => RefreshEpisodes();
+
+    private void RefreshEpisodes()
+    {
+        var previous = SelectedEpisode;
+        Episodes.Clear();
+        if (SelectedShow is not { } show) { SelectedEpisode = null; return; }
+        var season = SelectedSeason?.Number;
+        foreach (var episode in show.Episodes.Where(episode => season is null || episode.Editor.SeasonNumber == season)
+            .OrderBy(episode => episode.Editor.SeasonNumber ?? int.MaxValue)
+            .ThenBy(episode => episode.Editor.EpisodeNumber ?? int.MaxValue).ThenBy(episode => episode.Title))
+            Episodes.Add(episode);
+        SelectedEpisode = previous is not null && Episodes.Contains(previous) ? previous : Episodes.FirstOrDefault();
+    }
+
+    partial void OnSelectedEpisodeChanged(SeriesEpisodeRow? value) => EpisodeEditor = value?.Editor;
+
+    public async Task AddEpisodeAsync(string file)
+    {
+        if (SelectedShow is not { } show) return;
+        var relative = Path.GetRelativePath(show.Show.FolderPath, file);
+        if (Path.IsPathRooted(relative) || relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            || !MovieManager.VideoExtensions.Contains(Path.GetExtension(file).ToLowerInvariant()))
+        {
+            main.Status = "Wähle eine Videodatei im Ordner der ausgewählten Serie.";
+            return;
+        }
+        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var row = show.Episodes.FirstOrDefault(episode => comparer.Equals(episode.Episode.VideoPath, file));
+        if (row is null)
+        {
+            row = new(await Task.Run(() => SeriesLibrary.ReadEpisode(file)));
+            show.Episodes.Add(row);
+        }
+        if (!ReferenceEquals(show, SelectedShow)) return;
+        RefreshSeasons();
+        SelectedSeason = Seasons[0];
+        SelectedEpisode = row;
+    }
+
+    [RelayCommand]
+    private async Task SaveShowAsync()
+    {
+        if (SelectedShow is not { } show) return;
+        await SaveAsync(show.Show.NfoPath, show.Editor, episode: false);
+    }
+
+    [RelayCommand]
+    private async Task SaveEpisodeAsync()
+    {
+        if (SelectedEpisode is not { } episode) return;
+        if (await SaveAsync(episode.Episode.NfoPath, episode.Editor, episode: true)) RefreshSeasons();
+    }
+
+    private async Task<bool> SaveAsync(string path, SeriesNfoEditor editor, bool episode)
+    {
+        if (string.IsNullOrWhiteSpace(editor.Title)) { main.Status = "Bitte einen Titel eingeben."; return false; }
+        if (episode && (editor.SeasonNumber is null || editor.EpisodeNumber is null))
+        {
+            main.Status = "Bitte gültige Staffel- und Episodennummern eingeben.";
+            return false;
+        }
+        var data = editor.ToXml(episode);
+        var saved = false;
+        await main.RunAsync(async token =>
+        {
+            main.Status = "Metadaten werden gespeichert …";
+            var fields = episode ? SeriesNfoEditor.EpisodeFields : SeriesNfoEditor.ShowFields;
+            if (data.Element("actor") is not null) fields = [.. fields, "actor"];
+            await Task.Run(() => SeriesLibrary.SaveAsync(path, data, fields, token), token);
+            editor.HasNfo = true;
+            saved = true;
+            main.Status = episode ? "Episode gespeichert." : "Serie gespeichert.";
+        }, reloadAfterCancellation: false);
+        return saved;
+    }
+
+    public async Task<IReadOnlyList<SearchTv>> FindShowsAsync(string title)
+    {
+        List<SearchTv> results = [];
+        var query = MovieNameParser.ParseSearchTitle(title).Title;
+        if (query.Length == 0) return results;
+        await main.RunAsync(async token =>
+        {
+            main.Status = "TMDb wird durchsucht …";
+            using var scraper = new TMDbScraperManager();
+            results = await scraper.SearchSeriesAsync(query, main.MetadataLanguage, token);
+            main.Status = results.Count switch { 0 => "Kein Treffer", 1 => "Ein Treffer", _ => $"{results.Count} Treffer" };
+        }, reloadAfterCancellation: false);
+        return results;
+    }
+
+    public async Task ApplyShowMatchAsync(int id)
+    {
+        if (ShowEditor is not { } editor) return;
+        await main.RunAsync(async token =>
+        {
+            main.Status = "Seriendetails werden geladen …";
+            using var scraper = new TMDbScraperManager();
+            var result = await scraper.GetSeriesDetailsAsync(id, main.MetadataLanguage, token);
+            token.ThrowIfCancellationRequested();
+            editor.ApplyShow(result, id, main.MetadataLanguage);
+            main.Status = "Seriendaten übernommen. Speichere, um die NFO zu schreiben.";
+        }, reloadAfterCancellation: false);
+    }
+
+    public async Task FindEpisodeAsync()
+    {
+        if (EpisodeEditor is not { } episode) return;
+        if (!int.TryParse(ShowEditor?.TmdbId, out var id) || id <= 0)
+        {
+            main.Status = "Ordne die Serie zuerst einem TMDB-Treffer zu.";
+            return;
+        }
+        if (episode.SeasonNumber is not { } season || episode.EpisodeNumber is not { } number)
+        {
+            main.Status = "Bitte gültige Staffel- und Episodennummern eingeben.";
+            return;
+        }
+        await main.RunAsync(async token =>
+        {
+            main.Status = "Episodendetails werden geladen …";
+            using var scraper = new TMDbScraperManager();
+            try
+            {
+                var result = await scraper.GetEpisodeDetailsAsync(id, season, number, main.MetadataLanguage, token);
+                token.ThrowIfCancellationRequested();
+                episode.ApplyEpisode(result);
+                main.Status = "Episodendaten übernommen. Speichere, um die NFO zu schreiben.";
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                main.Status = "Kein Treffer";
+            }
+        }, reloadAfterCancellation: false);
+    }
+}
+
+public sealed record SeriesSeason(int? Number, string Name);
+
+public sealed class SeriesShowRow(SeriesShow show)
+{
+    public SeriesShow Show { get; } = show;
+    public SeriesNfoEditor Editor { get; } = new(show.Metadata, show.HasNfo);
+    public ObservableCollection<SeriesEpisodeRow> Episodes { get; } = new(show.Episodes.Select(episode => new SeriesEpisodeRow(episode)));
+    public string Title => Editor.Title;
+}
+
+public sealed class SeriesEpisodeRow(SeriesEpisode episode)
+{
+    public SeriesEpisode Episode { get; } = episode;
+    public SeriesNfoEditor Editor { get; } = new(episode.Metadata, episode.HasNfo);
+    public string Title => Editor.Title;
+}
+
+public partial class SeriesNfoEditor : ObservableObject
+{
+    internal static readonly string[] ShowFields = ["title", "originaltitle", "plot", "premiered", "status", "genre", "studio", "country", "tag", "mpaa", "uniqueid"];
+    internal static readonly string[] EpisodeFields = ["title", "plot", "season", "episode", "aired", "runtime", "director", "credits", "uniqueid"];
+
+    [ObservableProperty] private string title;
+    [ObservableProperty] private string originalTitle;
+    [ObservableProperty] private string plot;
+    [ObservableProperty] private string date;
+    [ObservableProperty] private string status;
+    [ObservableProperty] private string genres;
+    [ObservableProperty] private string studios;
+    [ObservableProperty] private string countries;
+    [ObservableProperty] private string tags;
+    [ObservableProperty] private string certification;
+    [ObservableProperty] private string imdbId;
+    [ObservableProperty] private string tmdbId;
+    [ObservableProperty] private string tvdbId;
+    [ObservableProperty] private string season;
+    [ObservableProperty] private string episode;
+    [ObservableProperty] private string runtime;
+    [ObservableProperty] private string directors;
+    [ObservableProperty] private string writers;
+    [ObservableProperty] private bool hasNfo;
+    [ObservableProperty] private string cast;
+    private XElement[]? importedCast;
+
+    public int? SeasonNumber => ReadNumber(Season);
+    public int? EpisodeNumber => ReadNumber(Episode);
+    public string EpisodeCode => SeasonNumber is { } s && EpisodeNumber is { } e ? $"S{s:00}E{e:00}" : "—";
+
+    partial void OnSeasonChanged(string value) => OnPropertyChanged(nameof(EpisodeCode));
+    partial void OnEpisodeChanged(string value) => OnPropertyChanged(nameof(EpisodeCode));
+
+    public SeriesNfoEditor(XElement metadata, bool exists)
+    {
+        string Read(string name) => (string?)metadata.Element(name) ?? "";
+        string ReadList(string name) => string.Join("; ", metadata.Elements(name).Select(element => element.Value));
+        string ReadId(string type) => metadata.Elements("uniqueid").FirstOrDefault(element =>
+            string.Equals((string?)element.Attribute("type"), type, StringComparison.OrdinalIgnoreCase))?.Value ?? "";
+        title = Read("title"); originalTitle = Read("originaltitle"); plot = Read("plot");
+        date = Read(metadata.Name == "tvshow" ? "premiered" : "aired"); status = Read("status");
+        genres = ReadList("genre"); studios = ReadList("studio"); certification = Read("mpaa");
+        countries = ReadList("country"); tags = ReadList("tag");
+        imdbId = ReadId("imdb"); tmdbId = ReadId("tmdb"); tvdbId = ReadId("tvdb");
+        season = Read("season"); episode = Read("episode"); runtime = Read("runtime");
+        directors = ReadList("director"); writers = ReadList("credits"); hasNfo = exists;
+        cast = FormatCast(metadata.Elements("actor"));
+    }
+
+    private static string FormatCast(IEnumerable<XElement> actors) => string.Join(Environment.NewLine, actors.Select(actor =>
+        {
+            var name = (string?)actor.Element("name") ?? "";
+            var role = (string?)actor.Element("role");
+            return string.IsNullOrWhiteSpace(role) ? name : $"{name} · {role}";
+        }));
+
+    private static string? Text(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var field)
+        && field.ValueKind is JsonValueKind.String or JsonValueKind.Number ? field.ToString() : null;
+
+    private static IEnumerable<JsonElement> Array(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var array)
+        && array.ValueKind == JsonValueKind.Array ? array.EnumerateArray() : [];
+
+    public void ApplyShow(JsonElement data, int id, string language)
+    {
+        Title = Text(data, "name") ?? Title;
+        OriginalTitle = Text(data, "original_name") ?? OriginalTitle;
+        if (Text(data, "overview") is { Length: > 0 } plot) Plot = plot;
+        Date = Text(data, "first_air_date") ?? Date;
+        Status = Text(data, "status") ?? Status;
+        TmdbId = id.ToString(CultureInfo.InvariantCulture);
+        if (data.TryGetProperty("external_ids", out var ids))
+        {
+            ImdbId = Text(ids, "imdb_id") ?? ImdbId;
+            TvdbId = Text(ids, "tvdb_id") ?? TvdbId;
+        }
+        var genres = Array(data, "genres").Select(item => Text(item, "name")).OfType<string>().ToArray();
+        if (genres.Length > 0) Genres = string.Join("; ", genres);
+        var studios = Array(data, "production_companies").Select(item => Text(item, "name")).OfType<string>().ToArray();
+        if (studios.Length > 0) Studios = string.Join("; ", studios);
+        var countries = Array(data, "production_countries").Select(item => Text(item, "name")).OfType<string>().ToArray();
+        if (countries.Length > 0) Countries = string.Join("; ", countries);
+        var region = language.StartsWith("de", StringComparison.OrdinalIgnoreCase) ? "DE" : "US";
+        if (data.TryGetProperty("content_ratings", out var ratings))
+            Certification = Array(ratings, "results").Where(item => Text(item, "iso_3166_1") == region)
+                .Select(item => Text(item, "rating")).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? Certification;
+        if (data.TryGetProperty("credits", out var credits))
+        {
+            var actors = Array(credits, "cast").Where(actor => !string.IsNullOrWhiteSpace(Text(actor, "name")))
+                .Select((actor, index) => new XElement("actor", new XElement("name", Text(actor, "name")),
+                    new XElement("role", Text(actor, "character")), new XElement("order", index))).ToArray();
+            if (actors.Length > 0) { importedCast = actors; Cast = FormatCast(actors); }
+        }
+    }
+
+    public void ApplyEpisode(JsonElement data)
+    {
+        Title = Text(data, "name") ?? Title;
+        if (Text(data, "overview") is { Length: > 0 } plot) Plot = plot;
+        Date = Text(data, "air_date") ?? Date;
+        Runtime = Text(data, "runtime") ?? Runtime;
+        TmdbId = Text(data, "id") ?? TmdbId;
+        var crew = Array(data, "crew").ToArray();
+        var directors = crew.Where(person => Text(person, "job") == "Director").Select(person => Text(person, "name")).OfType<string>().ToArray();
+        var writers = crew.Where(person => Text(person, "department") == "Writing").Select(person => Text(person, "name")).OfType<string>().Distinct().ToArray();
+        if (directors.Length > 0) Directors = string.Join("; ", directors);
+        if (writers.Length > 0) Writers = string.Join("; ", writers);
+    }
+
+    private static int? ReadNumber(string value) => int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : null;
+
+    public XElement ToXml(bool isEpisode)
+    {
+        var root = new XElement(isEpisode ? "episodedetails" : "tvshow", new XElement("title", Title.Trim()));
+        void Add(string name, string value) { if (!string.IsNullOrWhiteSpace(value)) root.Add(new XElement(name, value.Trim())); }
+        void AddList(string name, string value)
+        {
+            foreach (var item in value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) Add(name, item);
+        }
+        Add("plot", Plot);
+        if (isEpisode)
+        {
+            Add("season", Season); Add("episode", Episode); Add("aired", Date); Add("runtime", Runtime);
+            AddList("director", Directors); AddList("credits", Writers);
+        }
+        else
+        {
+            Add("originaltitle", OriginalTitle); Add("premiered", Date); Add("status", Status); Add("mpaa", Certification);
+            AddList("genre", Genres); AddList("studio", Studios);
+            AddList("country", Countries); AddList("tag", Tags);
+        }
+        foreach (var (type, value) in new[] { ("imdb", ImdbId), ("tmdb", TmdbId), ("tvdb", TvdbId) })
+            root.Add(new XElement("uniqueid", new XAttribute("type", type), value.Trim()));
+        if (!isEpisode && importedCast is not null) root.Add(importedCast.Select(actor => new XElement(actor)));
+        return root;
+    }
+}

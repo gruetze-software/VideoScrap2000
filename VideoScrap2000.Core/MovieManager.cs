@@ -474,7 +474,7 @@ namespace MovieScrap2000
       return nfoFilePath;
     }
 
-    private static System.Xml.Linq.XDocument LoadExistingNfoDocument(string path)
+    internal static System.Xml.Linq.XDocument LoadExistingNfoDocument(string path)
     {
         try { return System.Xml.Linq.XDocument.Load(path); }
         catch (System.Xml.XmlException)

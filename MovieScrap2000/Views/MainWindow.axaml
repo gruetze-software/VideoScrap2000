@@ -23,12 +23,14 @@
         </StackPanel>
       </StackPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-        <Button Content="{DynamicResource L18DF9D34A2FA}" Classes="primary" Command="{Binding ScanCommand}" ToolTip.Tip="{Binding LibraryPath}"/>
+        <Button Content="{DynamicResource L18DF9D34A2FA}" Classes="primary" Click="ScanActiveLibrary" IsEnabled="{Binding !IsBusy}"/>
         <Button Content="{DynamicResource LF5750A5D7231}" Click="ShowSettings" IsEnabled="{Binding !IsBusy}"/>
         <Button Content="Info" Click="ShowAbout" IsEnabled="{Binding !IsBusy}"/>
       </StackPanel>
     </Grid>
-    <Grid Grid.Row="1" ColumnDefinitions="310,16,*">
+    <TabControl Grid.Row="1" x:Name="LibraryTabs" SelectionChanged="LibraryTabChanged">
+      <TabItem Header="{DynamicResource L59C2D9E82046}">
+    <Grid ColumnDefinitions="310,16,*" Margin="0,10,0,0">
       <Border Classes="card" Padding="12">
         <Grid RowDefinitions="Auto,Auto,*">
           <TextBox Text="{Binding Query, Delay=250}" PlaceholderText="{DynamicResource L76DC8BF8BA74}" AutomationProperties.Name="{DynamicResource LF1047535290F}"/>
@@ -83,7 +85,7 @@
                   </Grid>
                 </StackPanel>
               </Grid>
-              <TabControl Classes="detailTabs">
+              <TabControl x:Name="MovieDetailTabs" Classes="detailTabs">
                 <TabControl.Styles>
                   <Style Selector="TabItem"><Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="12,9"/><Setter Property="Margin" Value="0,0,6,8"/><Setter Property="CornerRadius" Value="7"/><Setter Property="Background" Value="{DynamicResource SubtleBrush}"/><Setter Property="Foreground" Value="{DynamicResource SecondaryBrush}"/></Style>
                   <Style Selector="TabItem:selected"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource PageBrush}"/></Style>
@@ -201,6 +203,11 @@
         </Grid>
       </Border>
     </Grid>
+      </TabItem>
+      <TabItem Header="{DynamicResource LFF515B37A67F}">
+        <views:SeriesView DataContext="{Binding Series}"/>
+      </TabItem>
+    </TabControl>
     <TextBlock Grid.Row="2" Margin="2,14,2,0" Text="{Binding Status}" IsVisible="{Binding !IsBusy}" Classes="secondary" FontSize="14" TextWrapping="Wrap"/>
   </Grid>
 </Window>

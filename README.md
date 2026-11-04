@@ -2,7 +2,7 @@
 
 <img src="MovieScrap2000/Assets/videoscrap-2000.png" alt="VideoScrap 2000" width="88" />
 
-VideoScrap 2000 is a desktop movie library manager for Windows, Linux, and macOS. Browse your collection, find movie details and artwork, and save the results as NFO and image files beside your videos. It works with local folders and mounted network shares.
+VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows, Linux, and macOS. Browse your collection, find metadata and artwork, and save the results as NFO and image files beside your videos. It works with local folders and mounted network shares.
 
 [GitHub Releases](https://github.com/gruetze-software/VideoScrap2000/releases)
 
@@ -16,6 +16,7 @@ VideoScrap 2000 is a desktop movie library manager for Windows, Linux, and macOS
 - **Choose images while previews load.** Pick a result and apply it while other previews are still downloading. Double-click a local artwork tile to open the image in your default viewer.
 - **Save changes in the movie folder.** Metadata and selected artwork are staged until you choose **Save changes**. Existing NFOs and replaced artwork are backed up as `.bak` files. NFO fields managed by other tools are preserved when possible.
 - **Customize the interface.** Use light, dark, or system appearance and optionally show dimmed fanart behind the movie details. The interface supports English and German. Metadata and artwork language preferences can be set separately, and preferred artwork languages rank ahead of other matches.
+- **Manage TV shows separately.** The **TV shows** tab groups videos by show and season. Edit show and episode metadata separately or fetch it from TMDB. Existing show posters appear beside the entries in the library.
 - **Draft a short outline in your browser.** The ChatGPT button copies the plot with a prompt for a spoiler-free outline of up to 239 characters and opens ChatGPT in your browser. You choose whether to send the prompt and paste the result back into the app.
 
 ## Get started
@@ -24,7 +25,9 @@ VideoScrap 2000 is a desktop movie library manager for Windows, Linux, and macOS
 2. Open **Settings** and select your movie folder. Use one subfolder per movie. If a folder contains multiple supported video files, the scanner uses the largest one.
 3. Choose **Scan library** to read existing NFOs and list the movies. Use **Find metadata** to match a film, then review the metadata and artwork before saving.
 
-The local SQLite cache keeps the collection searchable between scans. Movie NFOs and artwork stay in their film folders. To refresh a Kodi library after editing, use Kodi's own library update. Series management is planned. The series folder setting is available in preparation for it.
+The local SQLite cache keeps the movie collection searchable between scans. Movie NFOs and artwork stay in their film folders. To refresh a Kodi library after editing, use Kodi's own library update.
+
+For TV, choose a **TV folder** in Settings, with one subfolder per show and optional season folders. Open **TV shows** and choose **Scan library**. Episode names such as `Show S01E02.mkv` or `Show 1x02.mkv` supply season and episode numbers when there is no NFO. You can also add a video from within the show folder and enter its numbers manually. Show metadata goes into `tvshow.nfo`. Each episode uses an NFO with the same basename as its video. The editor handles one episode per video file.
 
 ## Metadata and artwork sources
 

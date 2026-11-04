@@ -26,7 +26,13 @@ public sealed class MoviePosterThumbnail : Image
     private async void LoadPoster()
     {
         ClearPoster();
-        if (DataContext is not MovieViewModel movie) return;
+        var (folder, video) = DataContext switch
+        {
+            MovieViewModel movie => (movie.FolderPath, movie.VideoFilePath),
+            SeriesShowRow series => (series.Show.FolderPath, "tvshow"),
+            _ => (null, null)
+        };
+        if (folder is null || video is null) return;
 
         using var request = new CancellationTokenSource();
         loading = request;
@@ -39,7 +45,7 @@ public sealed class MoviePosterThumbnail : Image
             {
                 bitmap = await Task.Run(async () =>
                 {
-                    var path = MainViewModel.FindArtwork(movie, ImageTypes.Poster).FirstOrDefault().Path;
+                    var path = MainViewModel.FindArtwork(folder, video, ImageTypes.Poster).FirstOrDefault().Path;
                     if (path is null) return null;
                     var bytes = await File.ReadAllBytesAsync(path, token);
                     token.ThrowIfCancellationRequested();

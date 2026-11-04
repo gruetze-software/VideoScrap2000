@@ -56,7 +56,23 @@ public partial class MainWindow : Window
             app.RequestedThemeVariant = theme switch { "Light" => ThemeVariant.Light, "Dark" => ThemeVariant.Dark, _ => ThemeVariant.Default };
     }
     private async void ShowAbout(object? sender, RoutedEventArgs e) => await new AboutWindow().ShowDialog(this);
-    private async void ShowSettings(object? sender, RoutedEventArgs e) => await new SettingsWindow(model).ShowDialog(this);
+    private async void ShowSettings(object? sender, RoutedEventArgs e)
+    {
+        await new SettingsWindow(model).ShowDialog(this);
+        if (LibraryTabs.SelectedIndex == 1 && model.Series.NeedsScan) await model.Series.ScanAsync();
+    }
+
+    private async void ScanActiveLibrary(object? sender, RoutedEventArgs e)
+    {
+        if (LibraryTabs.SelectedIndex == 1) await model.Series.ScanAsync();
+        else await model.ScanCommand.ExecuteAsync(null);
+    }
+
+    private async void LibraryTabChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (model is not null && IsVisible && ReferenceEquals(e.Source, LibraryTabs) && LibraryTabs.SelectedIndex == 1 && model.Series.NeedsScan)
+            await model.Series.ScanAsync();
+    }
     private void PrepareMovieRow(object? sender, ContainerPreparedEventArgs e)
     {
         if (e.Container is not ListBoxItem { DataContext: MovieViewModel movie } row) return;

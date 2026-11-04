@@ -20,6 +20,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     internal Task ArtworkLoadingTask { get; private set; } = Task.CompletedTask;
     private CancellationTokenSource? factsLoading;
     public ObservableCollection<MovieViewModel> Movies { get; } = [];
+    public SeriesViewModel Series { get; }
     public ObservableCollection<ArtworkViewModel> Artwork { get; } = [];
     public IReadOnlyList<string> ArtworkTypes { get; } = new[] { "Alle" }.Concat(ImageTypes.AllTypes).ToArray();
     [ObservableProperty] private string artworkType = ImageTypes.Poster;
@@ -84,6 +85,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         this.database = database ?? new();
         this.settings = settings ?? AppSettings.Load();
+        Series = new(this);
         SelectedActors.CollectionChanged += (_, _) =>
         {
             SelectedActor = SelectedActors.LastOrDefault();
@@ -122,6 +124,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }, reloadAfterCancellation: false);
 
     partial void OnQueryChanged(string value) => Filter();
+    partial void OnSeriesPathChanged(string value) => Series.ResetLibrary();
     partial void OnThemeIndexChanged(int value)
     {
         settings.Theme = value switch { 1 => "Light", 2 => "Dark", _ => "System" };
@@ -323,10 +326,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     internal static IEnumerable<(string Type, string Path)> FindArtwork(MovieViewModel movie, string? requestedType = null)
+        => FindArtwork(movie.FolderPath, movie.VideoFilePath, requestedType);
+
+    internal static IEnumerable<(string Type, string Path)> FindArtwork(string folder, string video, string? requestedType = null)
     {
-        if (!Directory.Exists(movie.FolderPath)) yield break;
-        var basename = Path.GetFileNameWithoutExtension(movie.VideoFilePath);
-        var files = Directory.EnumerateFiles(movie.FolderPath).GroupBy(p => Path.GetFileName(p)!, StringComparer.OrdinalIgnoreCase)
+        if (!Directory.Exists(folder)) yield break;
+        var basename = Path.GetFileNameWithoutExtension(video);
+        var files = Directory.EnumerateFiles(folder).GroupBy(p => Path.GetFileName(p)!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var type in ImageTypes.AllTypes)
         {

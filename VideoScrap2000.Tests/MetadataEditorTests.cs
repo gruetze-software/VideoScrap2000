@@ -47,7 +47,7 @@ public class MetadataEditorTests
             window.Show();
             try
             {
-                var tabs = window.GetLogicalDescendants().OfType<TabControl>().Single(t => t.Classes.Contains("detailTabs"));
+                var tabs = window.FindControl<TabControl>("MovieDetailTabs")!;
                 tabs.SelectedIndex = 1; window.UpdateLayout();
                 var actorList = window.FindControl<ListBox>("ActorList")!;
                 actorList.Selection.Select(1); actorList.Selection.Select(2);

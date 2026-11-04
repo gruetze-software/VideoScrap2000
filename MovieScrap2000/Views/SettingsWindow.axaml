@@ -27,7 +27,7 @@
           <Grid ColumnDefinitions="*,Auto"><TextBox Text="{Binding LibraryPath}" AutomationProperties.Name="{DynamicResource LF7913AD0BB91}"/><Button Grid.Column="1" Content="{DynamicResource L0BF1EDDB22BF}" Click="ChooseMovies" Margin="8,0,0,0"/></Grid>
           <TextBlock Text="{DynamicResource L5AE9A8131D9B}" Classes="label"/>
           <Grid ColumnDefinitions="*,Auto"><TextBox Text="{Binding SeriesPath}" AutomationProperties.Name="{DynamicResource L5AE9A8131D9B}"/><Button Grid.Column="1" Content="{DynamicResource L0BF1EDDB22BF}" Click="ChooseSeries" Margin="8,0,0,0"/></Grid>
-          <TextBlock Text="{DynamicResource LAE825760FAA7}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"/>
+          <TextBlock Text="{DynamicResource LAD360AF2108C}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"/>
         </StackPanel></Border>
         <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Classes="secondary"/>
       </StackPanel>
