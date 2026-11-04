@@ -15,7 +15,7 @@ public partial class AboutWindow : Window
         catch (Exception ex) { LinkStatus.Text = T(ex.Message); }
     }
     private async void OpenKofi(object? sender, RoutedEventArgs e) => await OpenAsync("https://ko-fi.com/gruetzesoftware");
-    private async void OpenManufacturer(object? sender, RoutedEventArgs e) => await OpenAsync("https://github.com/gruetze-software");
+    private async void OpenManufacturer(object? sender, RoutedEventArgs e) => await OpenAsync("https://www.gruetze-software.de/");
     private async void OpenProject(object? sender, RoutedEventArgs e) => await OpenAsync("https://github.com/gruetze-software/VideoScrap2000");
     private async void OpenTmdb(object? sender, RoutedEventArgs e) => await OpenAsync("https://www.themoviedb.org/");
     private async void OpenFanart(object? sender, RoutedEventArgs e) => await OpenAsync("https://fanart.tv/");
