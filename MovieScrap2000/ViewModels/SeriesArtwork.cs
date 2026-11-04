@@ -4,31 +4,58 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MovieScrap2000;
 using MovieScrap2000.TMDbScraper;
+using VideoScrap2000.Localization;
 using VideoScrap2000.Views;
 
 namespace VideoScrap2000.ViewModels;
 
 public sealed record SeriesPicture(string Path, byte[]? PendingData = null, string? FallbackPath = null);
+public sealed record SeriesArtworkTile(string Name, SeriesPicture Picture);
 
 public partial class SeriesViewModel
 {
     private const string FanartName = "fanart";
     [ObservableProperty] private SeriesPicture? fanartPreview;
+    [ObservableProperty] private SeriesPicture? backgroundPreview;
     [ObservableProperty] private SeriesPicture? seasonBannerPreview;
+    [ObservableProperty] private IReadOnlyList<SeriesArtworkTile> artworkTiles = [];
     [ObservableProperty] private ActorEditor? selectedActor;
     [ObservableProperty] private SeriesPicture? actorPreview;
 
-    internal static string SeasonBannerName(int? season) => season switch
+    public bool UseFanartBackground => main.UseFanartBackground;
+    internal void RefreshAppearance() => OnPropertyChanged(nameof(UseFanartBackground));
+
+    private static string SeasonArtworkName(int? season, string type) => season switch
     {
-        null => "season-all-banner",
-        0 => "season-specials-banner",
-        _ => $"season{season:00}-banner"
+        null => $"season-all-{type}",
+        0 => $"season-specials-{type}",
+        _ => $"season{season:00}-{type}"
     };
 
-    private void RefreshArtworkPreviews()
+    private void RefreshArtworkPreviews(bool refreshTiles = false)
     {
-        FanartPreview = SelectedShow?.Artwork.GetValueOrDefault(FanartName);
-        SeasonBannerPreview = SelectedShow?.Artwork.GetValueOrDefault(SeasonBannerName(SelectedSeason?.Number));
+        var artwork = SelectedShow?.Artwork;
+        var season = SelectedSeason?.Number;
+        FanartPreview = artwork?.GetValueOrDefault(FanartName);
+        BackgroundPreview = artwork?.GetValueOrDefault(SeasonArtworkName(season, FanartName)) ?? FanartPreview;
+        SeasonBannerPreview = artwork?.GetValueOrDefault(SeasonArtworkName(season, "banner"));
+        if (refreshTiles)
+            ArtworkTiles = artwork is null ? [] : artwork.OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(item => new SeriesArtworkTile(ArtworkLabel(item.Key), item.Value)).ToArray();
+    }
+
+    private static string ArtworkLabel(string name)
+    {
+        if (!name.StartsWith("season", StringComparison.OrdinalIgnoreCase)) return Locale.T(name);
+        var split = name.LastIndexOf('-');
+        var season = name[6..split];
+        var label = season switch
+        {
+            "-all" => Locale.T("Alle Staffeln"),
+            "-specials" => Locale.T("Spezialfolgen"),
+            _ => string.Format(Locale.T("Staffel {0}"), season)
+        };
+        return $"{label} · {Locale.T(name[(split + 1)..])}";
     }
 
     partial void OnSelectedActorChanged(ActorEditor? value) => RefreshActorPreview();
@@ -60,7 +87,7 @@ public partial class SeriesViewModel
         {
             using var scraper = CreateScraper();
             JsonElement details = default;
-            if (id > 0 && !show.Artwork.ContainsKey(FanartName))
+            if (id > 0)
             {
                 try { details = await scraper.GetSeriesDetailsAsync(id, main.MetadataLanguage, token); }
                 catch (Exception ex) when (ex is HttpRequestException or JsonException || ex is OperationCanceledException && !token.IsCancellationRequested)
@@ -75,10 +102,24 @@ public partial class SeriesViewModel
 
     private async Task<int> DownloadArtworkAsync(SeriesShowRow show, int id, JsonElement details, TMDbScraperManager scraper, CancellationToken token)
     {
-        var missingBanners = show.Episodes.Select(episode => episode.Editor.SeasonNumber).Append(null)
-            .Distinct().Where(season => !show.Artwork.ContainsKey(SeasonBannerName(season))).ToArray();
-        var missingFanart = !show.Artwork.ContainsKey(FanartName);
-        if (!missingFanart && missingBanners.Length == 0) return 0;
+        var seasons = show.Episodes.Select(episode => episode.Editor.SeasonNumber).Where(season => season.HasValue).Distinct().ToArray();
+        var targets = new List<(string Name, string Source, int? Season, string? TmdbPath, ImageType TmdbType)>
+        {
+            (FanartName, "showbackground", null, SeriesNfoEditor.Text(details, "backdrop_path"), ImageType.Backdrop),
+            ("poster", "tvposter", null, SeriesNfoEditor.Text(details, "poster_path"), ImageType.Poster),
+            (SeasonArtworkName(null, "banner"), "seasonbanner", null, null, ImageType.Backdrop)
+        };
+        var tmdbSeasons = SeriesNfoEditor.Array(details, "seasons").ToArray();
+        foreach (var season in seasons)
+        {
+            var number = season!.Value.ToString(CultureInfo.InvariantCulture);
+            var tmdbSeason = tmdbSeasons.FirstOrDefault(item => SeriesNfoEditor.Text(item, "season_number") == number);
+            targets.Add((SeasonArtworkName(season, "poster"), "seasonposter", season, SeriesNfoEditor.Text(tmdbSeason, "poster_path"), ImageType.Poster));
+            targets.Add((SeasonArtworkName(season, "banner"), "seasonbanner", season, null, ImageType.Backdrop));
+            targets.Add((SeasonArtworkName(season, FanartName), "showbackground", season, null, ImageType.Backdrop));
+        }
+        var missing = targets.Where(target => !show.Artwork.ContainsKey(target.Name)).ToArray();
+        if (missing.Length == 0) return 0;
         main.Status = "Serienbilder werden gesucht …";
 
         JsonElement artwork = default;
@@ -92,37 +133,33 @@ public partial class SeriesViewModel
         var language = main.ArtworkLanguage.Split('-')[0];
         try
         {
-            if (missingFanart)
+            foreach (var target in missing)
             {
-                var urls = RankImages(artwork, "showbackground", language);
+                var urls = RankImages(artwork, target.Source, language, image => MatchesSeason(image, target.Season));
+                if (target.Source == "showbackground")
+                    urls = urls.Concat(RankImages(artwork, "show4kbackground", language, image => MatchesSeason(image, target.Season)));
                 var data = await DownloadFirstImageAsync(urls, scraper, token);
-                if (data is null && SeriesNfoEditor.Text(details, "backdrop_path") is { Length: > 0 } backdrop)
+                if (data is null && target.TmdbPath is { Length: > 0 } path)
                 {
                     try
                     {
-                        var bytes = await scraper.GetImageFromTMDbByteArrayAsync(backdrop, ImageSize.Original, ImageType.Backdrop, token);
+                        var bytes = await scraper.GetImageFromTMDbByteArrayAsync(path, ImageSize.Original, target.TmdbType, token);
                         if (await IsUsableImageAsync(bytes, token)) data = bytes;
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException || !token.IsCancellationRequested) { System.Diagnostics.Trace.WriteLine(ex); }
                 }
-                if (data is not null) { show.Artwork[FanartName] = new(FanartName, data); count++; }
-            }
-            foreach (var season in missingBanners)
-            {
-                var urls = RankImages(artwork, "seasonbanner", language, image =>
-                {
-                    var value = SeriesNfoEditor.Text(image, "season");
-                    return season is null ? string.Equals(value, "all", StringComparison.OrdinalIgnoreCase)
-                        : int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number == season;
-                });
-                if (await DownloadFirstImageAsync(urls, scraper, token) is not { } data) continue;
-                var name = SeasonBannerName(season);
-                show.Artwork[name] = new(name, data);
-                count++;
+                if (data is not null) { show.Artwork[target.Name] = new(target.Name, data); count++; }
             }
         }
-        finally { RefreshArtworkPreviews(); }
+        finally { RefreshArtworkPreviews(refreshTiles: true); }
         return count;
+    }
+
+    private static bool MatchesSeason(JsonElement image, int? season)
+    {
+        var value = SeriesNfoEditor.Text(image, "season");
+        return season is null ? string.IsNullOrWhiteSpace(value) || string.Equals(value, "all", StringComparison.OrdinalIgnoreCase)
+            : int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number == season;
     }
 
     private static IEnumerable<string> RankImages(JsonElement artwork, string type, string language, Func<JsonElement, bool>? filter = null) =>

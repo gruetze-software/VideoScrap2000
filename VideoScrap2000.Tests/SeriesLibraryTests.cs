@@ -2,6 +2,7 @@ using System.Xml.Linq;
 using System.Net;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
 using MovieScrap2000;
 using MovieScrap2000.TMDbScraper;
 using VideoScrap2000.ViewModels;
@@ -26,6 +27,8 @@ public sealed class SeriesLibraryTests
         try
         {
             foreach (var file in new[] { firstVideo, secondVideo, specialVideo }) File.WriteAllBytes(file, [0]);
+            using (var image = typeof(Movie).Assembly.GetManifestResourceStream("VideoScrap2000.Empty.png")!)
+            using (var bannerFile = File.Create(Path.Combine(showFolder, "season01-banner.png"))) image.CopyTo(bannerFile);
             var original = "<tvshow><title>Love &amp; Death</title><status>Ended</status><uniqueid type=\"custom\">88</uniqueid><custom>Keep</custom></tvshow>";
             File.WriteAllText(showNfo, original);
             File.WriteAllText(Path.ChangeExtension(firstVideo, ".nfo"), "<episodedetails><title>The pilot</title><season>1</season><episode>1</episode></episodedetails>");
@@ -45,6 +48,17 @@ public sealed class SeriesLibraryTests
                 Assert.Equal(new int?[] { null, 0, 1 }, main.Series.Seasons.Select(season => season.Number));
                 main.Series.SelectedSeason = main.Series.Seasons.Single(season => season.Number == 1);
                 Assert.Equal(new[] { "S01E01", "S01E02" }, main.Series.Episodes.Select(episode => episode.Editor.EpisodeCode));
+                var seriesView = Assert.Single(window.GetVisualDescendants().OfType<SeriesView>());
+                seriesView.FindControl<TabControl>("SeriesDetailTabs")!.SelectedIndex = 2;
+                window.UpdateLayout();
+                var banner = seriesView.FindControl<MoviePosterThumbnail>("SeasonBanner")!;
+                for (var i = 0; banner.Source is null && i < 200; i++) await Task.Delay(10, TestContext.Current.CancellationToken);
+                window.UpdateLayout();
+                Assert.NotNull(banner.Source);
+                Assert.True(banner.Bounds.Width > 400, $"Banner bounds: {banner.Bounds}");
+                main.Series.SelectedSeason = main.Series.Seasons.Single(season => season.Number == 0);
+                Assert.Null(main.Series.SeasonBannerPreview);
+                main.Series.SelectedSeason = main.Series.Seasons.Single(season => season.Number == 1);
 
                 main.Series.ShowEditor.TmdbId = "123";
                 await main.Series.SaveShowCommand.ExecuteAsync(null);
@@ -100,12 +114,17 @@ public sealed class SeriesLibraryTests
                 new MovieScrap2000.FanArtTvScraper.FanArtTvScraper(new HttpClient(handler, false))));
             await series.ScanAsync();
             await series.ApplyShowMatchAsync(345);
-            Assert.Equal(new[] { "/fanart-de.png", "/season-2.png" }, handler.Downloads);
+            Assert.Equal(new[] { "/fanart-de.png", "/season-2-poster.png", "/season-2.png", "/season-2-fanart.png" }, handler.Downloads);
             Assert.NotNull(series.FanartPreview?.PendingData);
             series.SelectedSeason = series.Seasons.Single(season => season.Number == 1);
             Assert.Equal(existing, series.SeasonBannerPreview?.Path);
+            Assert.Same(series.FanartPreview, series.BackgroundPreview);
             series.SelectedSeason = series.Seasons.Single(season => season.Number == 2);
             Assert.NotNull(series.SeasonBannerPreview?.PendingData);
+            Assert.Equal("season02-fanart", series.BackgroundPreview?.Path);
+            Assert.Contains(series.ArtworkTiles, tile => tile.Picture.Path == "season02-poster");
+            var seasonActor = Assert.Single(await series.FindSeasonCastAsync());
+            Assert.Equal("Season role / Guest role", seasonActor.Role);
             var actor = Assert.Single(series.ShowEditor!.Actors);
             Assert.Equal(123, actor.TmdbId);
             Assert.EndsWith("/portrait.jpg", actor.Thumb);
@@ -115,6 +134,8 @@ public sealed class SeriesLibraryTests
             await series.SaveShowCommand.ExecuteAsync(null);
             Assert.True(File.Exists(Path.Combine(folder, "fanart.png")));
             Assert.True(File.Exists(Path.Combine(folder, "season02-banner.png")));
+            Assert.True(File.Exists(Path.Combine(folder, "season02-poster.png")));
+            Assert.True(File.Exists(Path.Combine(folder, "season02-fanart.png")));
             Assert.False(File.Exists(existing + ".bak"));
             var savedActor = XDocument.Load(Path.Combine(folder, "tvshow.nfo")).Root!.Element("actor")!;
             Assert.Equal("Edited role", (string?)savedActor.Element("role"));
@@ -135,8 +156,11 @@ public sealed class SeriesLibraryTests
                 Downloads.Add(uri.AbsolutePath);
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(image) });
             }
-            var json = uri.Host == "webservice.fanart.tv" && uri.Query == "?source=tmdb" ? """
-                {"showbackground":[{"url":"https://images.test/fanart-en.png","lang":"en"},{"url":"https://images.test/fanart-de.png","lang":"de"}],
+            var json = uri.AbsolutePath.EndsWith("/season/2/aggregate_credits", StringComparison.Ordinal) ? """
+                {"cast":[{"name":"Season Actor","roles":[{"character":"Season role"},{"character":"Guest role"}]}]}
+                """ : uri.Host == "webservice.fanart.tv" && uri.Query == "?source=tmdb" ? """
+                {"showbackground":[{"url":"https://images.test/fanart-en.png","lang":"en"},{"url":"https://images.test/fanart-de.png","lang":"de"},{"url":"https://images.test/season-2-fanart.png","season":"2","lang":"de"}],
+                 "seasonposter":[{"url":"https://images.test/season-2-poster.png","season":"2"}],
                  "seasonbanner":[{"url":"https://images.test/season-1.png","season":"1"},{"url":"https://images.test/season-2.png","season":"2"}]}
                 """ : """
                 {"name":"Example","credits":{"cast":[{"name":"Example Actor","character":"Lead","id":123,"profile_path":"/portrait.jpg"}]}}

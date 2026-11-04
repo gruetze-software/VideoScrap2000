@@ -220,5 +220,10 @@
   "Serienbilder werden gesucht …": "Searching for TV artwork …",
   "Keine fehlenden Serienbilder gefunden.": "No missing TV artwork found.",
   "Serienbilder übernommen. Speichere, um sie abzulegen.": "TV artwork selected. Save to write it to the show folder.",
-  "Seriendaten und Bilder übernommen. Speichere, um sie abzulegen.": "Show metadata and artwork imported. Save to write them to the show folder."
+  "Seriendaten und Bilder übernommen. Speichere, um sie abzulegen.": "Show metadata and artwork imported. Save to write them to the show folder.",
+  "Staffelbesetzung": "Season cast",
+  "Wähle zuerst eine Staffel aus.": "Select a season first.",
+  "Staffelbesetzung wird geladen …": "Loading season cast …",
+  "Keine Staffelbesetzung gefunden.": "No season cast found.",
+  "Staffelbesetzung geladen.": "Season cast loaded."
 }

@@ -100,7 +100,10 @@ namespace MovieScrap2000.TMDbScraper
         }
 
         public Task<JsonElement> GetSeriesDetailsAsync(int id, string language, CancellationToken token) =>
-            GetSeriesJsonAsync($"tv/{id}?language={Uri.EscapeDataString(language)}&append_to_response=external_ids,credits,content_ratings", token);
+            GetSeriesJsonAsync($"tv/{id}?language={Uri.EscapeDataString(language)}&append_to_response=external_ids,aggregate_credits,content_ratings", token);
+
+        public Task<JsonElement> GetSeasonCastAsync(int id, int season, string language, CancellationToken token) =>
+            GetSeriesJsonAsync($"tv/{id}/season/{season}/aggregate_credits?language={Uri.EscapeDataString(language)}", token);
 
         public Task<JsonElement> GetEpisodeDetailsAsync(int id, int season, int episode, string language, CancellationToken token) =>
             GetSeriesJsonAsync($"tv/{id}/season/{season}/episode/{episode}?language={Uri.EscapeDataString(language)}", token);

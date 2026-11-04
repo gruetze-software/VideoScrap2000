@@ -125,6 +125,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     partial void OnQueryChanged(string value) => Filter();
     partial void OnSeriesPathChanged(string value) => Series.ResetLibrary();
+    partial void OnUseFanartBackgroundChanged(bool value) => Series.RefreshAppearance();
     partial void OnThemeIndexChanged(int value)
     {
         settings.Theme = value switch { 1 => "Light", 2 => "Dark", _ => "System" };

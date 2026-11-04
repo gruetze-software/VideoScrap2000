@@ -18,6 +18,14 @@ public sealed class MoviePosterThumbnail : Image
     private byte[]? downloaded;
     private Task loadTask = Task.CompletedTask;
     public int DecodeWidth { get; set; } = 88;
+    public double AspectRatio { get; set; }
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        if (AspectRatio > 0 && double.IsFinite(availableSize.Width))
+            return new Size(availableSize.Width, Math.Min(availableSize.Height, availableSize.Width / AspectRatio));
+        return base.MeasureOverride(availableSize);
+    }
 
     public MoviePosterThumbnail()
     {

@@ -72,7 +72,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         SelectedActor = null;
         ShowEditor = value?.Editor;
         RefreshSeasons();
-        RefreshArtworkPreviews();
+        RefreshArtworkPreviews(refreshTiles: true);
     }
 
     private void RefreshSeasons()
@@ -167,7 +167,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
                     var file = await Task.Run(() => ArtworkFiles.SaveNamedAsync(show.Show.FolderPath, name, picture.PendingData!, token), token);
                     show.Artwork[name] = new(file);
                 }
-                RefreshArtworkPreviews();
+                RefreshArtworkPreviews(refreshTiles: true);
             }
             saved = true;
             main.Status = episode ? "Episode gespeichert." : "Serie gespeichert.";
@@ -237,6 +237,37 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
             }
         }, reloadAfterCancellation: false);
     }
+
+    public async Task<IReadOnlyList<ActorEditor>> FindSeasonCastAsync()
+    {
+        if (SelectedSeason?.Number is not { } season)
+        {
+            main.Status = "Wähle zuerst eine Staffel aus.";
+            return [];
+        }
+        if (!int.TryParse(ShowEditor?.TmdbId, out var id) || id <= 0)
+        {
+            main.Status = "Ordne die Serie zuerst einem TMDB-Treffer zu.";
+            return [];
+        }
+        IReadOnlyList<ActorEditor> cast = [];
+        await main.RunAsync(async token =>
+        {
+            main.Status = "Staffelbesetzung wird geladen …";
+            using var scraper = CreateScraper();
+            try
+            {
+                var data = await scraper.GetSeasonCastAsync(id, season, main.MetadataLanguage, token);
+                cast = SeriesNfoEditor.ReadCast(data);
+                main.Status = cast.Count == 0 ? "Keine Staffelbesetzung gefunden." : "Staffelbesetzung geladen.";
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                main.Status = "Keine Staffelbesetzung gefunden.";
+            }
+        }, reloadAfterCancellation: false);
+        return cast;
+    }
 }
 
 public sealed record SeriesSeason(int? Number, string Name);
@@ -259,9 +290,12 @@ public sealed class SeriesShowRow(SeriesShow show)
                 if (Path.GetExtension(path).ToLowerInvariant() is not (".jpg" or ".jpeg" or ".png" or ".webp")) continue;
                 var stem = Path.GetFileNameWithoutExtension(path);
                 if (stem.Equals("tvshow-fanart", StringComparison.OrdinalIgnoreCase)) stem = "fanart";
-                if (stem.Equals("season00-banner", StringComparison.OrdinalIgnoreCase)) stem = "season-specials-banner";
-                if (stem.Equals("fanart", StringComparison.OrdinalIgnoreCase) || stem.StartsWith("season", StringComparison.OrdinalIgnoreCase)
-                    && stem.EndsWith("-banner", StringComparison.OrdinalIgnoreCase)) artwork.TryAdd(stem, new(path));
+                if (stem.Equals("tvshow-poster", StringComparison.OrdinalIgnoreCase)) stem = "poster";
+                if (stem.StartsWith("season00-", StringComparison.OrdinalIgnoreCase)) stem = "season-specials-" + stem[9..];
+                var type = stem.ToLowerInvariant();
+                if (type is "poster" or "fanart" or "banner" or "clearlogo" or "landscape" || type.StartsWith("season", StringComparison.Ordinal)
+                    && (type.EndsWith("-banner") || type.EndsWith("-poster") || type.EndsWith("-fanart") || type.EndsWith("-landscape")))
+                    artwork.TryAdd(stem, new(path));
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.WriteLine(ex); }
@@ -367,23 +401,28 @@ public partial class SeriesNfoEditor : ObservableObject
         if (data.TryGetProperty("content_ratings", out var ratings))
             Certification = Array(ratings, "results").Where(item => Text(item, "iso_3166_1") == region)
                 .Select(item => Text(item, "rating")).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? Certification;
-        if (data.TryGetProperty("credits", out var credits))
+        if (data.TryGetProperty("aggregate_credits", out var credits) || data.TryGetProperty("credits", out credits))
         {
-            var actors = Array(credits, "cast").Where(actor => !string.IsNullOrWhiteSpace(Text(actor, "name"))).ToArray();
+            var actors = ReadCast(credits);
             if (actors.Length > 0)
             {
                 Actors.Clear();
                 originalActors.Clear();
-                foreach (var actor in actors)
-                    Actors.Add(new()
-                    {
-                        Name = Text(actor, "name") ?? "", Role = Text(actor, "character") ?? "",
-                        TmdbId = ReadNumber(Text(actor, "id") ?? ""), Order = Actors.Count,
-                        Thumb = Text(actor, "profile_path") is { Length: > 0 } profile ? "https://image.tmdb.org/t/p/w185" + profile : ""
-                    });
+                foreach (var actor in actors) Actors.Add(actor);
             }
         }
     }
+
+    internal static ActorEditor[] ReadCast(JsonElement credits) => Array(credits, "cast")
+        .Where(actor => !string.IsNullOrWhiteSpace(Text(actor, "name")))
+        .Select((actor, index) => new ActorEditor
+        {
+            Name = Text(actor, "name") ?? "",
+            Role = Text(actor, "character") ?? string.Join(" / ", Array(actor, "roles")
+                .Select(role => Text(role, "character")).Where(role => !string.IsNullOrWhiteSpace(role)).Distinct()),
+            TmdbId = ReadNumber(Text(actor, "id") ?? ""), Order = index,
+            Thumb = Text(actor, "profile_path") is { Length: > 0 } profile ? "https://image.tmdb.org/t/p/w185" + profile : ""
+        }).ToArray();
 
     public void ApplyEpisode(JsonElement data)
     {
