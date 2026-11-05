@@ -364,3 +364,5 @@ FodyWeavers.xsd
 
 # Local release archives and verification output
 artifacts/
+!docs/releases/
+!docs/releases/*.md

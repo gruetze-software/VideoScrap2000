@@ -7,6 +7,7 @@ namespace MovieScrap2000;
 public static class TechnicalMediaReader
 {
     private static readonly IMediaInfoAnalyzer Analyzer = MediaInfoAnalyzerBuilder.Create()
+        .UseNativeFactory(new PortableMediaInfoFactory())
         .WithValidation().WithConcurrencyLimit(2)
         .WithTimeout(TimeSpan.FromSeconds(20)).Build();
 
