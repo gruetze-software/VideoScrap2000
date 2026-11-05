@@ -110,21 +110,9 @@ jobs:
           }
           $archives = @(Get-ChildItem packages -File -Recurse | Where-Object Name -Match '^VideoScrap2000-.*\.(zip|tar\.gz)$')
           if ($archives.Count -ne 12) { throw "Expected twelve platform archives, found $($archives.Count)." }
-          $assets = @($archives.FullName) + @(Get-ChildItem packages -File -Recurse | Where-Object Name -Match '\.sha256$|\.manifest\.json$' | Select-Object -ExpandProperty FullName)
-          $notes = "docs/releases/$releaseTag.md"
           $releaseNotes = 'release-notes.md'
-          if (Test-Path -LiteralPath $notes) { Copy-Item -LiteralPath $notes -Destination $releaseNotes }
-          else { Set-Content -LiteralPath $releaseNotes -Value "# VideoScrap 2000 $releaseTag" }
-          Add-Content -LiteralPath $releaseNotes -Value ([Environment]::NewLine + '## Package sizes' + [Environment]::NewLine)
-          Add-Content -LiteralPath $releaseNotes -Value '| Platform | Package | Download | Extracted |'
-          Add-Content -LiteralPath $releaseNotes -Value '| --- | --- | --- | --- |'
-          foreach ($file in Get-ChildItem packages -Filter '*.manifest.json' -File -Recurse | Sort-Object Name) {
-            $manifest = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
-            $deployment = if ($manifest.selfContained) { 'Self-contained' } else { '.NET 10 required' }
-            $download = ($manifest.downloadBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
-            $installed = ($manifest.installedBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
-            Add-Content -LiteralPath $releaseNotes -Value "| $($manifest.runtime) | $deployment | $download MiB | $installed MiB |"
-          }
+          ./scripts/New-ReleaseSummary.ps1 -PackageRoot packages -Version $version -Repository $env:GH_REPO -NotesPath $releaseNotes -ChecksumPath SHA256SUMS.txt
+          $assets = @($archives.FullName) + @((Get-Item SHA256SUMS.txt).FullName)
           $existing = gh release view $releaseTag --json isDraft 2>$null
           if ($LASTEXITCODE -eq 0) {
             if (!(($existing | ConvertFrom-Json).isDraft)) { throw 'An already published release must not be overwritten.' }

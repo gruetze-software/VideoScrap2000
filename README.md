@@ -4,7 +4,7 @@
 
 VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows, Linux, and macOS. Browse your collection, find metadata and artwork, and save the results as NFO and image files beside your videos. It works with local folders and mounted network shares.
 
-[GitHub Releases](https://github.com/gruetze-software/VideoScrap2000/releases)
+[Download VideoScrap 2000](https://github.com/gruetze-software/VideoScrap2000/releases/latest#downloads)
 
 <img src="branding/screenshots/screenshot1.png" width="724" alt="Movie Mainform" />
 
@@ -62,4 +62,6 @@ dotnet run --project MovieScrap2000/MovieScrap2000.csproj
 
 [Build, test and release instructions](docs/development.md).
 
-[Icon PNG](docs/VideoScrap-2000-icon.png) · [Layered Paint.NET source](docs/VideoScrap-2000-icon.pdn) · [Paint.NET drawing guide (German)](docs/Paint.NET-Anleitung-App-Symbol.md) · [Third-party notices](THIRD-PARTY-NOTICES.md) · [Grütze-Software](https://github.com/gruetze-software) · [Ko-fi](https://ko-fi.com/gruetzesoftware)
+Enjoy VideoScrap 2000? [Buy me a small coffee on Ko-fi](https://ko-fi.com/gruetzesoftware) to support its development. Thank you!
+
+[Third-party notices](THIRD-PARTY-NOTICES.md) · [Grütze-Software](https://github.com/gruetze-software)
