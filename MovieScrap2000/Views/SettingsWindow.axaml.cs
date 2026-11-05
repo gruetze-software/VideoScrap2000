@@ -8,12 +8,13 @@ public partial class SettingsWindow : Window
 {
     private readonly MainViewModel? main;
     private readonly SettingsViewModel draft;
+    public bool SwitchDemoRequested { get; private set; }
     public SettingsWindow() : this(null) { }
     public SettingsWindow(MainViewModel? main)
     {
         InitializeComponent();
         this.main = main;
-        draft = new() { LibraryPath = main?.LibraryPath ?? "", SeriesPath = main?.SeriesPath ?? "", ThemeIndex = main?.ThemeIndex ?? 0,
+        draft = new() { IsDemo = main?.IsDemo ?? false, LibraryPath = main?.LibraryPath ?? "", SeriesPath = main?.SeriesPath ?? "", ThemeIndex = main?.ThemeIndex ?? 0,
             LanguageIndex = main?.LanguageIndex ?? 0, MetadataLanguageIndex = main?.MetadataLanguageIndex ?? 0, ArtworkLanguageIndex = main?.ArtworkLanguageIndex ?? 0,
             UseFanartBackground = main?.UseFanartBackground ?? false };
         DataContext = draft;
@@ -38,4 +39,5 @@ public partial class SettingsWindow : Window
         catch (Exception ex) { draft.Status = $"Einstellungen konnten nicht gespeichert werden: {ex.Message}"; }
     }
     private void Cancel(object? sender, RoutedEventArgs e) => Close();
+    private void SwitchDemo(object? sender, RoutedEventArgs e) { SwitchDemoRequested = true; Close(); }
 }

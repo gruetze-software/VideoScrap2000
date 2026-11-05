@@ -18,6 +18,7 @@
           <StackPanel Orientation="Horizontal" Spacing="10">
             <TextBlock Text="VideoScrap 2000" FontSize="27" FontWeight="SemiBold"/>
             <Border Background="{DynamicResource SubtleBrush}" CornerRadius="5" Padding="8,3" VerticalAlignment="Center"><TextBlock Text="{Binding Version}" FontSize="12"/></Border>
+            <Border IsVisible="{Binding IsDemo}" Background="{DynamicResource SubtleBrush}" CornerRadius="5" Padding="8,3" VerticalAlignment="Center"><TextBlock Text="{Binding DemoLabel}" FontSize="12"/></Border>
           </StackPanel>
           <TextBlock Text="{DynamicResource LFC451D627D21}" Classes="secondary" FontSize="13"/>
         </StackPanel>
@@ -107,7 +108,7 @@
                     <TextBox Text="{Binding Genres}" PlaceholderText="{DynamicResource L8972169A0D8C}" AutomationProperties.Name="{DynamicResource L3561ABFE8067}"/>
                     <Grid ColumnDefinitions="*,Auto">
                       <TextBlock Text="{DynamicResource L0371FE58F2DC}" Classes="label" VerticalAlignment="Center"/>
-                      <Button Grid.Column="1" Content="{DynamicResource LD6C4E9CF2F24}" Click="OpenOutlinePrompt" IsEnabled="{Binding CanGenerateOutline}" MinWidth="180" Padding="16,9" Margin="12,4,0,4" ToolTip.Tip="{DynamicResource LD9EF63997D25}"/>
+                      <Button x:Name="OutlinePromptButton" Grid.Column="1" Content="{DynamicResource LD6C4E9CF2F24}" Click="OpenOutlinePrompt" IsEnabled="{Binding CanGenerateOutline}" MinWidth="180" Padding="16,9" Margin="12,4,0,4" ToolTip.Tip="{DynamicResource LD9EF63997D25}"/>
                     </Grid>
                     <TextBox Text="{Binding Outline}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70"/>
                     <TextBlock Text="{DynamicResource L5C9FECD4DF0A}" Classes="label"/><TextBox Text="{Binding Plot}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="160"/>

@@ -4,6 +4,11 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
       <StackPanel Spacing="12">
         <Border Classes="card" Padding="18"><StackPanel Spacing="8">
+          <TextBlock Text="{Binding DemoTitle}" FontSize="17" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding DemoDescription}" Classes="secondary" TextWrapping="Wrap"/>
+          <Button Content="{Binding DemoAction}" Click="SwitchDemo" HorizontalAlignment="Left"/>
+        </StackPanel></Border>
+        <Border Classes="card" Padding="18"><StackPanel Spacing="8">
           <TextBlock Text="{DynamicResource LF2A1CC71FA59}" FontSize="17" FontWeight="SemiBold"/>
           <TextBlock Text="{DynamicResource L98AB8FC819BC}" Classes="label"/>
           <ComboBox SelectedIndex="{Binding LanguageIndex}" MinWidth="240"><ComboBoxItem Content="{DynamicResource LC999E1E15DE4}"/><ComboBoxItem>Deutsch</ComboBoxItem><ComboBoxItem>English</ComboBoxItem></ComboBox>
@@ -21,7 +26,7 @@
           <ComboBox SelectedIndex="{Binding ThemeIndex}" MinWidth="180" AutomationProperties.Name="{DynamicResource L1DA7A3B4EEA2}"><ComboBoxItem Content="{DynamicResource L6725E7BBCD28}"/><ComboBoxItem Content="{DynamicResource L8D586F8B60DF}"/><ComboBoxItem Content="{DynamicResource L368B231BE48A}"/></ComboBox>
           <CheckBox Content="{DynamicResource L021184804D3C}" IsChecked="{Binding UseFanartBackground}"/>
         </StackPanel></Border>
-        <Border Classes="card" Padding="18"><StackPanel>
+        <Border Classes="card" Padding="18" IsEnabled="{Binding !IsDemo}"><StackPanel>
           <TextBlock Text="{DynamicResource LDD0E6BDF21FC}" FontSize="17" FontWeight="SemiBold"/>
           <TextBlock Text="{DynamicResource LF7913AD0BB91}" Classes="label"/>
           <Grid ColumnDefinitions="*,Auto"><TextBox Text="{Binding LibraryPath}" AutomationProperties.Name="{DynamicResource LF7913AD0BB91}"/><Button Grid.Column="1" Content="{DynamicResource L0BF1EDDB22BF}" Click="ChooseMovies" Margin="8,0,0,0"/></Grid>

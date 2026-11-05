@@ -5,6 +5,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      create_release_draft:
+        description: Create or update the unpublished release draft after packaging
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -79,7 +84,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.create_release_draft)
     needs: package
     runs-on: ubuntu-latest
     permissions:
@@ -95,15 +100,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_COMMIT: ${{ github.sha }}
         run: |
+          [xml]$project = Get-Content MovieScrap2000/MovieScrap2000.csproj -Raw
+          $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+          $releaseTag = "v$version"
+          if ($env:RELEASE_REF.StartsWith('refs/tags/') -and $env:RELEASE_REF -ne "refs/tags/$releaseTag") {
+            throw 'The version tag must match the application version.'
+          }
           $archives = @(Get-ChildItem packages -File -Recurse | Where-Object Name -Match '^VideoScrap2000-.*\.(zip|tar\.gz)$')
           if ($archives.Count -ne 12) { throw "Expected twelve platform archives, found $($archives.Count)." }
           $assets = @($archives.FullName) + @(Get-ChildItem packages -File -Recurse | Where-Object Name -Match '\.sha256$|\.manifest\.json$' | Select-Object -ExpandProperty FullName)
-          $notes = "docs/releases/$env:RELEASE_TAG.md"
+          $notes = "docs/releases/$releaseTag.md"
           $releaseNotes = 'release-notes.md'
           if (Test-Path -LiteralPath $notes) { Copy-Item -LiteralPath $notes -Destination $releaseNotes }
-          else { Set-Content -LiteralPath $releaseNotes -Value "# VideoScrap 2000 $env:RELEASE_TAG" }
+          else { Set-Content -LiteralPath $releaseNotes -Value "# VideoScrap 2000 $releaseTag" }
           Add-Content -LiteralPath $releaseNotes -Value ([Environment]::NewLine + '## Package sizes' + [Environment]::NewLine)
           Add-Content -LiteralPath $releaseNotes -Value '| Platform | Package | Download | Extracted |'
           Add-Content -LiteralPath $releaseNotes -Value '| --- | --- | --- | --- |'
@@ -114,5 +126,13 @@ jobs:
             $installed = ($manifest.installedBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
             Add-Content -LiteralPath $releaseNotes -Value "| $($manifest.runtime) | $deployment | $download MiB | $installed MiB |"
           }
-          gh release create $env:RELEASE_TAG --verify-tag --draft --notes-file $releaseNotes --title "VideoScrap 2000 $env:RELEASE_TAG" @assets
+          $existing = gh release view $releaseTag --json isDraft 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if (!(($existing | ConvertFrom-Json).isDraft)) { throw 'An already published release must not be overwritten.' }
+            gh release upload $releaseTag @assets --clobber
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            gh release edit $releaseTag --draft --target $env:RELEASE_COMMIT --notes-file $releaseNotes --title "VideoScrap 2000 $releaseTag"
+          } else {
+            gh release create $releaseTag --target $env:RELEASE_COMMIT --draft --notes-file $releaseNotes --title "VideoScrap 2000 $releaseTag" @assets
+          }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

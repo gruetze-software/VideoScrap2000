@@ -131,6 +131,7 @@ public partial class SeriesViewModel
 
     public ArtworkWindow? CreateArtworkSearch()
     {
+        if (UseDemoData()) return null;
         if (SelectedShow is not { } show) return null;
         int.TryParse(show.Editor.TmdbId, out var id);
         int.TryParse(show.Editor.TvdbId, out var tvdbId);

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="28" viewBox="0 0 128 28" role="img" aria-label="Fanart.tv artwork">
+  <title>Fanart.tv artwork</title>
+  <rect x=".5" y=".5" width="127" height="27" rx="5" fill="#203038" stroke="#52c7c0"/>
+  <g fill="none" stroke="#52c7c0" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="9" y="7" width="17" height="14" rx="2"/>
+    <circle cx="21" cy="11" r="1.5"/>
+    <path d="m10 19 5-6 4 4 3-2 3 4"/>
+  </g>
+  <text x="35" y="19" fill="#eaf7f6" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="15">fanart.tv</text>
+</svg>

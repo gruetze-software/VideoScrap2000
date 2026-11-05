@@ -18,6 +18,12 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     private string? scannedPath;
     private TMDbScraperManager CreateScraper() => createScraper?.Invoke() ?? new TMDbScraperManager();
     private HttpClient EpisodeImageClient => tvmazeClient ?? TvmazeClient;
+    private bool UseDemoData()
+    {
+        if (!main.IsDemo) return false;
+        main.Status = Locale.T("Die Demo verwendet ausschließlich mitgelieferte Beispieldaten.");
+        return true;
+    }
 
     public ObservableCollection<SeriesShowRow> Shows { get; } = [];
     public ObservableCollection<SeriesSeason> Seasons { get; } = [];
@@ -28,8 +34,12 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     [ObservableProperty] private SeriesSeason? selectedSeason;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedEpisode))]
+    [NotifyPropertyChangedFor(nameof(SelectedEpisodePath))]
     private SeriesEpisodeRow? selectedEpisode;
     public bool HasSelectedEpisode => SelectedEpisode is not null;
+    public string SelectedEpisodePath => main.IsDemo && SelectedEpisode is { } demoEpisode
+        ? "Demo / TV Shows / " + Path.GetFileName(demoEpisode.Episode.VideoPath)
+        : SelectedEpisode?.Episode.VideoPath ?? "";
     [ObservableProperty] private SeriesNfoEditor? showEditor;
     [ObservableProperty] private SeriesNfoEditor? episodeEditor;
 
@@ -231,6 +241,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 
     public async Task<IReadOnlyList<SearchTv>> FindShowsAsync(string title)
     {
+        if (UseDemoData()) return [];
         List<SearchTv> results = [];
         var query = MovieNameParser.ParseSearchTitle(title).Title;
         if (query.Length == 0) return results;
@@ -246,6 +257,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 
     public async Task ApplyShowMatchAsync(int id)
     {
+        if (UseDemoData()) return;
         if (SelectedShow is not { } show) return;
         await main.RunAsync(async token =>
         {
@@ -264,6 +276,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 
     public async Task FindEpisodeAsync()
     {
+        if (UseDemoData()) return;
         if (SelectedEpisode is not { } row || SelectedShow is not { } show) return;
         var episode = row.Editor;
         if (!int.TryParse(ShowEditor?.TmdbId, out var id) || id <= 0)
@@ -300,6 +313,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     [RelayCommand]
     private async Task FindAllEpisodesAsync()
     {
+        if (UseDemoData()) return;
         if (SelectedShow is not { } show) return;
         if (!int.TryParse(show.Editor.TmdbId, out var id) || id <= 0)
         {

@@ -32,7 +32,12 @@
               <Path.Fill><LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%"><GradientStop Offset="0" Color="#90CEA1"/><GradientStop Offset="0.56" Color="#3CBEC9"/><GradientStop Offset="1" Color="#00B3E5"/></LinearGradientBrush></Path.Fill>
             </Path>
           </Button>
-          <Button Content="Fanart.tv" Click="OpenFanart"/>
+          <Button Click="OpenFanart" AutomationProperties.Name="Fanart.tv artwork" Background="#203038" BorderBrush="#52c7c0" BorderThickness="1" ToolTip.Tip="https://fanart.tv/">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Path Width="17" Height="14" Stretch="Uniform" Stroke="#52c7c0" StrokeThickness="1.5" Data="M2,0 H15 Q17,0 17,2 V12 Q17,14 15,14 H2 Q0,14 0,12 V2 Q0,0 2,0 Z M1,12 L6,6 L10,10 L13,8 L16,12 M13,2 A1.5,1.5 0 1 0 13,5 A1.5,1.5 0 1 0 13,2"/>
+              <TextBlock Text="fanart.tv" FontWeight="SemiBold" Foreground="#EAF7F6"/>
+            </StackPanel>
+          </Button>
           <Button Content="TVmaze" Click="OpenTvmaze" Margin="8,0,0,0"/>
         </WrapPanel>
         <TextBlock Text="{DynamicResource LF30225D2A447}" TextWrapping="Wrap" TextAlignment="Center" Classes="secondary"/>

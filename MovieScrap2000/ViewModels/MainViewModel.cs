@@ -14,6 +14,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly MetadataService metadata;
     private readonly MovieManager scanner;
     private readonly AppSettings settings;
+    public bool IsDemo { get; }
+    public string DemoLabel => Locale.T("Demo-Modus");
     private List<MovieViewModel> allMovies = [];
     private CancellationTokenSource? operation;
     private int selectionVersion;
@@ -88,10 +90,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         : "Ändere deinen Suchbegriff, um weitere Filme aus deiner Sammlung zu sehen.");
     public bool CanEdit => IsDetailReady && !IsBusy;
     public bool CanGenerateOutline => CanEdit && !string.IsNullOrWhiteSpace(Plot);
-    public string SelectionPath => SelectedMovie?.VideoFilePath ?? "";
+    public string SelectionPath => IsDemo && SelectedMovie is { } demoMovie
+        ? "Demo / Movies / " + Path.GetFileName(demoMovie.FolderPath) + " / " + Path.GetFileName(demoMovie.VideoFilePath)
+        : SelectedMovie?.VideoFilePath ?? "";
 
-    public MainViewModel(DatabaseManager? database = null, AppSettings? settings = null)
+    public MainViewModel(DatabaseManager? database = null, AppSettings? settings = null, bool isDemo = false)
     {
+        IsDemo = isDemo;
         this.database = database ?? new();
         this.settings = settings ?? AppSettings.Load();
         Series = new(this);
@@ -126,7 +131,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         try
         {
             await Task.Run(database.InitializeDatabaseAsync, token);
+            if (IsDemo) await Task.Run(() => scanner.ScanDirectoryAsync(LibraryPath, token), token);
             await ReloadAsync(token);
+            if (IsDemo) SelectedMovie = allMovies.FirstOrDefault(movie => movie.Title == "The Last Signal") ?? SelectedMovie;
         }
         finally { IsInitializing = false; }
         Status = allMovies.Count == 0 ? "Deine Filmsammlung beginnt mit einem Ordner." : allMovies.Count == 1 ? "1 Film geladen." : $"{allMovies.Count} Filme geladen.";
@@ -142,14 +149,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
     public void ApplySettings(string movies, string series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false)
     {
-        settings.LibraryPath = movies.Trim();
-        settings.SeriesPath = series.Trim();
+        if (!IsDemo)
+        {
+            settings.LibraryPath = movies.Trim();
+            settings.SeriesPath = series.Trim();
+        }
         settings.Theme = theme switch { 1 => "Light", 2 => "Dark", _ => "System" };
         settings.Language = LanguagePreferences.FromIndex(language);
         settings.MetadataLanguage = LanguagePreferences.FromIndex(metadataLanguage);
         settings.ArtworkLanguage = LanguagePreferences.FromIndex(artworkLanguage);
         settings.UseFanartBackground = useFanartBackground;
-        settings.Save();
+        if (!IsDemo) settings.Save();
         UseFanartBackground = useFanartBackground;
         LanguageIndex = language; MetadataLanguageIndex = metadataLanguage; ArtworkLanguageIndex = artworkLanguage;
         Locale.Apply(settings.Language);
@@ -380,7 +390,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (!Directory.Exists(LibraryPath)) throw new DirectoryNotFoundException("Bitte wähle einen erreichbaren Filmordner aus.");
         settings.LibraryPath = LibraryPath;
-        settings.Save();
+        if (!IsDemo) settings.Save();
         Status = "Filmsammlung wird eingelesen …";
         await Task.Run(() => scanner.ScanDirectoryAsync(LibraryPath, token), token);
         ArtworkPreviewCache.Shared.RefreshFileState();

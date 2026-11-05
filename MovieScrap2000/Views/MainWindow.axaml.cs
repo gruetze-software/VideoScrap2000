@@ -58,7 +58,21 @@ public partial class MainWindow : Window
     private async void ShowAbout(object? sender, RoutedEventArgs e) => await new AboutWindow().ShowDialog(this);
     private async void ShowSettings(object? sender, RoutedEventArgs e)
     {
-        await new SettingsWindow(model).ShowDialog(this);
+        var settingsDialog = new SettingsWindow(model);
+        await settingsDialog.ShowDialog(this);
+        if (settingsDialog.SwitchDemoRequested)
+        {
+            try
+            {
+                var replacement = new MainWindow(model.IsDemo ? new MainViewModel() : DemoLibrary.CreateModel(), true);
+                if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+                    desktop.MainWindow = replacement;
+                replacement.Show();
+                Close();
+            }
+            catch (Exception ex) { model.Status = ex.Message; }
+            return;
+        }
         if (LibraryTabs.SelectedIndex == 1 && model.Series.NeedsScan) await model.Series.ScanAsync();
     }
 
@@ -198,6 +212,7 @@ public partial class MainWindow : Window
     }
     private async void ChooseOnlineArtwork(object? sender, RoutedEventArgs e)
     {
+        if (model.IsDemo) { model.Status = Localization.Locale.T("Die Demo verwendet ausschließlich mitgelieferte Beispieldaten."); return; }
         if (model.SelectedMovie?.FullMovieNFO is not { } nfo) return;
         if (!int.TryParse(nfo.TmdbId, out var id)) id = nfo.TmdbIdFromUnique ?? 0;
         if (id <= 0) { model.Status = "Bitte ordne den Film zuerst über Metadaten suchen einem TMDb-Treffer zu."; return; }
@@ -205,6 +220,7 @@ public partial class MainWindow : Window
     }
     private async Task ImportOnlineArtworkAsync(int id, string requestedType, IReadOnlySet<string>? automaticTypes = null)
     {
+        if (model.IsDemo) { model.Status = Localization.Locale.T("Die Demo verwendet ausschließlich mitgelieferte Beispieldaten."); return; }
         var selectedMovie = model.SelectedMovie;
         var dialog = new ArtworkWindow(id, requestedType, language: model.ArtworkLanguage, automaticTypes: automaticTypes);
         await dialog.ShowDialog(this);
@@ -241,6 +257,7 @@ public partial class MainWindow : Window
 
     private async void OpenVideoFile(object? sender, RoutedEventArgs e)
     {
+        if (model.IsDemo) { model.Status = Localization.Locale.T("Die Demo enthält keine abspielbaren Videos."); return; }
         var path = model.SelectedMovie?.VideoFilePath;
         if (string.IsNullOrWhiteSpace(path)) return;
         try
@@ -258,6 +275,7 @@ public partial class MainWindow : Window
 
     private async void ShowScrape(object? sender, RoutedEventArgs e)
     {
+        if (model.IsDemo) { model.Status = Localization.Locale.T("Die Demo verwendet ausschließlich mitgelieferte Beispieldaten."); return; }
         var selectedMovie = model.SelectedMovie;
         if (selectedMovie?.FullMovieNFO is not { } nfo) return;
         var firstLookup = (!int.TryParse(nfo.TmdbId, out var existingId) || existingId <= 0)

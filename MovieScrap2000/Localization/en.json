@@ -238,5 +238,12 @@
   "Gefundene speichern": "Save fetched episodes",
   "{0} Episoden übernommen, {1} übersprungen.": "{0} episodes fetched, {1} skipped.",
   "Episoden werden gespeichert …": "Saving episodes …",
-  "{0} Episoden gespeichert, {1} übersprungen.": "{0} episodes saved, {1} skipped."
+  "{0} Episoden gespeichert, {1} übersprungen.": "{0} episodes saved, {1} skipped.",
+  "Demo-Modus": "Demo mode",
+  "Demo für Screenshots": "Demo for screenshots",
+  "Erfundene Filme, Serien und eigene Bilder. Die Demo verwendet einen separaten Speicherbereich und startet auf Englisch. Deine Sammlung und Einstellungen bleiben unverändert.": "Fictional movies, TV shows and original artwork. The demo uses separate storage and starts in English. Your collection and saved settings stay unchanged.",
+  "Zur eigenen Sammlung": "Back to my collection",
+  "Demo-Modus öffnen": "Open demo mode",
+  "Die Demo verwendet ausschließlich mitgelieferte Beispieldaten.": "The demo uses only the bundled sample data.",
+  "Die Demo enthält keine abspielbaren Videos.": "The demo does not contain playable videos."
 }
