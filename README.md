@@ -6,6 +6,16 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 
 [GitHub Releases](https://github.com/gruetze-software/VideoScrap2000/releases)
 
+<img src="branding/screenshots/screenshot1.png" width="724" alt="Movie Mainform" />
+
+<img src="branding/screenshots/screenshot1_2.png" width="724" alt="Movie Mainform Actors" />
+
+<img src="branding/screenshots/screenshot1_1.png" width="724" alt="Movie Plot KI" />
+
+<img src="branding/screenshots/screenshot1_3.png" width="724" alt="Movie Mainform Artworks" />
+
+<img src="branding/screenshots/screenshot2.png" width="724" alt="TV Series Mainform" />
+
 ## Features
 
 - **Browse your collection.** See poster thumbnails, release years, and ratings on a five-star scale with half stars. Filter by title, year, or genre. Sort by name, release year, or the creation date of the movie's NFO file.
