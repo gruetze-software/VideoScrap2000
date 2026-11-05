@@ -34,7 +34,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (value is not null) ArtworkType = value.Type;
     }
     public Action<string>? ThemeRequested { get; set; }
-    public string Version => typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.3.0";
+    public string Version => typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
     [ObservableProperty] private string libraryPath;
     [ObservableProperty] private string seriesPath;
     [ObservableProperty] private bool isImagesLoading;

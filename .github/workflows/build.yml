@@ -38,20 +38,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        deployment: [self-contained, framework-dependent]
         platform:
           - os: windows-latest
-            rid: win-x64
-          - os: windows-latest
-            rid: win-arm64
+            rids: win-x64,win-arm64
+            name: windows
           - os: ubuntu-latest
-            rid: linux-x64
+            rids: linux-x64
+            name: linux-x64
           - os: ubuntu-24.04-arm
-            rid: linux-arm64
+            rids: linux-arm64
+            name: linux-arm64
           - os: macos-15-intel
-            rid: osx-x64
-          - os: macos-15-intel
-            rid: osx-arm64
+            rids: osx-x64,osx-arm64
+            name: macos
+    name: Package ${{ matrix.platform.name }}
     runs-on: ${{ matrix.platform.os }}
     steps:
       - uses: actions/checkout@v7.0.1
@@ -66,16 +66,15 @@ jobs:
           if ($env:FANART_TV_PROJECT_API_KEY -notmatch '^[0-9a-fA-F]{32}$') {
             throw 'Set the FANART_TV_PROJECT_API_KEY repository secret before creating release packages.'
           }
-          if ('${{ matrix.deployment }}' -eq 'framework-dependent') {
-            ./scripts/Publish.ps1 -Runtime '${{ matrix.platform.rid }}' -FrameworkDependent
-          } else {
-            ./scripts/Publish.ps1 -Runtime '${{ matrix.platform.rid }}'
+          foreach ($runtime in '${{ matrix.platform.rids }}'.Split(',')) {
+            ./scripts/Publish.ps1 -Runtime $runtime
+            ./scripts/Publish.ps1 -Runtime $runtime -FrameworkDependent
           }
         env:
           FANART_TV_PROJECT_API_KEY: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.FANART_TV_PROJECT_API_KEY || '' }}
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: VideoScrap2000-${{ matrix.platform.rid }}-${{ matrix.deployment }}
+          name: VideoScrap2000-${{ matrix.platform.name }}
           path: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
