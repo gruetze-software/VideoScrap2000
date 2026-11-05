@@ -8,8 +8,29 @@ $run = Join-Path $repository ('artifacts/' + $Runtime + '/' + [guid]::NewGuid().
 $output = Join-Path $run 'VideoScrap2000'
 $selfContained = if ($FrameworkDependent) { 'false' } else { 'true' }
 $project = Join-Path $repository 'MovieScrap2000/MovieScrap2000.csproj'
+[xml]$projectMetadata = Get-Content -LiteralPath $project -Raw
+$version = @($projectMetadata.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+$flavor = if ($FrameworkDependent) { '-framework-dependent' } else { '' }
+$packageName = "VideoScrap2000-$version-$Runtime$flavor"
 dotnet publish $project -c Release -r $Runtime --self-contained $selfContained -o $output -p:PublishTrimmed=false -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false -m:1 -nr:false
 if ($LASTEXITCODE -ne 0) { throw 'Publish fehlgeschlagen.' }
+
+# Universal macOS libraries otherwise contain a second, unused CPU architecture.
+if ($Runtime.StartsWith('osx-') -and $IsMacOS) {
+    $architecture = if ($Runtime.EndsWith('arm64')) { 'arm64' } else { 'x86_64' }
+    foreach ($library in Get-ChildItem -LiteralPath $output -Filter '*.dylib' -File -Recurse) {
+        $architectures = (& lipo -archs $library.FullName).Trim().Split(' ', [StringSplitOptions]::RemoveEmptyEntries)
+        if ($LASTEXITCODE -ne 0 -or $architecture -notin $architectures) { throw "Falsche Architektur in $($library.Name)." }
+        if ($architectures.Count -gt 1) {
+            $thin = $library.FullName + '.thin'
+            & lipo $library.FullName -thin $architecture -output $thin
+            if ($LASTEXITCODE -ne 0) { throw "Architektur konnte nicht reduziert werden: $($library.Name)." }
+            Move-Item -LiteralPath $thin -Destination $library.FullName -Force
+            & codesign --force --sign - $library.FullName
+            if ($LASTEXITCODE -ne 0) { throw "Ad-hoc-Signatur fehlgeschlagen: $($library.Name)." }
+        }
+    }
+}
 Copy-Item -LiteralPath (Join-Path $repository 'THIRD-PARTY-NOTICES.md') -Destination $output
 Copy-Item -LiteralPath (Join-Path $repository 'licenses') -Destination $output -Recurse
 # Preserve notices supplied by the exact restored dependency versions as well.
@@ -27,7 +48,7 @@ foreach ($library in $assets.libraries.PSObject.Properties) {
 
 $files = Get-ChildItem -LiteralPath $output -File -Recurse
 $forbidden = $files | Where-Object {
-    $_.Extension -in @('.pdb','.dbg','.debug','.mdb','.lib','.exp','.a') -or
+    $_.Extension -in @('.pdb','.dbg','.debug','.mdb','.lib','.exp','.a','.pdn','.nupkg','.nuspec','.cs','.csproj','.sln','.slnx') -or
     $_.FullName -match '\.dSYM[\\/]' -or $_.Name -match 'Avalonia\.Diagnostics|testhost|xunit|Microsoft\.VisualStudio\.TestPlatform' -or
     ($Runtime.StartsWith('win-') -and ($_.Name -match '\.so($|\.)|\.dylib$|Avalonia\.(X11|Native|FreeDesktop)' )) -or
     ($Runtime.StartsWith('linux-') -and ($_.Name -match '\.dylib$|Avalonia\.(Win32|Native)|^av_libglesv2\.dll$|^libSkiaSharp\.dll$|^e_sqlite3\.dll$')) -or
@@ -36,15 +57,29 @@ $forbidden = $files | Where-Object {
 }
 if ($forbidden) { throw ('Unerwartete Release-Dateien: ' + ($forbidden.Name -join ', ')) }
 $bytes = ($files | Measure-Object Length -Sum).Sum
-$manifest = [ordered]@{ runtime = $Runtime; selfContained = !$FrameworkDependent; files = $files.Count; bytes = $bytes }
-$manifest | ConvertTo-Json | Set-Content (Join-Path $run 'manifest.json')
 if ($Runtime.StartsWith('win-')) {
-    $archive = Join-Path $run "VideoScrap2000-$Runtime.zip"
-    Compress-Archive -Path $output -DestinationPath $archive
+    $archive = Join-Path $run "$packageName.zip"
+    [IO.Compression.ZipFile]::CreateFromDirectory($output, $archive, [IO.Compression.CompressionLevel]::SmallestSize, $true)
 } else {
-    $archive = Join-Path $run "VideoScrap2000-$Runtime.tar.gz"
-    tar -czf $archive -C $run VideoScrap2000
-    if ($LASTEXITCODE -ne 0) { throw 'Archivierung fehlgeschlagen.' }
+    $archive = Join-Path $run "$packageName.tar.gz"
+    $archiveStream = [IO.File]::Create($archive)
+    $gzip = [IO.Compression.GZipStream]::new($archiveStream, [IO.Compression.CompressionLevel]::SmallestSize)
+    try { [System.Formats.Tar.TarFile]::CreateFromDirectory($output, $gzip, $true) }
+    finally { $gzip.Dispose(); $archiveStream.Dispose() }
 }
+$downloadBytes = (Get-Item -LiteralPath $archive).Length
+$checksum = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+[IO.File]::WriteAllText($archive + '.sha256', "$checksum  $(Split-Path -Leaf $archive)" + [Environment]::NewLine)
+$manifest = [ordered]@{
+    version = $version
+    runtime = $Runtime
+    selfContained = !$FrameworkDependent
+    files = $files.Count
+    installedBytes = $bytes
+    downloadBytes = $downloadBytes
+    archive = Split-Path -Leaf $archive
+    sha256 = $checksum
+}
+$manifest | ConvertTo-Json | Set-Content (Join-Path $run "$packageName.manifest.json")
 Write-Host ("Geprüft: {0}, {1:N1} MiB entpackt, {2:N1} MiB Download" -f $Runtime, ($bytes / 1MB), ((Get-Item $archive).Length / 1MB))
 Write-Host $archive

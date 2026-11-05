@@ -6,7 +6,7 @@
         <Image Source="/Assets/videoscrap-2000.png" RenderOptions.BitmapInterpolationMode="HighQuality" Width="96" Height="96" HorizontalAlignment="Center"/>
         <TextBlock Text="VideoScrap 2000" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center"/>
         <TextBlock x:Name="VersionText" Classes="secondary" HorizontalAlignment="Center"/>
-        <TextBlock Text="{DynamicResource LCC109912F214}" FontSize="16" HorizontalAlignment="Center"/>
+        <TextBlock Text="{DynamicResource LFC451D627D21}" FontSize="16" HorizontalAlignment="Center"/>
         <TextBlock Text="{DynamicResource LE1489F7ADC70}" TextWrapping="Wrap" TextAlignment="Center" Classes="secondary"/>
         <Separator Margin="0,6"/>
         <Grid ColumnDefinitions="100,*" Margin="12,0">
@@ -33,6 +33,7 @@
             </Path>
           </Button>
           <Button Content="Fanart.tv" Click="OpenFanart"/>
+          <Button Content="TVmaze" Click="OpenTvmaze" Margin="8,0,0,0"/>
         </WrapPanel>
         <TextBlock Text="{DynamicResource LF30225D2A447}" TextWrapping="Wrap" TextAlignment="Center" Classes="secondary"/>
         <TextBlock Text="This product uses the TMDB API but is not endorsed or certified by TMDB." TextWrapping="Wrap" TextAlignment="Center" Classes="secondary" FontSize="12"/>

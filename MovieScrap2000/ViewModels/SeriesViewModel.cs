@@ -7,14 +7,17 @@ using CommunityToolkit.Mvvm.Input;
 using MovieScrap2000;
 using MovieScrap2000.TMDbScraper;
 using VideoScrap2000.Localization;
+using VideoScrap2000.Views;
 
 namespace VideoScrap2000.ViewModels;
 
-public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager>? createScraper = null) : ObservableObject
+public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager>? createScraper = null,
+    HttpClient? tvmazeClient = null) : ObservableObject
 {
     private List<SeriesShowRow> allShows = [];
     private string? scannedPath;
     private TMDbScraperManager CreateScraper() => createScraper?.Invoke() ?? new TMDbScraperManager();
+    private HttpClient EpisodeImageClient => tvmazeClient ?? TvmazeClient;
 
     public ObservableCollection<SeriesShowRow> Shows { get; } = [];
     public ObservableCollection<SeriesSeason> Seasons { get; } = [];
@@ -52,6 +55,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         {
             main.Status = "Serien werden eingelesen …";
             var shows = await Task.Run(() => SeriesLibrary.Scan(path, token).Select(show => new SeriesShowRow(show)).ToList(), token);
+            ArtworkPreviewCache.Shared.RefreshFileState();
             var previous = SelectedShow?.Show.FolderPath;
             allShows = shows;
             scannedPath = path;
@@ -64,14 +68,24 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 
     private void FilterShows(string? selectedPath)
     {
-        var matches = allShows.Where(show => show.Title.Contains(Query.Trim(), StringComparison.CurrentCultureIgnoreCase));
-        Shows.Clear();
-        foreach (var show in matches) Shows.Add(show);
+        var matches = allShows.Where(show => show.Title.Contains(Query.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        var desired = matches.ToHashSet();
+        for (var index = Shows.Count - 1; index >= 0; index--)
+            if (!desired.Contains(Shows[index])) Shows.RemoveAt(index);
+        for (var index = 0; index < matches.Length; index++)
+        {
+            if (index < Shows.Count && ReferenceEquals(Shows[index], matches[index])) continue;
+            var previous = Shows.IndexOf(matches[index]);
+            if (previous < 0) Shows.Insert(index, matches[index]);
+            else Shows.Move(previous, index);
+        }
         SelectedShow = Shows.FirstOrDefault(show => show.Show.FolderPath == selectedPath) ?? Shows.FirstOrDefault();
     }
 
     partial void OnSelectedShowChanged(SeriesShowRow? value)
     {
+        SelectedSeriesArtwork = null;
+        ArtworkSourceWarning = "";
         SelectedActor = null;
         ShowEditor = value?.Editor;
         RefreshSeasons();
@@ -92,6 +106,8 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 
     partial void OnSelectedSeasonChanged(SeriesSeason? value)
     {
+        OnPropertyChanged(nameof(SeriesArtworkTypes));
+        if (!SeriesArtworkTypes.Contains(ArtworkSearchType)) ArtworkSearchType = ImageTypes.Poster;
         RefreshEpisodes();
         RefreshArtworkPreviews();
     }
@@ -112,6 +128,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     partial void OnSelectedEpisodeChanged(SeriesEpisodeRow? value)
     {
         EpisodeEditor = value?.Editor;
+        RefreshEpisodePicture();
         RefreshArtworkPreviews();
     }
 
@@ -139,17 +156,28 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     }
 
     [RelayCommand]
-    private async Task SaveShowAsync()
-    {
-        if (SelectedShow is not { } show) return;
-        await SaveAsync(show.Show.NfoPath, show.Editor, episode: false, show);
-    }
+    private async Task SaveShowAsync() => await SaveChangesAsync();
 
     [RelayCommand]
-    private async Task SaveEpisodeAsync()
+    private async Task SaveEpisodeAsync() => await SaveChangesAsync();
+
+    private async Task SaveChangesAsync()
     {
-        if (SelectedEpisode is not { } episode) return;
-        if (await SaveAsync(episode.Episode.NfoPath, episode.Editor, episode: true))
+        if (SelectedShow is not { } show) return;
+        if (string.IsNullOrWhiteSpace(show.Editor.Title)) { main.Status = "Bitte einen Titel eingeben."; return; }
+        if (show.PendingEpisodeUpdates.Count > 0)
+        {
+            if (SelectedEpisode is { } current) show.PendingEpisodeUpdates.Add(current);
+            await SaveEpisodeUpdatesAsync();
+            RefreshSeasons();
+            return;
+        }
+        if (SelectedEpisode is not { } episode)
+        {
+            await SaveAsync(show.Show.NfoPath, show.Editor, episode: false, show);
+            return;
+        }
+        if (await SaveAsync(episode.Episode.NfoPath, episode.Editor, episode: true, show, episodeRow: episode))
         {
             SelectedShow?.PendingEpisodeUpdates.Remove(episode);
             OnPropertyChanged(nameof(HasPendingEpisodeUpdates));
@@ -157,7 +185,8 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         }
     }
 
-    private async Task<bool> SaveAsync(string path, SeriesNfoEditor editor, bool episode, SeriesShowRow? show = null)
+    private async Task<bool> SaveAsync(string path, SeriesNfoEditor editor, bool episode, SeriesShowRow? show = null,
+        SeriesEpisodeRow? episodeRow = null)
     {
         if (string.IsNullOrWhiteSpace(editor.Title)) { main.Status = "Bitte einen Titel eingeben."; return false; }
         if (episode && (editor.SeasonNumber is null || editor.EpisodeNumber is null))
@@ -171,21 +200,33 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         {
             main.Status = "Metadaten werden gespeichert …";
             var fields = episode ? SeriesNfoEditor.EpisodeFields : SeriesNfoEditor.ShowFields;
-            await Task.Run(() => SeriesLibrary.SaveAsync(path, data, fields, token), token);
+            if (show is not null) await SaveShowFilesAsync(show, token);
+            if (episode || show is null)
+                await Task.Run(() => SeriesLibrary.SaveAsync(path, data, fields, token), token);
             editor.HasNfo = true;
-            if (show is not null)
-            {
-                foreach (var (name, picture) in show.Artwork.Where(item => item.Value.PendingData is not null).ToArray())
-                {
-                    var file = await Task.Run(() => ArtworkFiles.SaveNamedAsync(show.Show.FolderPath, name, picture.PendingData!, token), token);
-                    show.Artwork[name] = new(file);
-                }
-                RefreshArtworkPreviews(refreshTiles: true);
-            }
+            if (episodeRow is not null) await SaveEpisodePictureAsync(episodeRow, token);
             saved = true;
             main.Status = episode ? "Episode gespeichert." : "Serie gespeichert.";
         }, reloadAfterCancellation: false);
         return saved;
+    }
+
+    private async Task SaveShowFilesAsync(SeriesShowRow show, CancellationToken token)
+    {
+        var data = show.Editor.ToXml(isEpisode: false);
+        await Task.Run(() => SeriesLibrary.SaveAsync(show.Show.NfoPath, data, SeriesNfoEditor.ShowFields, token), token);
+        show.Editor.HasNfo = true;
+        var pending = show.Artwork.Where(item => item.Value.PendingData is not null).ToArray();
+        try
+        {
+            foreach (var (name, picture) in pending)
+            {
+                var file = await Task.Run(() => ArtworkFiles.SaveNamedAsync(show.Show.FolderPath, name, picture.PendingData!, token), token);
+                show.Artwork[name] = new(file);
+            }
+        }
+        finally { if (pending.Length > 0) ArtworkPreviewCache.Shared.InvalidateFolder(show.Show.FolderPath); }
+        RefreshArtworkPreviews(refreshTiles: true);
     }
 
     public async Task<IReadOnlyList<SearchTv>> FindShowsAsync(string title)
@@ -217,12 +258,14 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
             var count = await DownloadArtworkAsync(show, id, result, scraper, token);
             main.Status = count > 0 ? "Seriendaten und Bilder übernommen. Speichere, um sie abzulegen."
                 : "Seriendaten übernommen. Speichere, um die NFO zu schreiben.";
+            if (ArtworkSourceWarning.Length > 0) main.Status += " " + ArtworkSourceWarning;
         }, reloadAfterCancellation: false);
     }
 
     public async Task FindEpisodeAsync()
     {
-        if (EpisodeEditor is not { } episode) return;
+        if (SelectedEpisode is not { } row || SelectedShow is not { } show) return;
+        var episode = row.Editor;
         if (!int.TryParse(ShowEditor?.TmdbId, out var id) || id <= 0)
         {
             main.Status = "Ordne die Serie zuerst einem TMDB-Treffer zu.";
@@ -242,6 +285,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
                 var result = await scraper.GetEpisodeDetailsAsync(id, season, number, main.MetadataLanguage, token);
                 token.ThrowIfCancellationRequested();
                 episode.ApplyEpisode(result);
+                await DownloadEpisodePictureAsync(row, result, scraper, CreateTvmazeLookup(show, token), token);
                 main.Status = "Episodendaten übernommen. Speichere, um die NFO zu schreiben.";
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -270,6 +314,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         {
             main.Status = "Episodendetails werden geladen …";
             using var scraper = CreateScraper();
+            var tvmaze = CreateTvmazeLookup(show, token);
             var loaded = 0;
             try
             {
@@ -294,6 +339,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
                         if (result.ValueKind != JsonValueKind.Object) continue;
                         row.Editor.ApplyEpisode(result);
                         show.PendingEpisodeUpdates.Add(row);
+                        await DownloadEpisodePictureAsync(row, result, scraper, tvmaze, token);
                         loaded++;
                     }
                     main.Progress = (index + 1) * 100 / groups.Length;
@@ -304,7 +350,6 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         }, reloadAfterCancellation: false);
     }
 
-    [RelayCommand]
     private async Task SaveEpisodeUpdatesAsync()
     {
         if (SelectedShow is not { } show || show.PendingEpisodeUpdates.Count == 0) return;
@@ -312,6 +357,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         await main.RunAsync(async token =>
         {
             main.Status = "Episoden werden gespeichert …";
+            await SaveShowFilesAsync(show, token);
             var saved = 0;
             try
             {
@@ -326,6 +372,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
                         {
                             await Task.Run(() => SeriesLibrary.SaveAsync(row.Episode.NfoPath, data, SeriesNfoEditor.EpisodeFields, token), token);
                             row.Editor.HasNfo = true;
+                            await SaveEpisodePictureAsync(row, token);
                             show.PendingEpisodeUpdates.Remove(row);
                             saved++;
                         }
@@ -378,7 +425,7 @@ public sealed class SeriesShowRow(SeriesShow show) : ObservableObject
                 if (stem.Equals("tvshow-poster", StringComparison.OrdinalIgnoreCase)) stem = "poster";
                 if (stem.StartsWith("season00-", StringComparison.OrdinalIgnoreCase)) stem = "season-specials-" + stem[9..];
                 var type = stem.ToLowerInvariant();
-                if (type is "poster" or "fanart" or "banner" or "clearlogo" or "landscape" || type.StartsWith("season", StringComparison.Ordinal)
+                if (type is "poster" or "fanart" or "banner" or "clearlogo" or "clearart" or "landscape" or "characterart" || type.StartsWith("season", StringComparison.Ordinal)
                     && (type.EndsWith("-banner") || type.EndsWith("-poster") || type.EndsWith("-fanart") || type.EndsWith("-landscape")))
                     artwork.TryAdd(stem, new(path));
             }
@@ -390,6 +437,7 @@ public sealed class SeriesShowRow(SeriesShow show) : ObservableObject
 
 public sealed class SeriesEpisodeRow(SeriesEpisode episode)
 {
+    internal SeriesPicture? PendingPicture { get; set; }
     public SeriesEpisode Episode { get; } = episode;
     public SeriesNfoEditor Editor { get; } = new(episode.Metadata, episode.HasNfo);
     public string Title => Editor.Title;

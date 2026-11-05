@@ -27,6 +27,7 @@ namespace MovieScrap2000
 		public const string DiskArt = "DiskArt";
 		public const string KeyArt = "KeyArt";
 		public const string Landscape = "Landscape";
+        public const string CharacterArt = "CharacterArt";
 
 		public static List<string> AllTypes = new List<string>
 		{

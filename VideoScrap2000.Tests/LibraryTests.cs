@@ -67,6 +67,36 @@ public sealed class LibraryTests : IDisposable
     }
 
     [Fact]
+    public async Task NewNfoRecordsFirstSaveDateInsteadOfOldVideoDate()
+    {
+        var video = Path.Combine(root, "Film.mkv");
+        await File.WriteAllBytesAsync(video, [0], Ct);
+        File.SetLastWriteTime(video, new DateTime(2025, 8, 13));
+        var before = DateTime.Now.AddSeconds(-1);
+        var path = await MovieManager.SaveNfoFileAsync(new Movie { Title = "Film" }, root, video, Ct);
+        var added = DateTime.ParseExact(XDocument.Load(path).Root!.Element("dateadded")!.Value,
+            "yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.InRange(added, before, DateTime.Now);
+        await MovieManager.SaveNfoFileAsync(new Movie { Title = "Edited" }, root, video, Ct);
+        Assert.Equal(added.ToString("yyyy-MM-dd HH:mm:ss"), XDocument.Load(path).Root!.Element("dateadded")!.Value);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("<dateadded>invalid</dateadded>")]
+    [InlineData("<dateadded>2024-02-03 12:34:56</dateadded>")]
+    public async Task ExistingNfoUsesCreationDateWhenAddedDateIsMissing(string dateTag)
+    {
+        var path = Path.Combine(root, "Film.nfo");
+        await File.WriteAllTextAsync(path, $"<movie><title>Film</title>{dateTag}</movie>", Ct);
+        if (OperatingSystem.IsWindows()) File.SetCreationTime(path, new DateTime(2026, 11, 4, 8, 45, 33));
+        var created = File.GetCreationTime(path).ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        await MovieManager.SaveNfoFileAsync(new Movie { Title = "Edited" }, root, Path.Combine(root, "Film.mkv"), Ct);
+        Assert.Equal(dateTag.Contains("2024", StringComparison.Ordinal) ? "2024-02-03 12:34:56" : created,
+            XDocument.Load(path).Root!.Element("dateadded")!.Value);
+    }
+
+    [Fact]
     public async Task ArtworkUsesActualFileFormatAndBacksUpPreviousFormat()
     {
         var oldPath = Path.Combine(root, "Film-poster.jpg");

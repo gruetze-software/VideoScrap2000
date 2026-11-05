@@ -19,5 +19,6 @@ public partial class AboutWindow : Window
     private async void OpenProject(object? sender, RoutedEventArgs e) => await OpenAsync("https://github.com/gruetze-software/VideoScrap2000");
     private async void OpenTmdb(object? sender, RoutedEventArgs e) => await OpenAsync("https://www.themoviedb.org/");
     private async void OpenFanart(object? sender, RoutedEventArgs e) => await OpenAsync("https://fanart.tv/");
+    private async void OpenTvmaze(object? sender, RoutedEventArgs e) => await OpenAsync("https://www.tvmaze.com/");
     private void CloseWindow(object? sender, RoutedEventArgs e) => Close();
 }

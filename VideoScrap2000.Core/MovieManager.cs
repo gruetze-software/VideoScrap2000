@@ -420,14 +420,6 @@ namespace MovieScrap2000
     {
       cancellationToken.ThrowIfCancellationRequested();
 
-      // 1. Serialisierung des Movie-Objekts in einen XML-String.
-      string? xmlContent = NfoSerializer.SerializeXml(nfo);
-
-      if (string.IsNullOrEmpty(xmlContent))
-      {
-        throw new InvalidOperationException("NFO-Serialisierung fehlgeschlagen.");
-      }
-
       string videoFileNameWithoutExtension = Path.GetFileNameWithoutExtension(videoFilePath);
       string nfoFileName = $"{videoFileNameWithoutExtension}.nfo";
 
@@ -442,12 +434,21 @@ namespace MovieScrap2000
       // Preserve the NFO selected during import, including Kodi's movie.nfo naming.
       var existingNfo = GetNfoFile(folderPath, videoFilePath);
       nfoFilePath = existingNfo ?? nfoFilePath;
+      var previous = File.Exists(nfoFilePath) ? LoadExistingNfoDocument(nfoFilePath) : null;
+      var storedDate = (string?)previous?.Root?.Element("dateadded") ?? nfo.DateAdded;
+      if (!DateTime.TryParseExact(storedDate, "yyyy-MM-dd HH:mm:ss",
+          System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dateAdded))
+      {
+        dateAdded = previous is null ? DateTime.Now : File.GetCreationTime(nfoFilePath);
+        if (dateAdded.Year < 1900) dateAdded = DateTime.Now;
+      }
+      nfo.DateAdded = dateAdded.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+      var xmlContent = NfoSerializer.SerializeXml(nfo);
       DateTime? creationTimeUtc = null;
-      if (File.Exists(nfoFilePath))
+      if (previous is not null)
       {
         if (OperatingSystem.IsWindows()) creationTimeUtc = File.GetCreationTimeUtc(nfoFilePath);
         // Keep fields from other media managers that our model does not understand.
-        var previous = LoadExistingNfoDocument(nfoFilePath);
         var next = System.Xml.Linq.XDocument.Parse(xmlContent);
         var knownNames = typeof(Movie).GetProperties()
             .SelectMany(p => p.GetCustomAttributes(typeof(XmlElementAttribute), true).Cast<XmlElementAttribute>())

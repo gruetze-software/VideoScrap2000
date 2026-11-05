@@ -18,6 +18,9 @@ public partial class ArtworkWindow : Window
     private readonly int tmdbId;
     private readonly string language;
     private readonly IReadOnlySet<string>? automaticTypes;
+    private readonly int? tvdbId;
+    private readonly int? season;
+    private readonly IReadOnlyList<string> searchTypes;
     private string PreferredLanguage => language.Split('-')[0];
     private bool busy;
     private bool accepting;
@@ -31,27 +34,33 @@ public partial class ArtworkWindow : Window
     public ImageCacheItem? Result { get; private set; }
     public Task LoadingTask { get; private set; } = Task.CompletedTask;
     public ArtworkWindow() : this(0) { }
-    public ArtworkWindow(int tmdbId, string type = ImageTypes.Poster, TMDbScraperManager? scraper = null, string language = "de-DE", IReadOnlySet<string>? automaticTypes = null)
+    public ArtworkWindow(int tmdbId, string type = ImageTypes.Poster, TMDbScraperManager? scraper = null, string language = "de-DE",
+        IReadOnlySet<string>? automaticTypes = null, int? tvdbId = null, int? season = null)
     {
         InitializeComponent();
         this.tmdbId = tmdbId;
         this.language = language;
         this.automaticTypes = automaticTypes;
+        this.tvdbId = tvdbId;
+        this.season = season;
+        searchTypes = tvdbId.HasValue ? SeriesArtworkCatalog.Types(season) : ImageTypes.AllTypes;
         this.scraper = scraper ?? new();
-        ImageType.ItemsSource = new[] { "Alle" }.Concat(ImageTypes.AllTypes).ToArray(); ImageType.SelectedItem = type;
+        ImageType.ItemsSource = new[] { "Alle" }.Concat(searchTypes).ToArray();
+        ImageType.SelectedItem = type == "Alle" || searchTypes.Contains(type) ? type : ImageTypes.Poster;
         Candidates.ItemsSource = candidates;
         Opened += (_, _) => StartLoading();
         ImageType.SelectionChanged += (_, _) => { if (IsVisible && !busy) StartLoading(); };
-        Closed += (_, _) => { lifetime.Cancel(); this.scraper.Dispose(); foreach (var candidate in candidates) candidate.Preview.Dispose(); };
+        Closed += (_, _) => { lifetime.Cancel(); this.scraper.Dispose(); foreach (var candidate in candidates) candidate.Dispose(); };
     }
     private void StartLoading()
     {
-        if (tmdbId > 0 && !busy) LoadingTask = LoadImagesAsync();
+        if ((tmdbId > 0 || tvdbId > 0) && !busy) LoadingTask = LoadImagesAsync();
     }
     private void LoadImages(object? sender, RoutedEventArgs e)
     {
         if (busy) return;
         movieImages = null; fanartDetails = null; fanartLoaded = false; providerError = null;
+        seriesFanart = default;
         StartLoading();
     }
     private async Task LoadImagesAsync()
@@ -62,14 +71,14 @@ public partial class ArtworkWindow : Window
         var loadingToken = loading.Token;
         Results.Clear();
         SetBusy(true);
-        foreach (var candidate in candidates) candidate.Preview.Dispose();
+        foreach (var candidate in candidates) candidate.Dispose();
         candidates.Clear();
         StatusText.Text = T("Artwork wird geladen …");
         try
         {
             if (type == "Alle")
             {
-                foreach (var imageType in ImageTypes.AllTypes)
+                foreach (var imageType in searchTypes)
                 {
                     if (automaticTypes is not null && !automaticTypes.Contains(imageType)) continue;
                     loadingToken.ThrowIfCancellationRequested();
@@ -87,7 +96,7 @@ public partial class ArtworkWindow : Window
                 }
                 if (Results.Count > 0) { loadingToken.ThrowIfCancellationRequested(); IsAccepted = true; Close(); }
                 else if (automaticTypes is not null) Close();
-                else StatusText.Text = T("Keine passenden Bilder gefunden. Du kannst einen einzelnen Bildtyp auswählen oder erneut laden.");
+                else StatusText.Text = T("Keine passenden Bilder gefunden. Du kannst einen einzelnen Bildtyp auswählen oder erneut laden.") + " " + providerError;
                 return;
             }
             var source = await FindSourcesAsync(type, loadingToken);
@@ -106,13 +115,13 @@ public partial class ArtworkWindow : Window
                     var bytes = item.Path is not null ? await scraper.GetImageFromTMDbByteArrayAsync(item.Path, ImageSize.Small, item.Kind, token).WaitAsync(token)
                         : await scraper.GetImageFromFanArtTvByteArrayAsync(item.Url, token).WaitAsync(token);
                     if (bytes is not { Length: > 0 }) return;
-                    var bitmap = await Task.Run(() => ArtworkDecoder.DecodePreview(bytes, 300), token);
-                    if (bitmap is null) return;
+                    var preview = await ArtworkPreviewCache.Shared.AcquireAsync(item.Path ?? item.Url!, 300, bytes, token, retainOriginal: false);
+                    if (preview is null) return;
                     await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        if (token.IsCancellationRequested) { bitmap.Dispose(); return; }
+                        if (token.IsCancellationRequested) { preview.Dispose(); return; }
                         var position = candidates.Count(c => source.IndexOf(c.Source) < source.IndexOf(item));
-                        candidates.Insert(position, new(item, type, bitmap));
+                        candidates.Insert(position, new(item, type, preview.Image) { CachedPreview = preview });
                         StatusText.Text = T($"{candidates.Count} Vorschauen geladen …");
                     });
                 }
@@ -130,6 +139,7 @@ public partial class ArtworkWindow : Window
     }
     private async Task<List<ArtworkSource>> FindSourcesAsync(string type, CancellationToken token)
     {
+        if (tvdbId.HasValue) return await FindSeriesSourcesAsync(type, token);
         movieImages ??= await scraper.GetMovieImagesAsync(tmdbId, token);
         var paths = type switch { ImageTypes.Poster => movieImages.Posters, ImageTypes.Fanart => movieImages.Backdrops, ImageTypes.ClearLogo => movieImages.Logos, _ => null };
         var kind = type switch { ImageTypes.Fanart => MovieScrap2000.TMDbScraper.ImageType.Backdrop, ImageTypes.ClearLogo => MovieScrap2000.TMDbScraper.ImageType.Logo, _ => MovieScrap2000.TMDbScraper.ImageType.Poster };
@@ -217,7 +227,13 @@ public partial class ArtworkWindow : Window
 }
 
 public sealed record ArtworkSource(string? Path, string? Url, ImageType Kind, string Caption, int Priority = 0);
-public sealed record ArtworkCandidate(ArtworkSource Source, string Type, Bitmap Preview)
+public sealed record ArtworkCandidate(ArtworkSource Source, string Type, Bitmap Preview) : IDisposable
 {
     public string Caption => Source.Caption;
+    internal ArtworkPreviewCache.Lease? CachedPreview { get; init; }
+    public void Dispose()
+    {
+        if (CachedPreview is { } preview) preview.Dispose();
+        else Preview.Dispose();
+    }
 }

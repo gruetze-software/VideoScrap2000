@@ -31,10 +31,12 @@ namespace MovieScrap2000.TMDbScraper
 	{
 		private readonly string _apitoken = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI2MzkyNmNlYWVhYTA2ZTVmYmJkY2ZmMDQ3OTQ3OTk4MCIsIm5iZiI6MTU5NDM4NDA1Ni43ODgsInN1YiI6IjVmMDg1ZWI4MWQxYmY0MDAzNjY0ZGY1NyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.Uuxwt16g25bpFYu2UzSvQrtJaYpPQV8DH5U4RbBlJEU";
 		private readonly HttpClient _httpClient;
+        private readonly bool cacheImageDownloads;
 		private TMDbConfig? _config;
 		private readonly FanArtTvScraper.FanArtTvScraper _fanartScraper;
 		public TMDbScraperManager(HttpClient? client = null, FanArtTvScraper.FanArtTvScraper? fanart = null)
 		{
+            cacheImageDownloads = client is null && fanart is null;
             _httpClient = client ?? new HttpClient();
             _fanartScraper = fanart ?? new();
 			_httpClient.DefaultRequestHeaders.Authorization =
@@ -110,6 +112,13 @@ namespace MovieScrap2000.TMDbScraper
 
         public Task<JsonElement> GetSeriesArtworkAsync(int tmdbId, int tvdbId, CancellationToken token) =>
             _fanartScraper.GetSeriesArtworkAsync(tmdbId, tvdbId, token);
+
+        public async Task<MovieScrap2000.TMDbScraper.TMDbScraper.TMDbImages> GetSeriesImagesAsync(int id, int? season, CancellationToken token)
+        {
+            var path = season.HasValue ? $"tv/{id}/season/{season.Value}/images" : $"tv/{id}/images";
+            var json = await GetSeriesJsonAsync(path, token);
+            return json.Deserialize<MovieScrap2000.TMDbScraper.TMDbScraper.TMDbImages>() ?? new();
+        }
 
         private async Task<JsonElement> GetSeriesJsonAsync(string path, CancellationToken token)
         {
@@ -356,9 +365,11 @@ namespace MovieScrap2000.TMDbScraper
 
       try
       {
+        if (cacheImageDownloads && ImageDownloadCache.TryGet(url, out var cached)) return cached;
         // 3. Bilddaten asynchron als Byte-Array herunterladen
         // HttpClient.GetByteArrayAsync ist ideal für Binärdaten wie Bilder.
         byte[] imageBytes = await client.GetByteArrayAsync(url, cancellationToken);
+        if (cacheImageDownloads) ImageDownloadCache.Store(url, imageBytes);
         return imageBytes;
       }
       catch (HttpRequestException ex)

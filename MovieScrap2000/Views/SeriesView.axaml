@@ -25,13 +25,19 @@
       <TextBlock Text="{DynamicResource L9290FD1CF9E4}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
     </Border>
     <Border Grid.Column="2" Classes="card" Padding="16" IsVisible="{Binding !!SelectedShow}" ClipToBounds="True">
-      <Grid RowDefinitions="Auto,*">
-        <Border Grid.RowSpan="2" Margin="-16" IsVisible="{Binding UseFanartBackground}" IsHitTestVisible="False">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <Border Grid.RowSpan="3" Margin="-16" IsVisible="{Binding UseFanartBackground}" IsHitTestVisible="False">
           <views:MoviePosterThumbnail DataContext="{Binding BackgroundPreview}" DecodeWidth="960"
                                       Stretch="UniformToFill" Opacity="0.20"/>
         </Border>
         <TextBlock Text="{Binding ShowEditor.Title}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap" Margin="4,0,4,10"/>
-        <TabControl Grid.Row="1" x:Name="SeriesDetailTabs" Classes="seriesTabs">
+        <Border Grid.Row="1" IsVisible="{Binding !!SeasonBannerPreview}" CornerRadius="6"
+                ClipToBounds="True" Margin="4,0,4,12" MaxHeight="160">
+          <views:MoviePosterThumbnail x:Name="SeasonBanner" DataContext="{Binding SeasonBannerPreview}"
+                                      DecodeWidth="1800" AspectRatio="5.4" MaxHeight="160" Stretch="Uniform"
+                                      DoubleTapped="OpenPicture" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
+        </Border>
+        <TabControl Grid.Row="2" x:Name="SeriesDetailTabs" Classes="seriesTabs">
           <TabControl.Styles>
             <Style Selector="TabItem">
               <Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/>
@@ -49,11 +55,15 @@
                 <StackPanel Margin="8,6,12,12" Spacing="2">
                   <Grid ColumnDefinitions="*,12,*"><StackPanel Grid.Column="0"><TextBlock Text="{DynamicResource L652095EFC4C7}" Classes="label"/><TextBox Text="{Binding ShowEditor.Title}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource LD92244697AF0}" Classes="label"/><TextBox Text="{Binding ShowEditor.OriginalTitle}"/></StackPanel></Grid>
                   <Grid ColumnDefinitions="*,12,*"><StackPanel Grid.Column="0"><TextBlock Text="{DynamicResource L7662F7DDB9D6}" Classes="label"/><TextBox Text="{Binding ShowEditor.Date}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L4C0188E41ECD}" Classes="label"/><TextBox Text="{Binding ShowEditor.Status}"/></StackPanel></Grid>
-                  <Grid ColumnDefinitions="*,12,*,12,*"><StackPanel Grid.Column="0"><TextBlock Text="{DynamicResource L6AAA60B94AF9}" Classes="label"/><TextBox Text="{Binding ShowEditor.ImdbId}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L9A9E55D41F32}" Classes="label"/><TextBox Text="{Binding ShowEditor.TmdbId}"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource L63530CEB12E6}" Classes="label"/><TextBox Text="{Binding ShowEditor.TvdbId}"/></StackPanel></Grid>
-                  <Grid ColumnDefinitions="*,12,*,12,*">
-                    <StackPanel><TextBlock Text="{DynamicResource LEE1AD0C07BF2}" Classes="label"/><TextBox Text="{Binding ShowEditor.Certification}"/></StackPanel>
-                    <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L3561ABFE8067}" Classes="label"/><TextBox Text="{Binding ShowEditor.Genres}"/></StackPanel>
-                    <StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource L9564EAD4C35A}" Classes="label"/><TextBox Text="{Binding ShowEditor.Studios}"/></StackPanel>
+                  <Grid ColumnDefinitions="*,12,*,12,*,12,*">
+                    <StackPanel><TextBlock Text="{DynamicResource L6AAA60B94AF9}" Classes="label"/><TextBox Text="{Binding ShowEditor.ImdbId}"/></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L9A9E55D41F32}" Classes="label"/><TextBox Text="{Binding ShowEditor.TmdbId}"/></StackPanel>
+                    <StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource L63530CEB12E6}" Classes="label"/><TextBox Text="{Binding ShowEditor.TvdbId}"/></StackPanel>
+                    <StackPanel Grid.Column="6"><TextBlock Text="{DynamicResource LEE1AD0C07BF2}" Classes="label"/><TextBox Text="{Binding ShowEditor.Certification}"/></StackPanel>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,12,*">
+                    <StackPanel><TextBlock Text="{DynamicResource L3561ABFE8067}" Classes="label"/><TextBox Text="{Binding ShowEditor.Genres}"/></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L9564EAD4C35A}" Classes="label"/><TextBox Text="{Binding ShowEditor.Studios}"/></StackPanel>
                   </Grid>
                   <Grid ColumnDefinitions="*,12,*">
                     <StackPanel><TextBlock Text="{DynamicResource L0DB6193FEC07}" Classes="label"/><TextBox Text="{Binding ShowEditor.Countries}"/></StackPanel>
@@ -91,7 +101,7 @@
                         <DataTemplate x:DataType="vm:ActorEditor">
                           <Grid ColumnDefinitions="2*,2*,72,28" Margin="8,3" Background="Transparent" DoubleTapped="OpenActorPicture">
                             <Grid.ContextMenu><ContextMenu><MenuItem Header="{DynamicResource L84E45EE73411}" Click="EditActor"/></ContextMenu></Grid.ContextMenu>
-                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Name}" Classes.actorWithoutPicture="{Binding HasNoPicture}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Text="{Binding Role}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Role}" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="2" Text="{Binding TmdbId}" Classes="secondary" VerticalAlignment="Center"/>
                             <Button Grid.Column="3" Content="×" Click="RemoveActor" Padding="0" Width="24" Height="24" Background="Transparent" ToolTip.Tip="{DynamicResource L3828375A2D45}"/>
@@ -111,25 +121,14 @@
             </Grid>
           </TabItem>
           <TabItem Header="{DynamicResource LF859BE901B60}">
-            <Grid ColumnDefinitions="200,12,*" RowDefinitions="Auto,*" Margin="6,8,0,0">
-              <Grid Grid.Column="2" ColumnDefinitions="Auto,*">
-                <Border IsVisible="{Binding !!SeasonPosterPreview}" Width="84" Height="126" CornerRadius="6" ClipToBounds="True" Margin="0,0,10,10">
-                  <views:MoviePosterThumbnail DataContext="{Binding SeasonPosterPreview}" DecodeWidth="200" Stretch="UniformToFill"
-                                              DoubleTapped="OpenPicture" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
-                </Border>
-                <Border Grid.Column="1" IsVisible="{Binding !!SeasonBannerPreview}" CornerRadius="6" ClipToBounds="True" Margin="0,0,0,10">
-                  <views:MoviePosterThumbnail x:Name="SeasonBanner" DataContext="{Binding SeasonBannerPreview}" DecodeWidth="1200"
-                                              AspectRatio="5.4" MaxHeight="126" Stretch="UniformToFill" DoubleTapped="OpenPicture"
-                                              ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
-                </Border>
-              </Grid>
-              <Grid Grid.RowSpan="2" RowDefinitions="Auto,*,Auto">
+            <Grid ColumnDefinitions="200,12,*" Margin="6,8,0,0">
+              <Grid RowDefinitions="Auto,*,Auto">
                 <StackPanel Spacing="8">
                   <ComboBox ItemsSource="{Binding Seasons}" SelectedItem="{Binding SelectedSeason}" HorizontalAlignment="Stretch">
                     <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:SeriesSeason"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
                   </ComboBox>
                 </StackPanel>
-                <ListBox Grid.Row="1" ItemsSource="{Binding Episodes}" SelectedItem="{Binding SelectedEpisode}" Margin="0,8">
+                <ListBox x:Name="EpisodeList" Grid.Row="1" ItemsSource="{Binding Episodes}" SelectedItem="{Binding SelectedEpisode}" Margin="0,8">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:SeriesEpisodeRow">
                       <StackPanel Spacing="4">
@@ -142,14 +141,27 @@
                 <StackPanel Grid.Row="2" Spacing="6">
                   <Button Content="{DynamicResource L863E9B2AE2F8}" Click="AddEpisode" HorizontalAlignment="Stretch"/>
                   <Button Content="{DynamicResource L9F5078A12895}" Command="{Binding FindAllEpisodesCommand}" HorizontalAlignment="Stretch"/>
-                  <Button Content="{DynamicResource L0B5BA09D4A66}" Command="{Binding SaveEpisodeUpdatesCommand}"
-                          IsVisible="{Binding HasPendingEpisodeUpdates}" Classes="primary" HorizontalAlignment="Stretch"/>
                 </StackPanel>
               </Grid>
-              <TextBlock x:Name="EpisodeEmptyHint" Grid.Row="1" Grid.Column="2" Text="{DynamicResource L45C35309501C}" IsVisible="{Binding !HasSelectedEpisode}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-              <Grid Grid.Row="1" Grid.Column="2" RowDefinitions="*,Auto" IsVisible="{Binding HasSelectedEpisode}">
+              <TextBlock x:Name="EpisodeEmptyHint" Grid.Column="2" Text="{DynamicResource L45C35309501C}" IsVisible="{Binding !HasSelectedEpisode}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+              <Grid Grid.Column="2" RowDefinitions="*,Auto" IsVisible="{Binding HasSelectedEpisode}">
                 <ScrollViewer>
                   <StackPanel Margin="0,0,8,12" Spacing="2">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,8">
+                      <Border IsVisible="{Binding !!SeasonPosterPreview}" Width="120" Height="180"
+                              CornerRadius="6" ClipToBounds="True" Margin="0,0,12,0" VerticalAlignment="Top">
+                        <views:MoviePosterThumbnail x:Name="EpisodeSeasonPoster" DataContext="{Binding SeasonPosterPreview}"
+                                                    DecodeWidth="360" Stretch="Uniform" DoubleTapped="OpenPicture"
+                                                    ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
+                      </Border>
+                      <Border Grid.Column="1" IsVisible="{Binding !!EpisodePicture}" Height="180"
+                              CornerRadius="6" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <views:MoviePosterThumbnail x:Name="EpisodeStill" DataContext="{Binding EpisodePicture}"
+                                                    DecodeWidth="720" Height="180" HorizontalAlignment="Left"
+                                                    Stretch="Uniform" DoubleTapped="OpenPicture"
+                                                    ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
+                      </Border>
+                    </Grid>
                     <Grid ColumnDefinitions="3*,12,*,12,*">
                       <StackPanel><TextBlock Text="{DynamicResource L5998202DB544}" Classes="label"/><TextBox Text="{Binding EpisodeEditor.Title}"/></StackPanel>
                       <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource LCFFE8F197E4B}" Classes="label"/><TextBox Text="{Binding EpisodeEditor.Season}"/></StackPanel>
@@ -160,8 +172,10 @@
                       <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L239B620FD67A}" Classes="label"/><TextBox Text="{Binding EpisodeEditor.Runtime}"/></StackPanel>
                       <StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource L9A9E55D41F32}" Classes="label"/><TextBox Text="{Binding EpisodeEditor.TmdbId}"/></StackPanel>
                     </Grid>
-                    <StackPanel><TextBlock Text="{DynamicResource L98C628646F7C}" Classes="label"/><TextBox Text="{Binding EpisodeEditor.Directors}"/></StackPanel>
-                    <StackPanel><TextBlock Text="{DynamicResource L86D105545374}" Classes="label"/><TextBox Text="{Binding EpisodeEditor.Writers}"/></StackPanel>
+                    <Grid ColumnDefinitions="*,12,*">
+                      <StackPanel><TextBlock Text="{DynamicResource L98C628646F7C}" Classes="label"/><TextBox Text="{Binding EpisodeEditor.Directors}"/></StackPanel>
+                      <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L86D105545374}" Classes="label"/><TextBox Text="{Binding EpisodeEditor.Writers}"/></StackPanel>
+                    </Grid>
                     <TextBlock Text="{DynamicResource L5C9FECD4DF0A}" Classes="label"/>
                     <TextBox Text="{Binding EpisodeEditor.Plot}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="100"/>
                     <TextBlock Text="{Binding SelectedEpisode.Episode.VideoPath}" Classes="secondary" TextWrapping="Wrap" FontSize="11" Margin="0,8,0,0"/>
@@ -175,13 +189,27 @@
             </Grid>
           </TabItem>
           <TabItem Header="{DynamicResource LD5FBB86ADD39}">
-            <Grid RowDefinitions="*,Auto" Margin="6,8,0,0">
-              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl ItemsSource="{Binding ArtworkTiles}">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
+            <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="6,8,0,0">
+              <WrapPanel Margin="0,0,0,12">
+                <ComboBox ItemsSource="{Binding Seasons}" SelectedItem="{Binding SelectedSeason}" MinWidth="160" Margin="0,0,8,0" VerticalAlignment="Center">
+                  <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:SeriesSeason"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+                <ComboBox ItemsSource="{Binding SeriesArtworkTypes}" SelectedItem="{Binding ArtworkSearchType}" MinWidth="150" Margin="0,0,8,0" VerticalAlignment="Center">
+                  <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding ., Converter={StaticResource Translate}}"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Content="{DynamicResource L38B0391AE790}" Click="SearchArtwork" VerticalAlignment="Center"/>
+              </WrapPanel>
+              <TextBlock Grid.Row="1" Text="{Binding ArtworkSourceWarning}" TextWrapping="Wrap" Classes="secondary" Margin="0,0,0,8"/>
+              <ListBox Grid.Row="2" x:Name="SeriesArtworkList" ItemsSource="{Binding ArtworkTiles}" SelectedItem="{Binding SelectedSeriesArtwork}"
+                       Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  <ListBox.Styles>
+                    <Style Selector="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,8,8"/><Setter Property="Background" Value="Transparent"/></Style>
+                    <Style Selector="ListBoxItem:selected Border.card"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="BorderThickness" Value="3"/></Style>
+                  </ListBox.Styles>
+                  <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                  <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:SeriesArtworkTile">
-                      <Border Classes="card" Width="200" Padding="8" Margin="0,0,8,8">
+                      <Border Classes="card" Width="200" Padding="8">
                         <StackPanel Spacing="6">
                           <views:MoviePosterThumbnail DataContext="{Binding Picture}" DecodeWidth="400" Height="112"
                                                       Stretch="Uniform" DoubleTapped="OpenPicture" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
@@ -189,11 +217,9 @@
                         </StackPanel>
                       </Border>
                     </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
-              <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,8,0,0">
-                <Button Content="{DynamicResource L38B0391AE790}" Command="{Binding SearchArtworkCommand}"/>
+                  </ListBox.ItemTemplate>
+              </ListBox>
+              <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,8,0,0">
                 <Button Content="{DynamicResource L6C86B99088D0}" Command="{Binding SaveShowCommand}" Classes="primary"/>
               </StackPanel>
             </Grid>

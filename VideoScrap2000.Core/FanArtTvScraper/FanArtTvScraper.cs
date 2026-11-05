@@ -56,7 +56,8 @@ namespace MovieScrap2000.FanArtTvScraper
     {
       using var request = CreateRequest(url);
       using var response = await Client.SendAsync(request, token);
-      if (!response.IsSuccessStatusCode) return default;
+      if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return default;
+      response.EnsureSuccessStatusCode();
       return JsonSerializer.Deserialize<JsonElement>(await response.Content.ReadAsStringAsync(token));
     }
 

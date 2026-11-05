@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="VideoScrap2000.Views.OutlinePromptWindow"
+        Icon="/Assets/videoscrap-2000.png" Width="720" Height="520" MinWidth="520" MinHeight="380"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Grid Margin="24" RowDefinitions="Auto,*,Auto,Auto">
+    <TextBlock x:Name="Instructions" TextWrapping="Wrap" Margin="0,0,0,16"/>
+    <TextBox Grid.Row="1" x:Name="PromptText" AcceptsReturn="True" TextWrapping="Wrap"
+             VerticalContentAlignment="Top" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+    <TextBlock Grid.Row="2" x:Name="CopyStatus" Classes="secondary" TextWrapping="Wrap" Margin="0,12"/>
+    <WrapPanel Grid.Row="3" HorizontalAlignment="Right">
+      <Button x:Name="CopyButton" Click="CopyPrompt" Margin="0,0,8,0"/>
+      <Button x:Name="ChatGptButton" Content="ChatGPT ↗" Click="OpenChatGpt" Margin="0,0,8,0" Classes="primary"/>
+      <Button x:Name="CloseButton" Click="CloseWindow" IsCancel="True"/>
+    </WrapPanel>
+  </Grid>
+</Window>

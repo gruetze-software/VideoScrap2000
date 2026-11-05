@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Avalonia.Media.Imaging;
 using MovieScrap2000;
 using VideoScrap2000.Localization;
+using VideoScrap2000.Views;
 
 namespace VideoScrap2000.ViewModels;
 
@@ -18,6 +19,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private int selectionVersion;
     private CancellationTokenSource? imageLoading;
     internal Task ArtworkLoadingTask { get; private set; } = Task.CompletedTask;
+    internal Task TechnicalDetailsLoadingTask { get; private set; } = Task.CompletedTask;
     private CancellationTokenSource? factsLoading;
     public ObservableCollection<MovieViewModel> Movies { get; } = [];
     public SeriesViewModel Series { get; }
@@ -30,7 +32,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (value is not null) ArtworkType = value.Type;
     }
     public Action<string>? ThemeRequested { get; set; }
-    public string Version => typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.2.0";
+    public string Version => typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.3.0";
     [ObservableProperty] private string libraryPath;
     [ObservableProperty] private string seriesPath;
     [ObservableProperty] private bool isImagesLoading;
@@ -49,11 +51,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int movieSortIndex;
     partial void OnMovieSortIndexChanged(int value) => Filter();
     [ObservableProperty] private MovieViewModel? selectedMovie;
-    [ObservableProperty] private bool isBusy;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGenerateOutline))]
+    private bool isBusy;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
     private bool isInitializing;
-    [ObservableProperty] private bool isDetailReady;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGenerateOutline))]
+    private bool isDetailReady;
     [ObservableProperty] private string status = "Bereit. Wähle deinen Filmordner aus.";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsProgressIndeterminate))]
@@ -63,7 +69,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string originalTitle = "";
     [ObservableProperty] private string year = "";
     [ObservableProperty] private string genres = "";
-    [ObservableProperty] private string plot = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGenerateOutline))]
+    private string plot = "";
     [ObservableProperty] private string tagline = "";
     [ObservableProperty] private string imdb = "";
     [ObservableProperty] private string directors = "";
@@ -79,6 +87,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ? "Wähle deinen Filmordner und lies deine Sammlung ein. Vorhandene NFOs und Bilder bleiben beim Einlesen unverändert."
         : "Ändere deinen Suchbegriff, um weitere Filme aus deiner Sammlung zu sehen.");
     public bool CanEdit => IsDetailReady && !IsBusy;
+    public bool CanGenerateOutline => CanEdit && !string.IsNullOrWhiteSpace(Plot);
     public string SelectionPath => SelectedMovie?.VideoFilePath ?? "";
 
     public MainViewModel(DatabaseManager? database = null, AppSettings? settings = null)
@@ -296,25 +305,28 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Directors = nfo.DisplayDirectors ?? "";
             LoadExtendedMetadata(nfo);
             IsDetailReady = true;
-            var paths = await Task.Run(() => FindArtwork(movie).ToList(), token);
+            var technicalDetailsTask = LoadTechnicalDetailsAsync(movie, nfo, version, token);
+            TechnicalDetailsLoadingTask = technicalDetailsTask;
+            var paths = await ArtworkPreviewCache.Shared.FindArtworkAsync(movie.FolderPath, movie.VideoFilePath, token);
             if (version != selectionVersion) return;
             foreach (var item in paths)
             {
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    var bitmap = await Task.Run(() =>
-                    {
-                        using var stream = File.OpenRead(item.Path);
-                        return Bitmap.DecodeToWidth(stream, ArtworkPreviewWidth(item.Type));
-                    }, token);
-                    if (token.IsCancellationRequested || version != selectionVersion) { bitmap.Dispose(); return; }
-                    Artwork.Add(new(item.Type, item.Path, bitmap));
+                    var preview = await ArtworkPreviewCache.Shared.AcquireAsync(item.Path, ArtworkPreviewWidth(item.Type), token: token);
+                    if (preview is null) continue;
+                    if (token.IsCancellationRequested || version != selectionVersion) { preview.Dispose(); return; }
+                    var bitmap = preview.Image;
+                    Artwork.Add(new(item.Type, item.Path, bitmap) { CachedPreview = preview });
                     if (item.Type == ImageTypes.Poster) Poster = bitmap;
                     if (item.Type == ImageTypes.Fanart) FanartBackground = bitmap;
                 }
                 catch (Exception ex) when (ex is IOException or ArgumentException or NotSupportedException) { Status = $"Bild nicht lesbar: {Path.GetFileName(item.Path)}"; }
             }
+            IsImagesLoading = false;
+            await technicalDetailsTask;
+            if (version != selectionVersion) return;
             IsDetailReady = true;
         }
         catch (OperationCanceledException) { }
@@ -371,6 +383,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         settings.Save();
         Status = "Filmsammlung wird eingelesen …";
         await Task.Run(() => scanner.ScanDirectoryAsync(LibraryPath, token), token);
+        ArtworkPreviewCache.Shared.RefreshFileState();
         await ReloadAsync(token);
         Status = scanner.ScanErrors == 0 ? $"Scan abgeschlossen. {allMovies.Count} Filme in deiner Sammlung."
             : $"Scan beendet: {allMovies.Count} Filme, {scanner.ScanErrors} Fehler. Prüfe die betroffenen Ordner.";
@@ -385,12 +398,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
             : "Metadaten werden gespeichert …";
         var movie = SelectedMovie!;
         var nfo = movie.FullMovieNFO!;
+        await TechnicalDetailsLoadingTask.WaitAsync(token);
+        if (!TechnicalMediaReader.HasVideoDetails(nfo.FileInfo))
+        {
+            var info = await TechnicalMediaReader.ReadAsync(movie.VideoFilePath, token);
+            if (info is not null) nfo.FileInfo = info;
+        }
         ApplyExtendedMetadata(nfo);
         nfo.Title = Title; nfo.OriginalTitle = OriginalTitle; nfo.Year = Year;
         nfo.Plot = Plot; nfo.Tagline = Tagline; nfo.Id = Imdb;
         nfo.Genres = Split(Genres).Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
         nfo.Directors = Split(Directors);
-        await Task.Run(() => metadata.SaveMovieAsync(nfo, movie.FolderPath, movie.VideoFilePath, false, token), token);
+        var artworkChanged = Artwork.Any(image => image.PendingData is not null);
+        try { await Task.Run(() => metadata.SaveMovieAsync(nfo, movie.FolderPath, movie.VideoFilePath, false, token), token); }
+        finally { if (artworkChanged) ArtworkPreviewCache.Shared.InvalidateFolder(movie.FolderPath); }
         await RefreshSavedMovieAsync(movie.Id);
         Status = "Metadaten gespeichert. Die vorherige NFO wurde als .bak gesichert.";
     });
@@ -472,7 +493,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         imageLoading?.Cancel(); selectionVersion++;
         factsLoading?.Cancel();
         actorLoading?.Cancel(); actorVersion++;
-        ActorPhoto?.Dispose(); ActorPhoto = null;
+        actorPhotoLease?.Dispose(); actorPhotoLease = null; ActorPhoto = null;
         FanartBackground = null;
         foreach (var image in Artwork) image.Dispose();
         metadata.Dispose();
@@ -481,6 +502,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
 public sealed record ArtworkViewModel(string Type, string Path, Bitmap Image, byte[]? PendingData = null) : IDisposable
 {
+    internal ArtworkPreviewCache.Lease? CachedPreview { get; init; }
     public async Task<string> GetOpenPathAsync()
     {
         if (PendingData is null) return Path;
@@ -491,5 +513,9 @@ public sealed record ArtworkViewModel(string Type, string Path, Bitmap Image, by
         await File.WriteAllBytesAsync(path, PendingData);
         return path;
     }
-    public void Dispose() => Image.Dispose();
+    public void Dispose()
+    {
+        if (CachedPreview is { } preview) preview.Dispose();
+        else Image.Dispose();
+    }
 }

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Avalonia.Media.Imaging;
 using MovieScrap2000;
+using VideoScrap2000.Views;
 
 namespace VideoScrap2000.ViewModels;
 
@@ -31,6 +32,7 @@ public partial class MainViewModel
     private CancellationTokenSource? actorLoading;
     private int actorVersion;
     private Task actorPhotoTask = Task.CompletedTask;
+    private ArtworkPreviewCache.Lease? actorPhotoLease;
 
     public bool HasSelectedActor => SelectedActor is not null;
     partial void OnSelectedActorChanged(ActorEditor? value)
@@ -49,14 +51,14 @@ public partial class MainViewModel
         if (!CanEdit) return;
         var index = Actors.IndexOf(actor);
         if (index < 0) return;
-        SelectedActors.Remove(actor); Actors.Remove(actor);
-        if (SelectedActors.Count == 0 && Actors.Count > 0) SelectedActors.Add(Actors[Math.Min(index, Actors.Count - 1)]);
+        SelectedActors.Clear(); Actors.Remove(actor);
+        if (Actors.Count > 0) SelectedActors.Add(Actors[Math.Min(index, Actors.Count - 1)]);
     }
     [RelayCommand(CanExecute = nameof(CanRemoveActors))] private void RemoveActor()
     {
         if (!CanRemoveActors()) return;
         var selected = SelectedActors.ToArray();
-        var next = selected.Length > 0 ? Actors.IndexOf(selected[0]) : 0;
+        var next = selected.Min(Actors.IndexOf);
         SelectedActors.Clear();
         foreach (var actor in selected) Actors.Remove(actor);
         if (Actors.Count > 0) SelectedActors.Add(Actors[Math.Clamp(next, 0, Actors.Count - 1)]);
@@ -135,7 +137,7 @@ public partial class MainViewModel
     private async Task LoadActorPhotoAsync(ActorEditor? actor)
     {
         actorLoading?.Cancel(); var version = ++actorVersion;
-        ActorPhoto?.Dispose(); ActorPhoto = null; IsActorPhotoLoading = actor is not null;
+        actorPhotoLease?.Dispose(); actorPhotoLease = null; ActorPhoto = null; IsActorPhotoLoading = actor is not null;
         if (actor is null) { actorLoading = null; return; }
         using var cts = new CancellationTokenSource(); actorLoading = cts;
         var folder = SelectedMovie?.FolderPath;
@@ -156,13 +158,40 @@ public partial class MainViewModel
             if (bytes is not { Length: > 0 } && Uri.TryCreate(actor.Thumb, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http")
                 bytes = await metadata.DownloadImageAsync(uri.AbsoluteUri, cts.Token);
             if (bytes is not { Length: > 0 }) return;
-            var picture = await Task.Run(() => { using var stream = new MemoryStream(bytes); return Bitmap.DecodeToWidth(stream, 240); }, cts.Token);
-            if (version != actorVersion || cts.IsCancellationRequested) picture.Dispose();
-            else { actor.ThumbData = bytes; ActorPhoto = picture; }
+            var preview = await ArtworkPreviewCache.Shared.AcquireAsync(actor.Thumb.Length > 0 ? actor.Thumb : $"actor:{actor.Name}",
+                240, bytes, cts.Token, retainOriginal: false);
+            if (version != actorVersion || cts.IsCancellationRequested) preview?.Dispose();
+            else { actor.ThumbData = bytes; actorPhotoLease = preview; ActorPhoto = preview?.Image; }
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) { if (version == actorVersion) Status = $"Darstellerbild konnte nicht geladen werden: {ex.Message}"; }
         finally { if (version == actorVersion) { IsActorPhotoLoading = false; actorLoading = null; } }
+    }
+
+    private async Task LoadTechnicalDetailsAsync(MovieViewModel movie, Movie nfo, int version, CancellationToken token)
+    {
+        if (TechnicalMediaReader.HasVideoDetails(nfo.FileInfo)) return;
+        TechnicalDetails = Localization.Locale.T("Technische Mediendaten werden gelesen …");
+        try
+        {
+            var info = await TechnicalMediaReader.ReadAsync(movie.VideoFilePath, token);
+            if (version != selectionVersion || token.IsCancellationRequested) return;
+            if (info is not null)
+            {
+                nfo.FileInfo = info;
+                if (string.IsNullOrWhiteSpace(Runtime) && info.StreamDetails.VideoStream.DurationInSeconds > 0)
+                    Runtime = Math.Ceiling(info.StreamDetails.VideoStream.DurationInSeconds / 60d).ToString(CultureInfo.InvariantCulture);
+                TechnicalDetails = Localization.Locale.T(DescribeStreams(info));
+            }
+            else TechnicalDetails = Localization.Locale.T("Technische Mediendaten konnten nicht gelesen werden.");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine(ex);
+            if (version == selectionVersion)
+                TechnicalDetails = Localization.Locale.T("Technische Mediendaten konnten nicht gelesen werden.");
+        }
     }
 
     private static string DescribeStreams(MovieFileInfo? info)
@@ -181,10 +210,15 @@ public partial class MainViewModel
 public partial class ActorEditor : ObservableObject
 {
     public int Id { get; set; }
-    public byte[]? ThumbData { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNoPicture))]
+    private byte[]? thumbData;
     [ObservableProperty] private string name = "";
     [ObservableProperty] private string role = "";
-    [ObservableProperty] private string thumb = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNoPicture))]
+    private string thumb = "";
+    public bool HasNoPicture => string.IsNullOrWhiteSpace(Thumb) && ThumbData is not { Length: > 0 };
     [ObservableProperty] private int order;
     [ObservableProperty] private int? tmdbId;
     public static ActorEditor From(Actor actor) => new() { Id = actor.Id, Name = actor.Name, Role = actor.Role ?? "", Thumb = actor.Thumb ?? "", Order = actor.Order, TmdbId = actor.TmdbId, ThumbData = actor.ThumbData };

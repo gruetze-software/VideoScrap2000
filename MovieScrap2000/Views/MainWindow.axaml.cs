@@ -101,7 +101,9 @@ public partial class MainWindow : Window
     {
         if (e.Key == Avalonia.Input.Key.Delete && model.RemoveActorCommand.CanExecute(null))
         {
-            model.RemoveActorCommand.Execute(null); e.Handled = true;
+            model.RemoveActorCommand.Execute(null);
+            ListSelection.FocusSelectedItem(ActorList);
+            e.Handled = true;
         }
         else if (e.Key == Avalonia.Input.Key.F2 && model.CanEdit && model.SelectedActors.Count == 1)
         {
@@ -110,7 +112,11 @@ public partial class MainWindow : Window
     }
     private void RemoveActorEntry(object? sender, RoutedEventArgs e)
     {
-        if ((sender as Control)?.DataContext is ActorEditor actor) model.RemoveActorEntry(actor);
+        if ((sender as Control)?.DataContext is ActorEditor actor)
+        {
+            model.RemoveActorEntry(actor);
+            ListSelection.FocusSelectedItem(ActorList);
+        }
         e.Handled = true;
     }
     private async void AddActorEntry(object? sender, RoutedEventArgs e)
@@ -227,23 +233,27 @@ public partial class MainWindow : Window
 
         const int maxLength = 239;
         var instruction = model.MetadataLanguage.StartsWith("de", StringComparison.OrdinalIgnoreCase)
-            ? $"Fasse die folgende Filmhandlung spoilerfrei auf Deutsch in höchstens {maxLength} Zeichen inklusive Leerzeichen zusammen. Verwende nur Informationen aus der Handlung. Gib nur den Kurzinhalt aus."
-            : $"Summarize the following movie plot in English in at most {maxLength} characters including spaces. Avoid spoilers and use only facts from the plot. Return only the outline.";
+            ? $"Fasse die folgende Filmhandlung spoilerfrei auf Deutsch in höchstens {maxLength} Zeichen inklusive Leerzeichen zusammen. Verwende nur Informationen aus der Handlung. Gib nur die Kurzbeschreibung aus."
+            : $"Summarize the following movie plot in English in at most {maxLength} characters including spaces. Avoid spoilers and use only facts from the plot. Return only the plot outline.";
 
-        if (Clipboard is not { } clipboard) return;
-        try { await clipboard.SetTextAsync($"{instruction}\n\n{plot}"); }
-        catch (Exception)
+        await new OutlinePromptWindow($"{instruction}\n\n{plot}").ShowDialog(this);
+    }
+
+    private async void OpenVideoFile(object? sender, RoutedEventArgs e)
+    {
+        var path = model.SelectedMovie?.VideoFilePath;
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try
         {
-            model.Status = "Der Prompt konnte nicht in die Zwischenablage kopiert werden.";
-            return;
+            var file = await StorageProvider.TryGetFileFromPathAsync(path);
+            if (file is null || !await Launcher.LaunchFileAsync(file))
+                model.Status = "Die Videodatei konnte nicht mit der Standardanwendung geöffnet werden.";
         }
-
-        var opened = false;
-        try { opened = await Launcher.LaunchUriAsync(new Uri("https://chatgpt.com/")); }
-        catch (Exception ex) { System.Diagnostics.Trace.WriteLine(ex); }
-        model.Status = opened
-            ? "Prompt kopiert. Füge ihn im Browser in ChatGPT ein."
-            : "Prompt kopiert. ChatGPT konnte nicht im Browser geöffnet werden.";
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine(ex);
+            model.Status = "Die Videodatei konnte nicht mit der Standardanwendung geöffnet werden.";
+        }
     }
 
     private async void ShowScrape(object? sender, RoutedEventArgs e)

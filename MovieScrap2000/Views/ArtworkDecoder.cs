@@ -12,7 +12,10 @@ internal static class ArtworkDecoder
         using var codec = SKCodec.Create(input);
         if (codec is null) return null;
 
-        using var decoded = SKBitmap.Decode(codec);
+        var scale = Math.Min(1f, (float)width / codec.Info.Width);
+        var dimensions = codec.GetScaledDimensions(scale);
+        using var decoded = SKBitmap.Decode(codec, new SKImageInfo(dimensions.Width, dimensions.Height,
+            SKColorType.Bgra8888, SKAlphaType.Premul));
         if (decoded is null) return null;
         using var image = SKImage.FromBitmap(decoded);
         using var png = image.Encode(SKEncodedImageFormat.Png, 100);

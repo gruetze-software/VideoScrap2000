@@ -16,6 +16,18 @@ public partial class SeriesView : UserControl
 {
     public SeriesView() => InitializeComponent();
 
+    private async void SearchArtwork(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SeriesViewModel { SelectedShow: { } show } model
+            || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var season = model.SelectedSeason?.Number;
+        var dialog = model.CreateArtworkSearch();
+        if (dialog is null) return;
+        await dialog.ShowDialog(owner);
+        if (dialog.IsAccepted && ReferenceEquals(show, model.SelectedShow))
+            model.StageSeriesArtwork(dialog.Results, season);
+    }
+
     private async void AddEpisode(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not SeriesViewModel { SelectedShow: { } show } model || TopLevel.GetTopLevel(this) is not { } owner) return;
@@ -104,7 +116,14 @@ public partial class SeriesView : UserControl
     private void RemoveActor(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SeriesViewModel { ShowEditor: { } editor } && (sender as Control)?.DataContext is ActorEditor actor)
+        {
+            var index = editor.Actors.IndexOf(actor);
+            if (index < 0) return;
+            SeriesCast.SelectedItems?.Clear();
             editor.Actors.Remove(actor);
+            SeriesCast.SelectedIndex = Math.Min(index, editor.Actors.Count - 1);
+            ListSelection.FocusSelectedItem(SeriesCast);
+        }
         e.Handled = true;
     }
 
@@ -112,9 +131,13 @@ public partial class SeriesView : UserControl
     {
         if (DataContext is not SeriesViewModel { ShowEditor: { } editor }) return;
         var selected = SeriesCast.SelectedItems?.OfType<ActorEditor>().ToArray() ?? [];
-        if (e.Key == Key.Delete)
+        if (e.Key == Key.Delete && selected.Length > 0)
         {
+            var index = selected.Min(editor.Actors.IndexOf);
+            SeriesCast.SelectedItems?.Clear();
             foreach (var actor in selected) editor.Actors.Remove(actor);
+            SeriesCast.SelectedIndex = Math.Min(index, editor.Actors.Count - 1);
+            ListSelection.FocusSelectedItem(SeriesCast);
             e.Handled = true;
         }
         else if (e.Key == Key.F2 && selected.Length == 1)

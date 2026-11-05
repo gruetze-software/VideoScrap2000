@@ -9,7 +9,7 @@
     <Product>VideoScrap 2000</Product>
     <ApplicationIcon>Assets/videoscrap-2000.ico</ApplicationIcon>
     <Company>Grütze-Software</Company>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Copyright>© 2026 Grütze-Software</Copyright>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
@@ -19,8 +19,10 @@
     <DebugType>portable</DebugType><DebugSymbols>true</DebugSymbols>
     <CopyDebugSymbolFilesFromPackages>false</CopyDebugSymbolFilesFromPackages>
     <PublishDocumentationFile>false</PublishDocumentationFile>
+    <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="VideoScrap2000.Tests" />
     <Compile Remove="Properties/**/*.cs" />
     <EmbeddedResource Remove="Properties/**/*.resx" />
     <AvaloniaResource Include="Assets/**" Exclude="Assets/*.ico" />

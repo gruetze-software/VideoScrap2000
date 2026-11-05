@@ -23,9 +23,12 @@ public partial class ScrapeWindow : Window
         var parsed = MovieNameParser.ParseSearchTitle(title);
         SearchText.Text = string.IsNullOrWhiteSpace(imdb) ? parsed.Title : imdb;
         YearText.Text = string.IsNullOrWhiteSpace(year) ? parsed.Year?.ToString() : year;
+        Opened += async (_, _) => await SearchAsync();
         Closed += (_, _) => { lifetime.Cancel(); ClearResults(); scraper.Dispose(); };
     }
-    private async void Search(object? sender, RoutedEventArgs e)
+    private async void Search(object? sender, RoutedEventArgs e) => await SearchAsync();
+
+    private async Task SearchAsync()
     {
         if (busy || string.IsNullOrWhiteSpace(SearchText.Text)) return;
         busy = true; SearchButton.IsEnabled = false; AcceptButton.IsEnabled = false;
@@ -80,7 +83,7 @@ public partial class ScrapeWindow : Window
         var rows = Results.ItemsSource as MovieSearchResult[];
         Results.ItemsSource = null;
         if (rows is not null)
-            foreach (var row in rows) row.Poster?.Dispose();
+            foreach (var row in rows) row.DisposePoster();
     }
     private async Task LoadPostersAsync(MovieSearchResult[] rows, CancellationToken token)
     {
@@ -96,12 +99,12 @@ public partial class ScrapeWindow : Window
                     var bytes = await scraper.GetImageFromTMDbByteArrayAsync(row.Movie.PosterPath, ImageSize.Small, ImageType.Poster, ct);
                     if (bytes is not { Length: > 0 }) return;
                     ct.ThrowIfCancellationRequested();
-                    var poster = ArtworkDecoder.DecodePreview(bytes, 88);
-                    if (poster is null) return;
+                    var preview = await ArtworkPreviewCache.Shared.AcquireAsync(row.Movie.PosterPath!, 88, bytes, ct, retainOriginal: false);
+                    if (preview is null) return;
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        if (token.IsCancellationRequested) poster.Dispose();
-                        else row.Poster = poster;
+                        if (token.IsCancellationRequested) preview.Dispose();
+                        else { row.CachedPreview = preview; row.Poster = preview.Image; }
                     });
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) { System.Diagnostics.Trace.WriteLine(ex); }
@@ -130,7 +133,15 @@ public partial class ScrapeWindow : Window
 
 public sealed class MovieSearchResult(SearchMovie movie) : ObservableObject
 {
+    internal ArtworkPreviewCache.Lease? CachedPreview { get; set; }
     private Bitmap? poster;
     public SearchMovie Movie { get; } = movie;
     public Bitmap? Poster { get => poster; set => SetProperty(ref poster, value); }
+    public void DisposePoster()
+    {
+        if (CachedPreview is { } preview) preview.Dispose();
+        else Poster?.Dispose();
+        CachedPreview = null;
+        Poster = null;
+    }
 }

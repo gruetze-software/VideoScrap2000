@@ -27,7 +27,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
+        deployment: [self-contained, framework-dependent]
+        platform:
           - os: windows-latest
             rid: win-x64
           - os: windows-latest
@@ -40,23 +41,32 @@ jobs:
             rid: osx-x64
           - os: macos-latest
             rid: osx-arm64
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.platform.os }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-dotnet@v6.1.0
         with:
           dotnet-version: '10.0.x'
       - shell: pwsh
-        run: ./scripts/Publish.ps1 -Runtime '${{ matrix.rid }}'
+        run: |
+          if ($env:FANART_TV_PROJECT_API_KEY -notmatch '^[0-9a-fA-F]{32}$') {
+            throw 'Set the FANART_TV_PROJECT_API_KEY repository secret before creating release packages.'
+          }
+          if ('${{ matrix.deployment }}' -eq 'framework-dependent') {
+            ./scripts/Publish.ps1 -Runtime '${{ matrix.platform.rid }}' -FrameworkDependent
+          } else {
+            ./scripts/Publish.ps1 -Runtime '${{ matrix.platform.rid }}'
+          }
         env:
           FANART_TV_PROJECT_API_KEY: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.FANART_TV_PROJECT_API_KEY || '' }}
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: VideoScrap2000-${{ matrix.rid }}
+          name: VideoScrap2000-${{ matrix.platform.rid }}-${{ matrix.deployment }}
           path: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
-            artifacts/**/manifest.json
+            artifacts/**/*.manifest.json
+            artifacts/**/*.sha256
           if-no-files-found: error
 
   release:
@@ -66,6 +76,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7.0.1
       - uses: actions/download-artifact@v8.0.2
         with:
           pattern: VideoScrap2000-*
@@ -78,7 +89,21 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           $archives = @(Get-ChildItem packages -File -Recurse | Where-Object Name -Match '^VideoScrap2000-.*\.(zip|tar\.gz)$')
-          if ($archives.Count -ne 6) { throw "Expected six platform archives, found $($archives.Count)." }
-          $assets = $archives.FullName
-          gh release create $env:RELEASE_TAG --verify-tag --draft --generate-notes --title "VideoScrap 2000 $env:RELEASE_TAG" @assets
+          if ($archives.Count -ne 12) { throw "Expected twelve platform archives, found $($archives.Count)." }
+          $assets = @($archives.FullName) + @(Get-ChildItem packages -File -Recurse | Where-Object Name -Match '\.sha256$|\.manifest\.json$' | Select-Object -ExpandProperty FullName)
+          $notes = "docs/releases/$env:RELEASE_TAG.md"
+          $releaseNotes = 'release-notes.md'
+          if (Test-Path -LiteralPath $notes) { Copy-Item -LiteralPath $notes -Destination $releaseNotes }
+          else { Set-Content -LiteralPath $releaseNotes -Value "# VideoScrap 2000 $env:RELEASE_TAG" }
+          Add-Content -LiteralPath $releaseNotes -Value ([Environment]::NewLine + '## Package sizes' + [Environment]::NewLine)
+          Add-Content -LiteralPath $releaseNotes -Value '| Platform | Package | Download | Extracted |'
+          Add-Content -LiteralPath $releaseNotes -Value '| --- | --- | --- | --- |'
+          foreach ($file in Get-ChildItem packages -Filter '*.manifest.json' -File -Recurse | Sort-Object Name) {
+            $manifest = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+            $deployment = if ($manifest.selfContained) { 'Self-contained' } else { '.NET 10 required' }
+            $download = ($manifest.downloadBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
+            $installed = ($manifest.installedBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
+            Add-Content -LiteralPath $releaseNotes -Value "| $($manifest.runtime) | $deployment | $download MiB | $installed MiB |"
+          }
+          gh release create $env:RELEASE_TAG --verify-tag --draft --notes-file $releaseNotes --title "VideoScrap 2000 $env:RELEASE_TAG" @assets
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

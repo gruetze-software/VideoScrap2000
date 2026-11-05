@@ -13,6 +13,61 @@ namespace VideoScrap2000.Tests;
 public class ArtworkWorkflowTests
 {
     [AvaloniaFact]
+    public async Task SeriesDialogReportsRejectedFanartKey()
+    {
+        using var handler = new ArtworkHandler { Series = true, RejectFanartKey = true };
+        var window = new ArtworkWindow(550, ImageTypes.ClearArt, CreateManager(handler), tvdbId: 123);
+        window.Show();
+        try
+        {
+            await window.LoadingTask;
+            Assert.False(window.IsAccepted);
+            Assert.Empty(window.Results);
+            Assert.Contains(VideoScrap2000.Localization.Locale.T(
+                "Fanart.tv benötigt einen gültigen Projektschlüssel. Zusätzliche Serienbilder konnten nicht geladen werden."),
+                window.FindControl<TextBlock>("StatusText")!.Text);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task SeriesDialogShowsOnlySelectedSeasonAndRanksWithoutHidingLanguages()
+    {
+        using var handler = new ArtworkHandler { Series = true };
+        var window = new ArtworkWindow(550, ImageTypes.Banner, CreateManager(handler), tvdbId: 123, season: 1);
+        window.Show();
+        try
+        {
+            await window.LoadingTask;
+            var candidates = window.FindControl<ListBox>("Candidates")!.Items.OfType<ArtworkCandidate>().ToArray();
+            Assert.Equal(new[] { "https://art.test/first.png", "https://art.test/english.png" },
+                candidates.Select(candidate => candidate.Source.Url));
+            Assert.DoesNotContain(ImageTypes.DiskArt, window.FindControl<ComboBox>("ImageType")!.Items.OfType<string>());
+            Assert.Equal("/3/tv/550/season/1/images", handler.SeriesImagePath);
+            Assert.Equal("", handler.SeriesImageQuery);
+            Assert.Equal(1, handler.FanartRequests);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task SeriesAllSelectsFirstPreferredImageForEachType()
+    {
+        using var handler = new ArtworkHandler { Series = true };
+        var window = new ArtworkWindow(550, "Alle", CreateManager(handler), tvdbId: 123);
+        window.Show();
+        try
+        {
+            await window.LoadingTask;
+            Assert.True(window.IsAccepted);
+            Assert.Equal(ImageTypes.Banner, Assert.Single(window.Results).Type);
+            Assert.Equal(new[] { "/banner.png" }, handler.Downloads);
+            Assert.Equal(1, handler.FanartRequests);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task AutomaticAllDownloadsOnlyMissingTypes()
     {
         using var handler = new ArtworkHandler();
@@ -180,6 +235,10 @@ public class ArtworkWorkflowTests
     {
         public byte[] ImageBytes { get; set; } = ReadTestImage();
         public bool OtherLanguages { get; set; }
+        public bool Series { get; set; }
+        public bool RejectFanartKey { get; set; }
+        public string? SeriesImagePath { get; private set; }
+        public string? SeriesImageQuery { get; private set; }
         public bool BlockEnglish { get; set; }
         public TaskCompletionSource EnglishStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource EnglishCanceled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -192,7 +251,23 @@ public class ArtworkWorkflowTests
         {
             var path = request.RequestUri!.AbsolutePath;
             string json;
-            if (path.Contains("/movie/")) { MovieRequests++; MovieQuery = request.RequestUri.Query; json = "{\"id\":550}"; }
+            if (Series && request.RequestUri.Host == "api.themoviedb.org" && path.Contains("/tv/"))
+            {
+                SeriesImagePath = path; SeriesImageQuery = request.RequestUri.Query;
+                json = "{}";
+            }
+            else if (Series && path.Contains("/tv/"))
+            {
+                if (RejectFanartKey) return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                FanartRequests++;
+                json = """
+                    {"tvbanner":[{"url":"https://art.test/banner.png","lang":"de"}],
+                     "seasonbanner":[{"url":"https://art.test/english.png","lang":"en","season":"1"},
+                                     {"url":"https://art.test/first.png","lang":"de","season":"1"},
+                                     {"url":"https://art.test/second.png","lang":"de","season":"2"}]}
+                    """;
+            }
+            else if (path.Contains("/movie/")) { MovieRequests++; MovieQuery = request.RequestUri.Query; json = "{\"id\":550}"; }
             else if (path.Contains("/movies/"))
             {
                 FanartRequests++;
