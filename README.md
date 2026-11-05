@@ -26,7 +26,7 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 
 ### Try the screenshot demo
 
-Open **Settings → Demo for screenshots → Open demo mode**. The demo starts in English with a dark theme and fictional movies, TV shows, seasons, episodes and cast. Its original AI-generated artwork is bundled locally; no TMDB or Fanart.tv content is fetched. The three bundled source images add less than 400 KB to the app before archive compression.
+Open **Settings → Demo for screenshots → Open demo mode**. The demo starts in English with a dark theme and fictional movies, TV shows, seasons, episodes and cast. Each movie has its own cover motif and color palette. Original AI-generated artwork is bundled as compressed JPEGs; no TMDB or Fanart.tv content is fetched.
 
 - **Movies:** select **The Last Signal** for a populated movie page, artwork and cast.
 - **TV shows:** select **North Harbor**, then **Episodes**, to show the season poster, banner and episode still beside the episode editor.

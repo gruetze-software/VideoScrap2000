@@ -25,6 +25,9 @@ public sealed class DemoLibraryTests
             await model.ArtworkLoadingTask;
             Assert.True(model.IsDemo);
             Assert.Equal(6, model.Movies.Count);
+            var distinctMotifs = Directory.EnumerateFiles(model.LibraryPath, "*-fanart.jpg", SearchOption.AllDirectories)
+                .Select(file => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(file)))).Distinct().Count();
+            Assert.Equal(6, distinctMotifs);
             Assert.Equal("The Last Signal", model.Title);
             Assert.Equal(VideoScrap2000.DemoLibrary.SignalPlot, model.Plot);
             Assert.True(model.CanGenerateOutline);

@@ -38,15 +38,15 @@ internal static class DemoLibrary
         var movies = new[]
         {
             new DemoMovie("The Last Signal", "signal", 2025, 8.4f, "Some messages arrive before their time.", "Science Fiction", "Mystery", SignalPlot),
-            new DemoMovie("North of Tomorrow", "harbor", 2024, 7.6f, "Every journey begins with a return.", "Drama", "Adventure",
+            new DemoMovie("North of Tomorrow", "tomorrow", 2024, 7.6f, "Every journey begins with a return.", "Drama", "Adventure",
                 "A coastal cartographer returns home to restore her father's unfinished map. Following the places he marked, she discovers the stories of a changing community and a chance to rebuild a friendship."),
-            new DemoMovie("Beyond the Quiet Sky", "signal", 2023, 8.1f, "Listen to what remains.", "Drama", "Science Fiction",
+            new DemoMovie("Beyond the Quiet Sky", "quiet-sky", 2023, 8.1f, "Listen to what remains.", "Drama", "Science Fiction",
                 "Two engineers at a remote observatory prepare to close the station for good. An unexplained recording brings an old disagreement back into focus during their final night on the mountain."),
-            new DemoMovie("The Copper Tide", "harbor", 2025, 7.2f, "The harbor keeps its promises.", "Thriller", "Mystery",
+            new DemoMovie("The Copper Tide", "copper-tide", 2025, 7.2f, "The harbor keeps its promises.", "Thriller", "Mystery",
                 "A marine surveyor finds an abandoned research buoy drifting into a quiet harbor. Its recordings lead her through a web of conflicting accounts about a ship that never arrived."),
-            new DemoMovie("Seventeen Minutes", "signal", 2022, 6.8f, "A small window. A different future.", "Thriller", "Science Fiction",
+            new DemoMovie("Seventeen Minutes", "seventeen", 2022, 6.8f, "A small window. A different future.", "Thriller", "Science Fiction",
                 "An emergency technician receives a call from a station listed as empty. She has seventeen minutes to reach it before an approaching storm interrupts every connection."),
-            new DemoMovie("Letters from the Fjord", "harbor", 2021, 8.7f, "Some stories find their way home.", "Drama", "Romance",
+            new DemoMovie("Letters from the Fjord", "letters", 2021, 8.7f, "Some stories find their way home.", "Drama", "Romance",
                 "A bookbinder discovers a box of undelivered letters during the renovation of a harbor post office. Returning them brings together neighbors whose lives have quietly crossed for decades.")
         };
         for (var index = 0; index < movies.Length; index++)
