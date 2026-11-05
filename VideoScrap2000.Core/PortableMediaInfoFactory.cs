@@ -25,6 +25,8 @@ internal sealed class PortableMediaInfoFactory : INativeMediaInfoFactory
                 if (!File.Exists(zen)) zen = Path.Combine(AppContext.BaseDirectory,
                     "runtimes", RuntimeInformation.RuntimeIdentifier, "native", "libzen.so.0");
                 if (File.Exists(zen)) NativeLibrary.Load(zen);
+                var mms = Path.Combine(AppContext.BaseDirectory, "libmms.so.0");
+                if (File.Exists(mms)) NativeLibrary.Load(mms);
             }
             media = new MediaInfo.MediaInfo();
         }

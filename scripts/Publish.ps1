@@ -15,6 +15,13 @@ $packageName = "VideoScrap2000-$version-$Runtime$flavor"
 dotnet publish $project -c Release -r $Runtime --self-contained $selfContained -o $output -p:PublishTrimmed=false -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false -m:1 -nr:false
 if ($LASTEXITCODE -ne 0) { throw 'Publish fehlgeschlagen.' }
 
+if ($Runtime.StartsWith('linux-') -and $IsLinux) {
+    $triplet = if ($Runtime.EndsWith('arm64')) { 'aarch64-linux-gnu' } else { 'x86_64-linux-gnu' }
+    $mms = "/usr/lib/$triplet/libmms.so.0"
+    if (!(Test-Path -LiteralPath $mms)) { throw 'Install libmms0 before packaging Linux releases.' }
+    Copy-Item -LiteralPath $mms -Destination (Join-Path $output 'libmms.so.0')
+}
+
 # Universal macOS libraries otherwise contain a second, unused CPU architecture.
 if ($Runtime.StartsWith('osx-') -and $IsMacOS) {
     $architecture = if ($Runtime.EndsWith('arm64')) { 'arm64' } else { 'x86_64' }
