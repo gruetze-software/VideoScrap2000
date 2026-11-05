@@ -51,6 +51,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
     [ObservableProperty] private string query = "";
     [ObservableProperty] private int movieSortIndex;
+    [ObservableProperty] private int detailTabIndex;
+    partial void OnDetailTabIndexChanged(int value) => SelectFirstDetailEntry();
+    internal void SelectFirstDetailEntry()
+    {
+        if (DetailTabIndex == 1)
+        {
+            SelectedActors.Clear();
+            if (Actors.FirstOrDefault() is { } actor) SelectedActors.Add(actor);
+        }
+        else if (DetailTabIndex == 3) { SelectedArtwork = null; SelectedArtwork = Artwork.FirstOrDefault(); }
+    }
     partial void OnMovieSortIndexChanged(int value) => Filter();
     [ObservableProperty] private MovieViewModel? selectedMovie;
     [ObservableProperty]
@@ -133,7 +144,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             await Task.Run(database.InitializeDatabaseAsync, token);
             if (IsDemo) await Task.Run(() => scanner.ScanDirectoryAsync(LibraryPath, token), token);
             await ReloadAsync(token);
-            if (IsDemo) SelectedMovie = allMovies.FirstOrDefault(movie => movie.Title == "The Last Signal") ?? SelectedMovie;
+            SelectedMovie = Movies.FirstOrDefault();
         }
         finally { IsInitializing = false; }
         Status = allMovies.Count == 0 ? "Deine Filmsammlung beginnt mit einem Ordner." : allMovies.Count == 1 ? "1 Film geladen." : $"{allMovies.Count} Filme geladen.";
@@ -329,6 +340,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     if (token.IsCancellationRequested || version != selectionVersion) { preview.Dispose(); return; }
                     var bitmap = preview.Image;
                     Artwork.Add(new(item.Type, item.Path, bitmap) { CachedPreview = preview });
+                    if (DetailTabIndex == 3 && SelectedArtwork is null) SelectedArtwork = Artwork[0];
                     if (item.Type == ImageTypes.Poster) Poster = bitmap;
                     if (item.Type == ImageTypes.Fanart) FanartBackground = bitmap;
                 }

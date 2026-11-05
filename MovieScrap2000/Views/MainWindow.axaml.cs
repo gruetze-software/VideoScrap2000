@@ -16,22 +16,29 @@ public partial class MainWindow : Window
     private readonly MainViewModel model;
     private LibraryProgressWindow? progressWindow;
     public MainWindow() : this(new MainViewModel(), true) { }
-    public MainWindow(MainViewModel model, bool initialize)
+    public MainWindow(MainViewModel model, bool initialize, WindowPlacementStore? placementStore = null)
     {
         InitializeComponent();
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://VideoScrap2000/Assets/videoscrap-2000.png")));
         this.model = model;
+        ConfigureWindowPlacement(placementStore ?? (initialize ? WindowPlacementStore.ForMode(model.IsDemo) : null));
         DataContext = model;
         model.ThemeRequested = ApplyTheme;
         ApplyTheme(model.ThemeIndex switch { 1 => "Light", 2 => "Dark", _ => "System" });
         model.PropertyChanged += OnModelPropertyChanged;
-        if (initialize) Opened += async (_, _) => await model.InitializeAsync();
+        if (initialize) Opened += async (_, _) =>
+        {
+            await model.InitializeAsync();
+            MovieList.SelectedIndex = model.Movies.Count > 0 ? 0 : -1;
+            if (model.SelectedMovie is { } movie) MovieList.ScrollIntoView(movie);
+        };
         Closing += (_, e) =>
         {
             if (model.IsBusy) { model.CancelCommand.Execute(null); e.Cancel = true; model.Status = "Vorgang wird abgebrochen. Bitte danach erneut schließen."; }
         };
         Closed += (_, _) =>
         {
+            SaveWindowPlacement();
             model.PropertyChanged -= OnModelPropertyChanged;
             model.Dispose();
         };
@@ -84,8 +91,19 @@ public partial class MainWindow : Window
 
     private async void LibraryTabChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (model is not null && IsVisible && ReferenceEquals(e.Source, LibraryTabs) && LibraryTabs.SelectedIndex == 1 && model.Series.NeedsScan)
-            await model.Series.ScanAsync();
+        if (model is null || !IsVisible || !ReferenceEquals(e.Source, LibraryTabs)) return;
+        if (LibraryTabs.SelectedIndex == 1)
+        {
+            if (model.Series.NeedsScan) await model.Series.ScanAsync();
+            model.Series.SelectedShow = model.Series.Shows.FirstOrDefault();
+            model.Series.SelectFirstDetailEntry();
+        }
+        else
+        {
+            model.SelectedMovie = model.Movies.FirstOrDefault();
+            model.SelectFirstDetailEntry();
+            if (model.SelectedMovie is { } movie) MovieList.ScrollIntoView(movie);
+        }
     }
     private void PrepareMovieRow(object? sender, ContainerPreparedEventArgs e)
     {

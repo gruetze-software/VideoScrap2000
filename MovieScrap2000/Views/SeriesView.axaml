@@ -37,7 +37,7 @@
                                       DecodeWidth="1800" AspectRatio="5.4" MaxHeight="160" Stretch="Uniform"
                                       DoubleTapped="OpenPicture" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
         </Border>
-        <TabControl Grid.Row="2" x:Name="SeriesDetailTabs" Classes="seriesTabs">
+        <TabControl Grid.Row="2" x:Name="SeriesDetailTabs" Classes="seriesTabs" SelectedIndex="{Binding DetailTabIndex, Mode=TwoWay}">
           <TabControl.Styles>
             <Style Selector="TabItem">
               <Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/>

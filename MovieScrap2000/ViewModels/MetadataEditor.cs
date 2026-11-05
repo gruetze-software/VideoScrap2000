@@ -84,6 +84,7 @@ public partial class MainViewModel
         Tags = string.Join("; ", nfo.Tags); Runtime = nfo.Runtime > 0 ? nfo.Runtime.ToString() : ""; Rating = nfo.RatingString ?? "";
         SelectedActors.Clear(); SelectedActor = null; Actors.Clear();
         foreach (var actor in nfo.Actors) Actors.Add(ActorEditor.From(actor));
+        if (DetailTabIndex == 1) SelectFirstDetailEntry();
         TechnicalDetails = Localization.Locale.T(DescribeStreams(nfo.FileInfo));
     }
 
@@ -131,6 +132,7 @@ public partial class MainViewModel
             foreach (var cast in movie.Credits.Cast)
                 Actors.Add(new() { Name = cast.Name ?? "", Role = cast.Character ?? "", TmdbId = cast.Id, Order = Actors.Count,
                     Thumb = cast.ProfilePath is { } path ? "https://image.tmdb.org/t/p/w185" + path : "" });
+            if (DetailTabIndex == 1) SelectFirstDetailEntry();
         }
         Status = "TMDb-Daten übernommen. Prüfe die Angaben und speichere deine Änderungen.";
     }

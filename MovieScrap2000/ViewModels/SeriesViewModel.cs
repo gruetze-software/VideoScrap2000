@@ -30,6 +30,17 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     public ObservableCollection<SeriesEpisodeRow> Episodes { get; } = [];
 
     [ObservableProperty] private string query = "";
+    [ObservableProperty] private int detailTabIndex;
+    partial void OnDetailTabIndexChanged(int value) => SelectFirstDetailEntry();
+    internal void SelectFirstDetailEntry()
+    {
+        switch (DetailTabIndex)
+        {
+            case 1: SelectedActor = null; SelectedActor = ShowEditor?.Actors.FirstOrDefault(); break;
+            case 2: SelectedEpisode = Episodes.FirstOrDefault(); break;
+            case 3: SelectedSeriesArtwork = null; SelectedSeriesArtwork = ArtworkTiles.FirstOrDefault(); break;
+        }
+    }
     [ObservableProperty] private SeriesShowRow? selectedShow;
     [ObservableProperty] private SeriesSeason? selectedSeason;
     [ObservableProperty]
@@ -100,6 +111,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         ShowEditor = value?.Editor;
         RefreshSeasons();
         RefreshArtworkPreviews(refreshTiles: true);
+        SelectFirstDetailEntry();
         OnPropertyChanged(nameof(HasPendingEpisodeUpdates));
     }
 
@@ -267,6 +279,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
             token.ThrowIfCancellationRequested();
             SelectedActor = null;
             show.Editor.ApplyShow(result, id, main.MetadataLanguage);
+            if (DetailTabIndex == 1) SelectFirstDetailEntry();
             var count = await DownloadArtworkAsync(show, id, result, scraper, token);
             main.Status = count > 0 ? "Seriendaten und Bilder übernommen. Speichere, um sie abzulegen."
                 : "Seriendaten übernommen. Speichere, um die NFO zu schreiben.";

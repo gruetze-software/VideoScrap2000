@@ -50,6 +50,8 @@ public class MetadataEditorTests
                 var tabs = window.FindControl<TabControl>("MovieDetailTabs")!;
                 tabs.SelectedIndex = 1; window.UpdateLayout();
                 var actorList = window.FindControl<ListBox>("ActorList")!;
+                Assert.Same(model.Actors[0], actorList.SelectedItem);
+                actorList.SelectedItems!.Clear();
                 actorList.Selection.Select(1); actorList.Selection.Select(2);
                 Assert.Equal(2, model.SelectedActors.Count);
                 var delete = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Delete };

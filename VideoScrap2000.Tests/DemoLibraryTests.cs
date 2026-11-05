@@ -21,6 +21,8 @@ public sealed class DemoLibraryTests
         {
             using var model = VideoScrap2000.DemoLibrary.CreateModel(root);
             await model.InitializeAsync();
+            Assert.Same(model.Movies[0], model.SelectedMovie);
+            model.SelectedMovie = model.Movies.First(movie => movie.Title == "The Last Signal");
             for (var i = 0; !model.IsDetailReady && i < 300; i++) await Task.Delay(10, TestContext.Current.CancellationToken);
             await model.ArtworkLoadingTask;
             Assert.True(model.IsDemo);

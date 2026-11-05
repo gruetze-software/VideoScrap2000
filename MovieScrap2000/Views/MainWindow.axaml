@@ -36,7 +36,7 @@
         <Grid RowDefinitions="Auto,Auto,*">
           <TextBox Text="{Binding Query, Delay=250}" PlaceholderText="{DynamicResource L76DC8BF8BA74}" AutomationProperties.Name="{DynamicResource LF1047535290F}"/>
           <StackPanel Grid.Row="1" Spacing="6" Margin="0,8,0,8"><ComboBox SelectedIndex="{Binding MovieSortIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{DynamicResource L188CA34ADC8E}"><ComboBoxItem Content="{DynamicResource LB5BC23B377E2}"/><ComboBoxItem Content="{DynamicResource LDCD1D5223F73}"/><ComboBoxItem Content="{DynamicResource L5ABCD5D493B6}"/></ComboBox><TextBlock Text="{Binding CountLabel}" Classes="secondary" Margin="4,0,0,0" FontSize="12"/></StackPanel>
-          <ListBox Grid.Row="2" ItemsSource="{Binding Movies}" SelectedItem="{Binding SelectedMovie}" Background="Transparent" BorderThickness="0" IsEnabled="{Binding !IsBusy}"
+          <ListBox x:Name="MovieList" Grid.Row="2" ItemsSource="{Binding Movies}" SelectedItem="{Binding SelectedMovie}" Background="Transparent" BorderThickness="0" IsEnabled="{Binding !IsBusy}"
                    ContainerPrepared="PrepareMovieRow" ContainerClearing="ClearMovieRow">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="models:MovieViewModel">
@@ -86,7 +86,7 @@
                   </Grid>
                 </StackPanel>
               </Grid>
-              <TabControl x:Name="MovieDetailTabs" Classes="detailTabs">
+              <TabControl x:Name="MovieDetailTabs" Classes="detailTabs" SelectedIndex="{Binding DetailTabIndex, Mode=TwoWay}">
                 <TabControl.Styles>
                   <Style Selector="TabItem"><Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="12,9"/><Setter Property="Margin" Value="0,0,6,8"/><Setter Property="CornerRadius" Value="7"/><Setter Property="Background" Value="{DynamicResource SubtleBrush}"/><Setter Property="Foreground" Value="{DynamicResource SecondaryBrush}"/></Style>
                   <Style Selector="TabItem:selected"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource PageBrush}"/></Style>

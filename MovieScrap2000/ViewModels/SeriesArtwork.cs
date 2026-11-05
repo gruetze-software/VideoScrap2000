@@ -100,6 +100,7 @@ public partial class SeriesViewModel
                 SelectedSeriesArtwork = ArtworkTiles.FirstOrDefault(tile => tile.Key == selectedKey);
             }
             finally { refreshingArtworkTiles = false; }
+            if (DetailTabIndex == 3 && SelectedSeriesArtwork is null) SelectFirstDetailEntry();
         }
     }
 
