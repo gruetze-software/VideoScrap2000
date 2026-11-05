@@ -248,9 +248,10 @@ public partial class MainWindow : Window
         }
 
         const int maxLength = 239;
+        var targetLanguage = System.Globalization.CultureInfo.GetCultureInfo(model.MetadataLanguage).EnglishName;
         var instruction = model.MetadataLanguage.StartsWith("de", StringComparison.OrdinalIgnoreCase)
             ? $"Fasse die folgende Filmhandlung spoilerfrei auf Deutsch in höchstens {maxLength} Zeichen inklusive Leerzeichen zusammen. Verwende nur Informationen aus der Handlung. Gib nur die Kurzbeschreibung aus."
-            : $"Summarize the following movie plot in English in at most {maxLength} characters including spaces. Avoid spoilers and use only facts from the plot. Return only the plot outline.";
+            : $"Summarize the following movie plot in {targetLanguage} in at most {maxLength} characters including spaces. Avoid spoilers and use only facts from the plot. Return only the plot outline.";
 
         await new OutlinePromptWindow($"{instruction}\n\n{plot}").ShowDialog(this);
     }

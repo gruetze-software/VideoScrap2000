@@ -13,12 +13,16 @@
           <TextBlock Text="{DynamicResource L98AB8FC819BC}" Classes="label"/>
           <ComboBox SelectedIndex="{Binding LanguageIndex}" MinWidth="240"><ComboBoxItem Content="{DynamicResource LC999E1E15DE4}"/><ComboBoxItem>Deutsch</ComboBoxItem><ComboBoxItem>English</ComboBoxItem></ComboBox>
           <TextBlock Text="{Binding DetectedLanguage}" Classes="secondary" FontSize="12"/>
+          <TextBlock Text="{Binding InterfaceLanguageInfo}" Classes="secondary" TextWrapping="Wrap" FontSize="12"/>
           <Expander Header="{DynamicResource L25E56EE28C61}"><StackPanel Spacing="8">
           <TextBlock Text="{DynamicResource L41C2D5CFB5D4}" Classes="label"/>
-          <ComboBox SelectedIndex="{Binding MetadataLanguageIndex}" MinWidth="240"><ComboBoxItem Content="{DynamicResource L54009809ED06}"/><ComboBoxItem>Deutsch</ComboBoxItem><ComboBoxItem>English</ComboBoxItem></ComboBox>
+          <ComboBox ItemsSource="{Binding ContentLanguageOptions}" SelectedIndex="{Binding MetadataLanguageIndex}" HorizontalAlignment="Stretch" MaxDropDownHeight="320"/>
+          <TextBlock Text="{Binding MetadataLanguagePreview}" Classes="secondary" FontSize="12"/>
+          <TextBlock Text="{Binding MetadataLanguageInfo}" Classes="secondary" TextWrapping="Wrap" FontSize="12"/>
           <TextBlock Text="{DynamicResource LE36AE5179B38}" Classes="label"/>
-          <ComboBox SelectedIndex="{Binding ArtworkLanguageIndex}" MinWidth="240"><ComboBoxItem Content="{DynamicResource L54009809ED06}"/><ComboBoxItem>Deutsch</ComboBoxItem><ComboBoxItem>English</ComboBoxItem></ComboBox>
-          <TextBlock Text="{DynamicResource L11DC2FFD4672}" Classes="secondary" TextWrapping="Wrap" FontSize="12"/>
+          <ComboBox ItemsSource="{Binding ContentLanguageOptions}" SelectedIndex="{Binding ArtworkLanguageIndex}" HorizontalAlignment="Stretch" MaxDropDownHeight="320"/>
+          <TextBlock Text="{Binding ArtworkLanguagePreview}" Classes="secondary" FontSize="12"/>
+          <TextBlock Text="{Binding ArtworkLanguageInfo}" Classes="secondary" TextWrapping="Wrap" FontSize="12"/>
           </StackPanel></Expander>
         </StackPanel></Border>
         <Border Classes="card" Padding="18"><StackPanel Spacing="8">

@@ -74,5 +74,5 @@ public partial class ArtworkWindow
             : string.IsNullOrWhiteSpace(value) || value.Equals("all", StringComparison.OrdinalIgnoreCase);
     }
 
-    private int LanguagePriority(string? value) => value == PreferredLanguage ? 0 : value is null or "" or "00" ? 1 : 2;
+    private int LanguagePriority(string? value) => LanguagePreferences.ImagePriority(value, language);
 }

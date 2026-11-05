@@ -42,8 +42,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int languageIndex;
     [ObservableProperty] private int metadataLanguageIndex;
     [ObservableProperty] private int artworkLanguageIndex;
-    public string MetadataLanguage => LanguagePreferences.Resolve(settings.MetadataLanguage, settings.Language);
-    public string ArtworkLanguage => LanguagePreferences.Resolve(settings.ArtworkLanguage, settings.Language);
+    public string MetadataLanguage => LanguagePreferences.ResolveContent(settings.MetadataLanguage);
+    public string ArtworkLanguage => LanguagePreferences.ResolveContent(settings.ArtworkLanguage);
     partial void OnStatusChanged(string value)
     {
         var translated = Locale.T(value);
@@ -106,8 +106,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
             RemoveActorCommand.NotifyCanExecuteChanged();
         };
         languageIndex = LanguagePreferences.ToIndex(this.settings.Language);
-        metadataLanguageIndex = LanguagePreferences.ToIndex(this.settings.MetadataLanguage);
-        artworkLanguageIndex = LanguagePreferences.ToIndex(this.settings.ArtworkLanguage);
+        metadataLanguageIndex = LanguagePreferences.ContentToIndex(this.settings.MetadataLanguage);
+        artworkLanguageIndex = LanguagePreferences.ContentToIndex(this.settings.ArtworkLanguage);
         useFanartBackground = this.settings.UseFanartBackground;
         Locale.Apply(this.settings.Language);
         status = Locale.T(status);
@@ -156,8 +156,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         settings.Theme = theme switch { 1 => "Light", 2 => "Dark", _ => "System" };
         settings.Language = LanguagePreferences.FromIndex(language);
-        settings.MetadataLanguage = LanguagePreferences.FromIndex(metadataLanguage);
-        settings.ArtworkLanguage = LanguagePreferences.FromIndex(artworkLanguage);
+        settings.MetadataLanguage = LanguagePreferences.ContentFromIndex(metadataLanguage);
+        settings.ArtworkLanguage = LanguagePreferences.ContentFromIndex(artworkLanguage);
         settings.UseFanartBackground = useFanartBackground;
         if (!IsDemo) settings.Save();
         UseFanartBackground = useFanartBackground;

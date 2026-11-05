@@ -544,7 +544,7 @@ public partial class SeriesNfoEditor : ObservableObject
         if (studios.Length > 0) Studios = string.Join("; ", studios);
         var countries = Array(data, "production_countries").Select(item => Text(item, "name")).OfType<string>().ToArray();
         if (countries.Length > 0) Countries = string.Join("; ", countries);
-        var region = language.StartsWith("de", StringComparison.OrdinalIgnoreCase) ? "DE" : "US";
+        var region = new RegionInfo(LanguagePreferences.ResolveContent(language)).TwoLetterISORegionName;
         if (data.TryGetProperty("content_ratings", out var ratings))
             Certification = Array(ratings, "results").Where(item => Text(item, "iso_3166_1") == region)
                 .Select(item => Text(item, "rating")).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? Certification;

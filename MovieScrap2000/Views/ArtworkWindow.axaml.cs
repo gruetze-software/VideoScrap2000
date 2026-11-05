@@ -21,7 +21,6 @@ public partial class ArtworkWindow : Window
     private readonly int? tvdbId;
     private readonly int? season;
     private readonly IReadOnlyList<string> searchTypes;
-    private string PreferredLanguage => language.Split('-')[0];
     private bool busy;
     private bool accepting;
     private CancellationTokenSource? previewLoading;
@@ -144,7 +143,7 @@ public partial class ArtworkWindow : Window
         var paths = type switch { ImageTypes.Poster => movieImages.Posters, ImageTypes.Fanart => movieImages.Backdrops, ImageTypes.ClearLogo => movieImages.Logos, _ => null };
         var kind = type switch { ImageTypes.Fanart => MovieScrap2000.TMDbScraper.ImageType.Backdrop, ImageTypes.ClearLogo => MovieScrap2000.TMDbScraper.ImageType.Logo, _ => MovieScrap2000.TMDbScraper.ImageType.Poster };
         var source = paths?
-            .Select(p => new ArtworkSource(p.FilePath, null, kind, $"TMDb · {p.Iso6391 ?? "neutral"} · {p.Width} × {p.Height}", p.Iso6391 == PreferredLanguage ? 0 : string.IsNullOrWhiteSpace(p.Iso6391) ? 1 : 2)).ToList() ?? [];
+            .Select(p => new ArtworkSource(p.FilePath, null, kind, $"TMDb · {p.Iso6391 ?? "neutral"} · {p.Width} × {p.Height}", LanguagePriority(p.Iso6391))).ToList() ?? [];
         if (!fanartLoaded)
         {
             try { fanartDetails = await scraper.GetFanartTvMovieAsync(tmdbId, token).WaitAsync(token); }
@@ -153,7 +152,7 @@ public partial class ArtworkWindow : Window
         }
         var fanart = fanartDetails;
         var list = type switch { ImageTypes.Poster => fanart?.Poster, ImageTypes.Fanart => fanart?.Background, ImageTypes.ClearLogo => fanart is null ? null : fanart.HdLogo.Concat(fanart.Logo).ToList(), ImageTypes.ClearArt => fanart?.ClearArt, ImageTypes.Banner => fanart?.Banner, ImageTypes.DiskArt => fanart?.Disc, ImageTypes.KeyArt or ImageTypes.Landscape => fanart?.Thumb, _ => null };
-        if (list is not null) source.AddRange(list.Select(p => new ArtworkSource(null, p.Url, kind, $"Fanart.tv · {p.Language}", p.Language == PreferredLanguage ? 0 : p.Language is null or "" or "00" ? 1 : 2)));
+        if (list is not null) source.AddRange(list.Select(p => new ArtworkSource(null, p.Url, kind, $"Fanart.tv · {p.Language}", LanguagePriority(p.Language))));
         return source.Where(s => s.Path is not null || s.Url is not null).OrderBy(s => s.Priority).DistinctBy(s => s.Path ?? s.Url).ToList();
     }
     private Task<byte[]?> ReadOriginalAsync(ArtworkSource source, CancellationToken token) => source.Path is not null

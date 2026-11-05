@@ -240,10 +240,14 @@
   "Episoden werden gespeichert …": "Saving episodes …",
   "{0} Episoden gespeichert, {1} übersprungen.": "{0} episodes saved, {1} skipped.",
   "Demo-Modus": "Demo mode",
-  "Demo für Screenshots": "Demo for screenshots",
-  "Erfundene Filme, Serien und eigene Bilder. Die Demo verwendet einen separaten Speicherbereich und startet auf Englisch. Deine Sammlung und Einstellungen bleiben unverändert.": "Fictional movies, TV shows and original artwork. The demo uses separate storage and starts in English. Your collection and saved settings stay unchanged.",
   "Zur eigenen Sammlung": "Back to my collection",
   "Demo-Modus öffnen": "Open demo mode",
   "Die Demo verwendet ausschließlich mitgelieferte Beispieldaten.": "The demo uses only the bundled sample data.",
-  "Die Demo enthält keine abspielbaren Videos.": "The demo does not contain playable videos."
+  "Die Demo enthält keine abspielbaren Videos.": "The demo does not contain playable videos.",
+  "Erkunde die Anwendung mit erfundenen Filmen, Serien und eigenen Bildern. Die Demo verwendet einen separaten Speicherbereich. Deine Sammlung und Einstellungen bleiben unverändert.": "Explore the app with fictional movies, TV shows and original artwork. The demo uses separate storage. Your collection and saved settings stay unchanged.",
+  "Die Oberfläche unterstützt Deutsch und Englisch. Andere Client-Sprachen verwenden Englisch für die Oberfläche; Metadaten und Artworks folgen weiterhin der Client-Sprache.": "The interface supports German and English. Other client languages use English for the interface; metadata and artwork still follow the client language.",
+  "TMDB unterstützt viele ISO-639-1-Sprachen. Übersetzungen sind je nach Titel und Feld unterschiedlich vollständig. Ohne Übersetzung können Originaltexte oder leere Felder erscheinen. Texte werden nicht automatisch übersetzt.": "TMDB supports many ISO-639-1 languages. Translation coverage varies by title and field. Missing translations may result in original-language text or empty fields. Text is not translated automatically.",
+  "TMDB und Fanart.tv bieten Bilder in den vorhandenen Sprachen. Die gewünschte Sprache wird zuerst angezeigt, danach sprachneutrale und andere Bilder. Bildtexte werden nicht übersetzt; Episodenbilder sind meist sprachneutral.": "TMDB and Fanart.tv provide images in the available languages. Your preferred language appears first, followed by language-neutral and other images. Image text is not translated; episode stills are usually language-neutral.",
+  "Aktuelle Abfragesprache: {0}": "Current request language: {0}",
+  "Bevorzugte Bildsprache: {0}": "Preferred artwork language: {0}"
 }

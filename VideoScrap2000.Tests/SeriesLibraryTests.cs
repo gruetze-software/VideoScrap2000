@@ -196,7 +196,7 @@ public sealed class SeriesLibraryTests
             File.WriteAllBytes(existing, image);
             foreach (var name in new[] { "Example S01E01.mkv", "Example S02E01.mkv" }) File.WriteAllBytes(Path.Combine(folder, name), [0]);
             using var handler = new SeriesArtworkHandler(image);
-            using var main = new MainViewModel(settings: new AppSettings { SeriesPath = root, Language = "de" });
+            using var main = new MainViewModel(settings: new AppSettings { SeriesPath = root, Language = "de", MetadataLanguage = "de", ArtworkLanguage = "de" });
             using var tvmaze = new HttpClient(handler, false);
             var series = new SeriesViewModel(main, () => new TMDbScraperManager(new HttpClient(handler, false),
                 new MovieScrap2000.FanArtTvScraper.FanArtTvScraper(new HttpClient(handler, false))), tvmaze);
@@ -281,6 +281,8 @@ public sealed class SeriesLibraryTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var uri = request.RequestUri!;
+            if (uri.AbsolutePath.EndsWith("/images", StringComparison.Ordinal))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
             if (uri.AbsolutePath.Contains("/season/", StringComparison.Ordinal))
             {
                 SeasonRequests++;

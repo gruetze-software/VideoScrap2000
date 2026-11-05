@@ -4,6 +4,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MovieScrap2000;
 using MovieScrap2000.TMDbScraper;
+using TmdbImages = MovieScrap2000.TMDbScraper.TMDbScraper.TMDbImages;
+using TmdbImage = MovieScrap2000.TMDbScraper.TMDbScraper.TMDbImageData;
 using VideoScrap2000.Localization;
 using VideoScrap2000.Views;
 
@@ -199,13 +201,50 @@ public partial class SeriesViewModel
         }
         var count = 0;
         var language = main.ArtworkLanguage.Split('-')[0];
+        var tmdbImages = new Dictionary<int, TmdbImages>();
         try
         {
             foreach (var target in missing)
             {
-                var urls = RankImages(artwork, SeriesArtworkCatalog.FanartFields(target.Type, target.Season),
-                    language, image => MatchesSeason(image, target.Season));
-                var data = await DownloadFirstImageAsync(urls, scraper, token);
+                var fanartImages = SeriesArtworkCatalog.FanartFields(target.Type, target.Season)
+                    .SelectMany(type => SeriesNfoEditor.Array(artwork, type))
+                    .Where(image => MatchesSeason(image, target.Season)).ToArray();
+                var data = await DownloadFirstImageAsync(fanartImages
+                    .Where(image => LanguagePreferences.ImagePriority(SeriesNfoEditor.Text(image, "lang"), language) == 0)
+                    .Select(image => SeriesNfoEditor.Text(image, "url")).OfType<string>(), scraper, token);
+                if (data is null)
+                {
+                    var sources = fanartImages.Select(image => (Path: SeriesNfoEditor.Text(image, "url"), Remote: true,
+                        Priority: LanguagePreferences.ImagePriority(SeriesNfoEditor.Text(image, "lang"), language)))
+                        .Where(source => source.Priority != 0).ToList();
+                    if (target.Type is ImageTypes.Poster or ImageTypes.Fanart or ImageTypes.ClearLogo)
+                    {
+                        var key = target.Season ?? -1;
+                        if (!tmdbImages.TryGetValue(key, out var images))
+                        {
+                            try { images = await scraper.GetSeriesImagesAsync(id, target.Season, token); }
+                            catch (Exception ex) when (ex is HttpRequestException or JsonException) { System.Diagnostics.Trace.WriteLine(ex); images = new(); }
+                            tmdbImages[key] = images;
+                        }
+                        IEnumerable<TmdbImage> matching = target.Type switch
+                        {
+                            ImageTypes.Poster => images.Posters,
+                            ImageTypes.Fanart => images.Backdrops,
+                            _ => images.Logos
+                        };
+                        sources.AddRange(matching.Select(image => (image.FilePath, false, LanguagePreferences.ImagePriority(image.Iso6391, language))));
+                    }
+                    foreach (var source in sources.Where(source => !string.IsNullOrWhiteSpace(source.Path)).OrderBy(source => source.Priority).Take(6))
+                    {
+                        try
+                        {
+                            var bytes = source.Remote ? await scraper.GetImageFromFanArtTvByteArrayAsync(source.Path!, token)
+                                : await scraper.GetImageFromTMDbByteArrayAsync(source.Path!, ImageSize.Original, target.TmdbType, token);
+                            if (await IsUsableImageAsync(bytes, token)) { data = bytes; break; }
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException || !token.IsCancellationRequested) { System.Diagnostics.Trace.WriteLine(ex); }
+                    }
+                }
                 if (data is null && target.TmdbPath is { Length: > 0 } path)
                 {
                     try
@@ -228,15 +267,6 @@ public partial class SeriesViewModel
         return season is null ? string.IsNullOrWhiteSpace(value) || string.Equals(value, "all", StringComparison.OrdinalIgnoreCase)
             : int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number == season;
     }
-
-    private static IEnumerable<string> RankImages(JsonElement artwork, IEnumerable<string> types, string language, Func<JsonElement, bool>? filter = null) =>
-        types.SelectMany(type => SeriesNfoEditor.Array(artwork, type)).Where(image => filter is null || filter(image))
-            .OrderBy(image => SeriesNfoEditor.Text(image, "lang") switch
-            {
-                var value when string.Equals(value, language, StringComparison.OrdinalIgnoreCase) => 0,
-                null or "" or "00" => 1,
-                _ => 2
-            }).Select(image => SeriesNfoEditor.Text(image, "url")).OfType<string>();
 
     private static async Task<byte[]?> DownloadFirstImageAsync(IEnumerable<string> urls, TMDbScraperManager scraper, CancellationToken token)
     {

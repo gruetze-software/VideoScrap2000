@@ -24,9 +24,9 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 
 ## Get started
 
-### Try the screenshot demo
+### Try demo mode
 
-Open **Settings → Demo for screenshots → Open demo mode**. The demo starts in English with a dark theme and fictional movies, TV shows, seasons, episodes and cast. Each movie has its own cover motif and color palette. Original AI-generated artwork is bundled as compressed JPEGs; no TMDB or Fanart.tv content is fetched.
+Open **Settings → Demo mode → Open demo mode**. The demo starts in English with a dark theme and fictional movies, TV shows, seasons, episodes and cast. Each movie has its own cover motif and color palette. Original AI-generated artwork is bundled as compressed JPEGs; no TMDB or Fanart.tv content is fetched.
 
 - **Movies:** select **The Last Signal** for a populated movie page, artwork and cast.
 - **TV shows:** select **North Harbor**, then **Episodes**, to show the season poster, banner and episode still beside the episode editor.
@@ -74,6 +74,14 @@ See the official Kodi guides for [NFO files](https://kodi.wiki/view/NFO_files), 
 [TMDB](https://www.themoviedb.org/) provides movie details, cast information, and artwork. [Fanart.tv](https://fanart.tv/) provides additional artwork types. Packages built with the Fanart.tv project key work without per-client setup. You can optionally set your [personal Fanart.tv key](https://fanart.tv/get-an-api-key/) in `FANART_TV_API_KEY` and restart the app.
 
 Episode updates fetch available stills from TMDB, with [TVmaze](https://www.tvmaze.com/) as a fallback for shows matched by IMDb or TheTVDB ID. TVmaze API data is provided under [CC BY-SA](https://www.tvmaze.com/api#licensing). The selected episode's still appears beside the season poster. Saving writes new stills alongside their videos as `<video basename>-thumb` image files.
+
+### Languages and availability
+
+The interface supports **English and German**. Metadata and artwork languages are independent of the interface language: their automatic setting preserves the client's original language and region, such as `fr-CA` or `pt-PT`, even when the interface falls back to English. Settings show the detected client culture, the current metadata request language, and the preferred artwork language. You can override metadata and artwork languages separately from a list of ISO-639-1 languages, including selected regional variants. Unsupported client language codes fall back to English.
+
+TMDB supports [localized metadata in many languages](https://developer.themoviedb.org/docs/languages), but translations vary by title and field. A missing translation can produce an original-language value or an empty field; names and roles are not consistently localized. VideoScrap 2000 does not automatically translate missing text.
+
+TMDB and Fanart.tv supply images in the languages available for the title. Results are ranked **preferred language → language-neutral → other languages**; other languages remain visible. TMDB currently tags image languages without regional variants, so `fr-CA` prefers `fr` images. Text inside images is not translated. Episode stills and most backdrops are language-neutral. See [TMDB image languages](https://developer.themoviedb.org/docs/image-languages) and the [Fanart.tv API](https://fanart.tv/api-docs/api-v3/).
 
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 

@@ -121,8 +121,9 @@ public partial class MainViewModel
         if (movie.BelongsToCollection is { } set && set.Id > 0) { Collection = set.Name ?? ""; CollectionId = set.Id.ToString(); }
         Studios = movie.ProductionCompaniesString; Countries = movie.ProductionCountriesString;
         if (movie.Keywords.Keywords.Count > 0) Tags = string.Join("; ", movie.Keywords.Keywords.Select(k => k.Name));
-        var german = MetadataLanguage.StartsWith("de", StringComparison.Ordinal);
-        var certification = movie.ReleaseDates.Results.Where(r => r.Iso31661 == (german ? "DE" : "US")).SelectMany(r => r.ReleaseDates).Select(r => r.Certification).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
+        var country = new RegionInfo(MetadataLanguage).TwoLetterISORegionName;
+        var german = country == "DE";
+        var certification = movie.ReleaseDates.Results.Where(r => r.Iso31661 == country).SelectMany(r => r.ReleaseDates).Select(r => r.Certification).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
         if (certification is not null) Certification = german ? "FSK " + certification : certification;
         if (movie.Credits.Cast.Count > 0)
         {
