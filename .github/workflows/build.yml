@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      windows_linux_x64_only:
+        description: Build only Windows x64 and Linux x64 test packages
+        type: boolean
+        default: false
       create_release_draft:
         description: Create or update the unpublished release draft after packaging
         type: boolean
@@ -21,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-15-intel]
+        os: ${{ fromJSON(inputs.windows_linux_x64_only && '["windows-latest","ubuntu-latest"]' || '["windows-latest","ubuntu-latest","macos-15-intel"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7.0.1
@@ -42,19 +46,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - os: windows-latest
-            rids: win-x64,win-arm64
-            name: windows
-          - os: ubuntu-latest
-            rids: linux-x64
-            name: linux-x64
-          - os: ubuntu-24.04-arm
-            rids: linux-arm64
-            name: linux-arm64
-          - os: macos-15-intel
-            rids: osx-x64,osx-arm64
-            name: macos
+        platform: >-
+          ${{ fromJSON(inputs.windows_linux_x64_only &&
+          '[{"os":"windows-latest","rids":"win-x64","name":"windows"},{"os":"ubuntu-latest","rids":"linux-x64","name":"linux-x64"}]' ||
+          '[{"os":"windows-latest","rids":"win-x64,win-arm64","name":"windows"},{"os":"ubuntu-latest","rids":"linux-x64","name":"linux-x64"},{"os":"ubuntu-24.04-arm","rids":"linux-arm64","name":"linux-arm64"},{"os":"macos-15-intel","rids":"osx-x64,osx-arm64","name":"macos"}]') }}
     name: Package ${{ matrix.platform.name }}
     runs-on: ${{ matrix.platform.os }}
     steps:
