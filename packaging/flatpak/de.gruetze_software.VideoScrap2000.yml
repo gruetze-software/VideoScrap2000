@@ -1,77 +1,37 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright 2026 Gruetze-Software -->
-<component type="desktop-application">
-  <id>de.gruetze_software.VideoScrap2000</id>
-  <metadata_license>CC0-1.0</metadata_license>
-  <project_license>MIT</project_license>
-  <name>VideoScrap 2000</name>
-  <summary>Library manager for movies and shows</summary>
-  <summary xml:lang="de">Bibliothek-App für Filme und Serien</summary>
-  <developer id="de.gruetze_software"><name>Grütze-Software</name></developer>
- <description>
-  <p>Library manager for movies and TV shows. Browse your collection, find metadata and artwork, and save the results as NFO and image files beside your videos. Supports Kodi.</p>
-  <p xml:lang="de">Bibliotheksverwaltung für Filme und Serien. Durchsuche deine Sammlung, rufe Metadaten sowie Cover-Grafiken ab und speichere die Ergebnisse als NFO- und Bilddateien direkt neben deinen Videodateien. Unterstützt Kodi.</p>
-  <ul>
-    <li>Movies and TV shows - manage films, seasons and episodes in separate libraries.</li>
-    <li xml:lang="de">Filme und Serien - Verwalte Filme, Staffeln und Episoden in getrennten Mediatheken.</li>
-    <li>Metadata and cast - find details with TMDB and edit descriptions, ratings, genres and cast.</li>
-    <li xml:lang="de">Metadaten und Besetzung - Rufe Details über TMDB ab und bearbeite Beschreibungen, Bewertungen, Genres sowie die Besetzungsliste.</li>
-    <li>Artwork - download posters, fanart, logos, banners and episode stills from TMDB, Fanart.tv and TVmaze.</li>
-    <li xml:lang="de">Grafiken - Lade Poster, Fan-Art, Logos, Banner und Szenenbilder aus Episoden von TMDB, Fanart.tv und TVmaze herunter.</li>
-    <li>Kodi support - save NFOs and artwork beside your videos, with backups of replaced files.</li>
-    <li xml:lang="de">Kodi-Unterstützung - Speichere NFO-Dateien und Grafiken direkt neben deinen Videodateien – inklusive Sicherungskopien für ersetzte Dateien.</li>
-    <li>AI-assisted plot outlines - prepare a prompt for ChatGPT or another AI service, then paste the summary back into the app.</li>
-    <li xml:lang="de">KI-gestützte Handlungszusammenfassungen - Erstelle einen Prompt für ChatGPT oder einen anderen KI-Dienst und füge die generierte Zusammenfassung anschließend in die App ein.</li>
-    <li>Your language and style - English/German interface, independent metadata and artwork languages, light/dark themes and optional fanart backgrounds.</li>
-    <li xml:lang="de">Sprache und Design - Benutzeroberfläche auf Englisch oder Deutsch, unabhängig wählbare Sprachen für Metadaten und Grafiken, helle oder dunkle Designs sowie optionale Fan-Art-Hintergründe.</li>
-    <li>Everyday browsing - poster thumbnails, star ratings, search, sorting and automatic technical media details.</li>
-    <li xml:lang="de">Komfortables Durchstöbern - Poster-Vorschaubilder, Sterne-Bewertungen, Such- und Sortierfunktionen sowie automatische Anzeige technischer Mediendetails.</li>
-  </ul>
-</description>
-  <launchable type="desktop-id">de.gruetze_software.VideoScrap2000.desktop</launchable>
-  <branding>
-      <color type="primary" scheme_preference="light">#C9AE86</color>
-      <color type="primary" scheme_preference="dark">#80684F</color>
-  </branding>
-  <url type="homepage">https://www.gruetze-software.de</url>
-  <url type="bugtracker">https://github.com/gruetze-software/VideoScrap2000/issues</url>
-  <url type="vcs-browser">https://github.com/gruetze-software/VideoScrap2000</url>
-  <url type="donation">https://ko-fi.com/gruetzesoftware</url>
-  <provides><binary>videoscrap2000</binary></provides>
-  <categories>
-      <category>AudioVideo</category>
-      <category>Video</category>
-  </categories>
-  <supports>
-      <control>keyboard</control>
-      <control>pointing</control>
-  </supports>
-  <recommends>
-      <display_length compare="ge">768</display_length>
-  </recommends>
-  <screenshots>
-    <screenshot type="default">
-      <caption>Main dialog with selected demo movie</caption>
-      <caption xml:lang="de">Haupt-Dialog mit einem ausgewählten Demo-Film</caption>
-      <image type="source" width="1138" height="877">https://github.com/gruetze-software/VideoScrap2000/blob/5bd19d8647e113c884f91dbe258460e05da45eeb/branding/screenshots/screenshot1main_linux.png</image>
-    </screenshot>
-    <screenshot>
-     <caption>Main dialog with selected demo movie character-view</caption>
-      <caption xml:lang="de">Haupt-Dialog mit einem ausgewählten Demo-Film und Darsteller</caption>
-      <image type="source" width="1138" height="877">https://github.com/gruetze-software/VideoScrap2000/blob/5bd19d8647e113c884f91dbe258460e05da45eeb/branding/screenshots/screenshot2main_linux.png</image>
-    </screenshot>
-    </screenshot>
-    <screenshot>
-      <caption>Main dialog with selected demo tv show artwork-view</caption>
-      <caption xml:lang="de">Haupt-Dialog mit einer ausgewählten Demo-Serie und Artwork-Seite</caption>
-      <image type="source" width="1138" height="877">https://github.com/gruetze-software/VideoScrap2000/blob/5bd19d8647e113c884f91dbe258460e05da45eeb/branding/screenshots/screenshot3main_linux.png</image>
-    </screenshot>
-  </screenshots>
-  <content_rating type="oars-1.1" />
-  <releases><release version="1.0.0" type="stable" date="2026-11-06">
-      <description>
-          <p>Erste stabile Release-Version von VideoScraper 2000. Features siehe ReadMe.</p>
-          <p xml:lang="de">Erste stabile Release-Version von VideoScraper 2000. Features siehe ReadMe.</p>
-      </description>
-  </releases>
-</component>
+id: de.gruetze_software.VideoScrap2000
+runtime: org.freedesktop.Platform
+runtime-version: '26.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.dotnet10
+build-options:
+  prepend-path: "/usr/lib/sdk/dotnet10/bin"
+  append-ld-library-path: "/usr/lib/sdk/dotnet10/lib"
+  prepend-pkg-config-path: "/usr/lib/sdk/dotnet10/lib/pkgconfig"
+
+command: videoscrap2000
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --share=network
+  - --env=DOTNET_ROOT=/app/lib/dotnet
+  - --device=dri
+
+modules:
+  - name: dotnet
+    buildsystem: simple
+    build-commands:
+    - /usr/lib/sdk/dotnet10/bin/install.sh
+
+  - name: videoscrap2000
+    buildsystem: simple
+    sources:
+      - type: git
+        url: https://github.com/gruetze-software/VideoScrap2000.git
+        commit: f204fb505a17cecda5f982e29af187f44d5e64b0
+        tag: v1.0.0
+      - ./nuget-sources.json
+    build-commands:
+      - bash scripts/install-flatpak.sh
