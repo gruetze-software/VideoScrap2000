@@ -40,6 +40,9 @@ jobs:
               test -f /usr/share/applications/videoscrap2000.desktop
               test -f /usr/share/pixmaps/videoscrap2000.png
               for library in /opt/videoscrap2000/*.so*; do
+                # Optional .NET event tracing is not used by the app and can require
+                # an older LTTng ABI. Normal startup must work without that plugin.
+                case "$library" in */libcoreclrtraceptprovider.so) continue ;; esac
                 if ldd "$library" | grep "not found"; then echo "Missing dependency: $library"; exit 1; fi
               done
               xvfb-run -a /usr/bin/videoscrap2000 --startup-check
