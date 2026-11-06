@@ -21,6 +21,24 @@ foreach ($package in $packages) {
         $package.archive -ne "VideoScrap2000-$Version-$($package.runtime)$flavor$extension") { throw 'Invalid package manifest.' }
 }
 $baseUrl = "https://github.com/$Repository/releases/download/v$Version"
+$installers = @(Get-ChildItem -LiteralPath $PackageRoot -Filter '*.deb-info.json' -File -Recurse |
+    ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json } | Sort-Object architecture)
+if ($installers.Count -gt 0) {
+    if ($installers.Count -ne 2 -or @($installers.architecture | Sort-Object -Unique).Count -ne 2) { throw 'Expected two DEB installer manifests.' }
+    foreach ($installer in $installers) {
+        if ($installer.architecture -notin @('amd64','arm64') -or $installer.version -ne $Version -or
+            $installer.archive -ne "videoscrap2000_${Version}_$($installer.architecture).deb" -or
+            $installer.sha256 -notmatch '^[a-f0-9]{64}$') { throw 'Invalid DEB installer manifest.' }
+        $files = @(Get-ChildItem -LiteralPath $PackageRoot -Filter $installer.archive -File -Recurse)
+        if ($files.Count -ne 1 -or $files[0].Length -ne $installer.downloadBytes -or
+            (Get-FileHash -LiteralPath $files[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant() -ne $installer.sha256) { throw 'DEB installer integrity check failed.' }
+    }
+}
+function Get-InstallerLink([string]$Architecture, [string]$Label) {
+    $installer = $installers | Where-Object architecture -eq $Architecture
+    $size = ($installer.downloadBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
+    return "[$Label · $size MiB]($baseUrl/$($installer.archive))"
+}
 function Get-DownloadLink([string]$Runtime, [bool]$Bundled, [string]$Label) {
     $package = $packages | Where-Object { $_.runtime -eq $Runtime -and $_.selfContained -eq $Bundled } | Select-Object -First 1
     $size = ($package.downloadBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
@@ -32,7 +50,11 @@ function Get-DownloadTable([bool]$Bundled) {
         '| --- | --- | --- |'
         "| Windows | $(Get-DownloadLink 'win-x64' $Bundled 'Windows 64-bit') | $(Get-DownloadLink 'win-arm64' $Bundled 'Windows ARM64') |"
         "| macOS | $(Get-DownloadLink 'osx-x64' $Bundled 'Intel Mac') | $(Get-DownloadLink 'osx-arm64' $Bundled 'Apple Silicon Mac') |"
-        "| Linux | $(Get-DownloadLink 'linux-x64' $Bundled 'Linux 64-bit') | $(Get-DownloadLink 'linux-arm64' $Bundled 'Linux ARM64') |"
+        $(if ($Bundled -and $installers.Count -gt 0) {
+            "| Linux Mint / Ubuntu / Debian | $(Get-InstallerLink 'amd64' 'DEB · 64-bit') | $(Get-InstallerLink 'arm64' 'DEB · ARM64') |"
+        } else {
+            "| Linux archive | $(Get-DownloadLink 'linux-x64' $Bundled 'Linux 64-bit') | $(Get-DownloadLink 'linux-arm64' $Bundled 'Linux ARM64') |"
+        })
     ) -join "`n"
 }
 $downloads = @(
@@ -42,6 +64,9 @@ $downloads = @(
     ''
     (Get-DownloadTable $true)
     ''
+    $(if ($installers.Count -gt 0) {
+        "**Linux DEB:** install the downloaded file, then start **VideoScrap 2000** from the application menu. Includes .NET 10. Tested on Ubuntu 22.04/24.04 (Linux Mint 21/22 bases).`n`n<details>`n<summary>Linux archives for other distributions or portable use</summary>`n`n$(Get-DownloadLink 'linux-x64' $true 'Linux 64-bit') · $(Get-DownloadLink 'linux-arm64' $true 'Linux ARM64')`n`n</details>`n"
+    })
     '<details>'
     '<summary>Smaller downloads — only if .NET 10 Runtime is already installed</summary>'
     ''
@@ -66,5 +91,5 @@ foreach ($package in $packages) {
 }
 $body += "`n</details>`n"
 [IO.File]::WriteAllText([IO.Path]::GetFullPath($NotesPath), $body)
-[IO.File]::WriteAllText([IO.Path]::GetFullPath($ChecksumPath), (($packages | ForEach-Object { "$($_.sha256)  $($_.archive)" }) -join "`n") + "`n")
-Write-Host "Prepared download tables and one checksum file for all twelve packages."
+[IO.File]::WriteAllText([IO.Path]::GetFullPath($ChecksumPath), ((@($packages) + @($installers) | ForEach-Object { "$($_.sha256)  $($_.archive)" }) -join "`n") + "`n")
+Write-Host "Prepared download tables and one checksum file for $($packages.Count + $installers.Count) packages."

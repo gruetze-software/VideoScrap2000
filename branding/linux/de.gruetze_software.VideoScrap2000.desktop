@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=VideoScrap 2000
+GenericName=Movie and TV Library Manager
+GenericName[de]=Film- und Serienverwaltung
+Comment=Manage metadata and artwork for your movies and TV shows
+Comment[de]=Metadaten und Bilder deiner Filme und Serien verwalten
+Exec=videoscrap2000
+Icon=de.gruetze_software.VideoScrap2000
+Terminal=false
+Categories=AudioVideo;Video;
+Keywords=Movies;TV;Kodi;Metadata;Artwork;
+StartupNotify=true

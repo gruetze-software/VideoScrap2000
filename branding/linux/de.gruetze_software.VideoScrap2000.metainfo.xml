@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>de.gruetze_software.VideoScrap2000</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>VideoScrap 2000</name>
+  <summary>Manage movie and TV-show metadata and artwork</summary>
+  <summary xml:lang="de">Metadaten und Bilder deiner Filme und Serien verwalten</summary>
+  <developer id="de.gruetze_software"><name>Grütze-Software</name></developer>
+  <description>
+    <p>Browse your movie and TV-show collection, edit metadata and cast, and download artwork. Save Kodi-compatible NFO files and images beside your videos.</p>
+    <p xml:lang="de">Verwalte deine Filme und Serien, bearbeite Metadaten und Darsteller und lade Bilder herunter. Kodi-kompatible NFO-Dateien und Bilder werden neben deinen Videos gespeichert.</p>
+    <ul>
+      <li>Movie, season and episode libraries</li>
+      <li>Metadata and artwork from TMDB, Fanart.tv and TVmaze</li>
+      <li>English/German interface, light/dark themes and independent content languages</li>
+      <li>Optional demo mode with a fictional collection</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">de.gruetze_software.VideoScrap2000.desktop</launchable>
+  <url type="homepage">https://github.com/gruetze-software/VideoScrap2000</url>
+  <url type="bugtracker">https://github.com/gruetze-software/VideoScrap2000/issues</url>
+  <url type="vcs-browser">https://github.com/gruetze-software/VideoScrap2000</url>
+  <url type="donation">https://ko-fi.com/gruetzesoftware</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Movie library and metadata editor</caption>
+      <image>https://raw.githubusercontent.com/gruetze-software/VideoScrap2000/v1.0.0/branding/screenshots/screenshot1main_linux.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="1.0.0" date="2026-11-06"/></releases>
+</component>

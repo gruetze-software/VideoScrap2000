@@ -21,3 +21,5 @@ For builds with Fanart.tv enabled, set the GitHub Actions repository secret `FAN
 
 macOS builds use Intel runners for reliable availability. Both Intel and ARM64 packages are published with explicit target runtimes; universal libraries are reduced to the selected architecture.
 
+Release builds also include AMD64 and ARM64 DEB installers with bundled .NET 10. Both undergo clean installation, startup and removal checks on Ubuntu 22.04/24.04. The release downloads prioritise DEBs for Debian-based Linux and keep portable Linux archives in a collapsible section. [Linux installation](linux-mint.md) · [Snap/Flatpak workflows and human Store submission](linux-stores.md).
+

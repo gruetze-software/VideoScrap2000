@@ -1,0 +1,44 @@
+name: Build and test Snap
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  snap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install packaging and test tools
+        run: |
+          sudo snap install snapcraft --classic
+          sudo apt-get update -qq
+          sudo apt-get install -y libmms0 xvfb dbus-x11
+      - name: Prepare self-contained app
+        shell: pwsh
+        env:
+          FANART_TV_PROJECT_API_KEY: ${{ secrets.FANART_TV_PROJECT_API_KEY }}
+        run: |
+          if ($env:FANART_TV_PROJECT_API_KEY -notmatch '^[0-9a-fA-F]{32}$') { throw 'Missing Fanart.tv project key.' }
+          ./scripts/Publish.ps1 -Runtime linux-x64
+          $file = Get-ChildItem artifacts/linux-x64 -Filter '*.manifest.json' -Recurse | Select-Object -First 1
+          $manifest = Get-Content $file.FullName -Raw | ConvertFrom-Json
+          ./scripts/Prepare-Snap.ps1 -PublishDirectory (Join-Path $file.DirectoryName 'VideoScrap2000') -Version $manifest.version
+      - name: Build Snap
+        run: |
+          version=$(cat artifacts/snap-payload/opt/videoscrap2000/VERSION)
+          sudo snapcraft pack --destructive-mode --output "$PWD/artifacts/videoscrap2000_${version}_amd64.snap"
+      - name: Install and test confined startup
+        run: |
+          set -euo pipefail
+          sudo snap install --dangerous artifacts/videoscrap2000_*_amd64.snap
+          snap connections videoscrap2000
+          xvfb-run -a --auth-file "$HOME/.Xauthority" snap run videoscrap2000 --startup-check
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: VideoScrap2000-Snap-amd64
+          path: artifacts/*.snap
+          if-no-files-found: error

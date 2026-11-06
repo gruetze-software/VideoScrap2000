@@ -1,0 +1,46 @@
+name: Build and test human-authored Flatpak manifest
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_path:
+        description: Repository path to your independently human-authored Flatpak manifest
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  flatpak:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      APP_ID: de.gruetze_software.VideoScrap2000
+      MANIFEST_PATH: ${{ inputs.manifest_path }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check manifest input
+        run: |
+          set -euo pipefail
+          manifest=$(realpath -e -- "$MANIFEST_PATH")
+          case "$manifest" in "$GITHUB_WORKSPACE"/*) ;; *) echo 'Manifest must be inside this repository'; exit 1 ;; esac
+          test -f "$manifest"
+      - name: Install Flatpak build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y flatpak flatpak-builder desktop-file-utils appstream xvfb
+          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+      - name: Validate desktop metadata
+        run: |
+          desktop-file-validate branding/linux/de.gruetze_software.VideoScrap2000.desktop
+          appstreamcli validate --no-net branding/linux/de.gruetze_software.VideoScrap2000.metainfo.xml
+      - name: Build, install and export bundle
+        run: |
+          set -euo pipefail
+          flatpak-builder --user --default-branch=stable --install-deps-from=flathub --force-clean --install --repo=flatpak-repo flatpak-build "$MANIFEST_PATH"
+          mkdir -p artifacts
+          flatpak build-bundle flatpak-repo "artifacts/$APP_ID.flatpak" "$APP_ID" stable
+          xvfb-run -a flatpak run "$APP_ID" --startup-check
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: VideoScrap2000-Flatpak
+          path: artifacts/*.flatpak
+          if-no-files-found: error

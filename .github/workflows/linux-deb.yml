@@ -1,11 +1,31 @@
 name: Linux Mint DEB test package
 on:
   workflow_dispatch:
+    inputs:
+      only_x64:
+        description: Build only the AMD64 package
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      only_x64:
+        type: boolean
+        default: false
+    secrets:
+      FANART_TV_PROJECT_API_KEY:
+        required: true
 permissions:
   contents: read
 jobs:
   package:
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: >-
+          ${{ fromJSON(inputs.only_x64 &&
+          '[{"os":"ubuntu-22.04","rid":"linux-x64","arch":"amd64"}]' ||
+          '[{"os":"ubuntu-22.04","rid":"linux-x64","arch":"amd64"},{"os":"ubuntu-24.04-arm","rid":"linux-arm64","arch":"arm64"}]') }}
+    runs-on: ${{ matrix.platform.os }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-dotnet@v6.1.0
@@ -19,8 +39,8 @@ jobs:
           FANART_TV_PROJECT_API_KEY: ${{ secrets.FANART_TV_PROJECT_API_KEY }}
         run: |
           if ($env:FANART_TV_PROJECT_API_KEY -notmatch '^[0-9a-fA-F]{32}$') { throw 'Missing Fanart.tv project key.' }
-          ./scripts/Publish.ps1 -Runtime linux-x64
-          $manifestFile = Get-ChildItem artifacts/linux-x64 -Recurse -Filter '*.manifest.json' | Select-Object -First 1
+          ./scripts/Publish.ps1 -Runtime '${{ matrix.platform.rid }}'
+          $manifestFile = Get-ChildItem 'artifacts/${{ matrix.platform.rid }}' -Recurse -Filter '*.manifest.json' | Select-Object -First 1
           $manifest = Get-Content $manifestFile.FullName -Raw | ConvertFrom-Json
           $publish = Join-Path $manifestFile.DirectoryName 'VideoScrap2000'
           bash scripts/Package-Deb.sh $publish $manifest.version artifacts/deb
@@ -54,6 +74,6 @@ jobs:
           done
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: VideoScrap2000-Linux-Mint-DEB-amd64
+          name: VideoScrap2000-Linux-Mint-DEB-${{ matrix.platform.arch }}
           path: artifacts/deb/*
           if-no-files-found: error

@@ -1,8 +1,8 @@
 # Linux Mint test package
 
-The self-contained AMD64 DEB package includes .NET 10 and adds **VideoScrap 2000** to the application menu. No separate .NET installation is needed. It targets Linux Mint 21/22 on Intel/AMD 64-bit PCs. The build checks installation and startup on their Ubuntu 22.04/24.04 base systems; testing on Linux Mint itself is still needed.
+The self-contained DEB packages include .NET 10 and add **VideoScrap 2000** to the application menu. No separate .NET installation is needed. Use **AMD64** for Linux Mint 21/22 on Intel/AMD 64-bit PCs; **ARM64** is available for Debian-based ARM64 systems. Both architectures are checked on Ubuntu 22.04/24.04, the bases of Mint 21/22. This is not a claim that every Debian-derived distribution has been tested.
 
-Download the **VideoScrap2000-Linux-Mint-DEB-amd64** artifact from the **Linux Mint DEB test package** GitHub Actions run. Extract the downloaded ZIP, then double-click the `.deb` file and install it with Mint's package installer. Start **VideoScrap 2000** from the application menu under **Sound & Video**.
+Download the DEB directly from **GitHub Releases**, or download the **VideoScrap2000-Linux-Mint-DEB-amd64** test artifact from GitHub Actions and extract its ZIP. Double-click the `.deb` file and install it with Mint's package installer. Start **VideoScrap 2000** from the application menu under **Sound & Video**. When replacing a test package with the same version, choose reinstall.
 
 Alternatively, open a terminal in the folder containing the DEB:
 
@@ -17,4 +17,4 @@ Settings and library files remain in the normal user data folders. Removing the 
 sudo apt remove videoscrap2000
 ```
 
-The manual **Linux Mint DEB test package** workflow builds and validates the installer without creating a release or tag. Flatpak and Snap packages are separate future work.
+The manual **Linux Mint DEB test package** workflow builds and validates the installers without creating a release or tag. Release builds also use this workflow and attach both DEBs to the release. [Flatpak and Snap workflows](linux-stores.md) are separate from DEB packaging and Store registration.

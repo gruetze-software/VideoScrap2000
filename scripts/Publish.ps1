@@ -49,6 +49,7 @@ if ($Runtime.StartsWith('osx-') -and $IsMacOS) {
     }
 }
 Copy-Item -LiteralPath (Join-Path $repository 'THIRD-PARTY-NOTICES.md') -Destination $output
+Copy-Item -LiteralPath (Join-Path $repository 'LICENSE') -Destination $output
 Copy-Item -LiteralPath (Join-Path $repository 'licenses') -Destination $output -Recurse
 # Preserve notices supplied by the exact restored dependency versions as well.
 $assets = Get-Content (Join-Path $repository 'MovieScrap2000/obj/project.assets.json') -Raw | ConvertFrom-Json

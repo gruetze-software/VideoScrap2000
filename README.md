@@ -28,7 +28,7 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 
 ## Get started
 
-1. Download and extract the package for your operating system and architecture from **GitHub Releases**. Choose **self-contained** to include .NET 10, or the smaller **framework-dependent** package if .NET 10 is already installed.
+1. Download the package for your operating system and architecture from **GitHub Releases**. On Linux Mint, Ubuntu or Debian, install the **DEB** package; extract the archives on other systems. Choose **self-contained** to include .NET 10, or **framework-dependent** if .NET 10 is already installed.
 2. Open **Settings** and choose your movie and TV folders. Use one subfolder per movie or show; TV shows may contain season folders.
 3. Select **Scan library**, find metadata, review the results and choose **Save changes**.
 
@@ -64,4 +64,4 @@ dotnet run --project MovieScrap2000/MovieScrap2000.csproj
 
 Enjoy VideoScrap 2000? [Buy me a small coffee on Ko-fi](https://ko-fi.com/gruetzesoftware) to support its development. Thank you!
 
-[Third-party notices](THIRD-PARTY-NOTICES.md) · [Grütze-Software](https://github.com/gruetze-software)
+[MIT license](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md) · [Grütze-Software](https://github.com/gruetze-software)

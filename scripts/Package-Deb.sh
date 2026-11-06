@@ -2,14 +2,19 @@
 set -euo pipefail
 
 if [[ $# -ne 3 ]]; then
-    echo "Usage: Package-Deb.sh <self-contained Linux x64 publish directory> <version> <output directory>" >&2
+    echo "Usage: Package-Deb.sh <self-contained Linux publish directory> <version> <output directory>" >&2
     exit 1
 fi
 publish_dir=$(realpath -e -- "$1")
 version=$2
 [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid version' >&2; exit 1; }
 [[ -f "$publish_dir/VideoScrap2000" && -f "$publish_dir/libcoreclr.so" ]] || { echo 'A self-contained publish is required' >&2; exit 1; }
-readelf -h "$publish_dir/VideoScrap2000" | grep -q 'Advanced Micro Devices X86-64' || { echo 'Linux x64 publish required' >&2; exit 1; }
+machine=$(readelf -h "$publish_dir/VideoScrap2000")
+case "$machine" in
+    *'Advanced Micro Devices X86-64'*) architecture=amd64 ;;
+    *'AArch64'*) architecture=arm64 ;;
+    *) echo 'Linux x64 or ARM64 publish required' >&2; exit 1 ;;
+esac
 repository=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 mkdir -p -- "$3"
 output=$(realpath -e -- "$3")
@@ -51,7 +56,7 @@ Package: videoscrap2000
 Version: $version
 Section: video
 Priority: optional
-Architecture: amd64
+Architecture: $architecture
 Maintainer: Grütze-Software
 Homepage: https://github.com/gruetze-software/VideoScrap2000
 Installed-Size: $installed_size
@@ -61,8 +66,16 @@ Description: Movie and TV-show metadata and artwork manager
  and artwork beside your videos. Includes the .NET 10 runtime.
 EOF
 chmod 644 "$stage/DEBIAN/control"
-package="$output/videoscrap2000_${version}_amd64.deb"
+package="$output/videoscrap2000_${version}_${architecture}.deb"
 dpkg-deb --root-owner-group -Zxz -z9 --build "$stage" "$package"
 (cd "$output" && sha256sum "${package##*/}" > "${package##*/}.sha256")
+python3 - "$package" "$version" "$architecture" "$installed_size" <<'PY'
+import hashlib, json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+metadata = dict(archive=path.name, version=sys.argv[2], architecture=sys.argv[3],
+    installedBytes=int(sys.argv[4])*1024, downloadBytes=path.stat().st_size,
+    sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+path.with_suffix('.deb-info.json').write_text(json.dumps(metadata, indent=2)+'\n')
+PY
 dpkg-deb --info "$package"
 echo "Package: $package"

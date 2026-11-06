@@ -1,0 +1,50 @@
+name: videoscrap2000
+title: VideoScrap 2000
+base: core24
+adopt-info: videoscrap2000
+grade: stable
+confinement: strict
+license: MIT
+summary: Manage metadata and artwork for your movies and TV shows
+description: |
+  Browse movie and TV-show libraries, manage seasons and episodes, edit metadata
+  and cast, and download posters, fanart, logos, banners and episode images.
+  Saves Kodi-compatible NFO files and artwork beside your videos.
+
+  Includes an English/German interface, independent metadata and artwork
+  languages, light/dark themes, an optional fictional demo collection, and a
+  prompt dialog for manually summarising plot outlines with an AI service.
+
+  Metadata is provided by TMDB; artwork by TMDB, Fanart.tv and TVmaze.
+  This product uses the TMDB API but is not endorsed or certified by TMDB.
+
+  Enjoy VideoScrap 2000? Buy me a small coffee on Ko-fi to support its development:
+  https://ko-fi.com/gruetzesoftware
+website: https://github.com/gruetze-software/VideoScrap2000
+source-code: https://github.com/gruetze-software/VideoScrap2000
+issues: https://github.com/gruetze-software/VideoScrap2000/issues
+icon: MovieScrap2000/Assets/videoscrap-2000.png
+platforms:
+  amd64:
+
+apps:
+  videoscrap2000:
+    command: bin/videoscrap2000
+    desktop: usr/share/applications/de.gruetze_software.VideoScrap2000.desktop
+    extensions: [gnome]
+    plugs: [home, network, removable-media]
+
+parts:
+  videoscrap2000:
+    plugin: dump
+    source: artifacts/snap-payload
+    override-build: |
+      craftctl default
+      craftctl set version="$(cat "$CRAFT_PART_SRC/opt/videoscrap2000/VERSION")"
+    stage-packages:
+      - libicu74
+      - libssl3t64
+      - libgssapi-krb5-2
+      - libcurl3t64-gnutls
+      - libice6
+      - libsm6
