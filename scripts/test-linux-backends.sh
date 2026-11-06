@@ -2,6 +2,7 @@
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
+for tool in dotnet weston wayland-info xvfb-run; do command -v "$tool" >/dev/null; done
 logs="$root/artifacts/linux-backends"
 mkdir -p "$logs"
 work=$(mktemp -d)
@@ -21,7 +22,7 @@ weston --backend=headless-backend.so --use-gl --width=1280 --height=960 --socket
 weston_pid=$!
 ready=false
 for attempt in {1..600}; do
-    if [[ -S "$XDG_RUNTIME_DIR/videoscrap-test" ]] && WAYLAND_DISPLAY=videoscrap-test timeout 1s weston-info >"$logs/wayland-globals.log" 2>&1; then ready=true; break; fi
+    if [[ -S "$XDG_RUNTIME_DIR/videoscrap-test" ]] && WAYLAND_DISPLAY=videoscrap-test timeout 1s wayland-info >"$logs/wayland-globals.log" 2>&1; then ready=true; break; fi
     if ! kill -0 "$weston_pid" 2>/dev/null; then cat "$logs/weston.log"; exit 1; fi
     sleep 0.1
 done
