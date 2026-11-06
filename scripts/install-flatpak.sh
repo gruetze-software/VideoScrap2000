@@ -28,6 +28,7 @@ case $(uname -m) in
 esac
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
+mkdir -p "$work/publish"
 cd "$root"
 sources=(--source "$feed")
 if [[ -d /usr/lib/sdk/dotnet10/nuget/packages ]]; then

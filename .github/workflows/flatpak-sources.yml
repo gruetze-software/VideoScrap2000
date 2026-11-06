@@ -66,6 +66,8 @@ jobs:
             bash scripts/install-flatpak.sh --prefix "$PWD/artifacts/flatpak-stage" --nuget-source "$PWD/artifacts/flatpak-feed"
             test -x artifacts/flatpak-stage/bin/videoscrap2000
             test -f artifacts/flatpak-stage/share/metainfo/de.gruetze_software.VideoScrap2000.metainfo.xml
+            export LD_LIBRARY_PATH="$PWD/artifacts/flatpak-stage/lib/videoscrap2000:$PWD/artifacts/flatpak-stage/lib:$LD_LIBRARY_PATH"
+            ldd artifacts/flatpak-stage/lib/videoscrap2000/libmediainfo.so | tee artifacts/flatpak-native-dependencies.txt
           '
       - uses: actions/upload-artifact@v7.0.2
         if: always()
@@ -74,4 +76,5 @@ jobs:
           path: |
             packaging/flatpak/nuget-sources.json
             artifacts/flatpak-tools/generator-commit.txt
+            artifacts/flatpak-native-dependencies.txt
           if-no-files-found: error
