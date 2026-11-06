@@ -24,6 +24,8 @@ The Snap uses Canonical's GNOME content extension. Its first installation can th
 
 ## Flatpak and Flathub
 
+For a local Linux build, see [Build and test on Linux](flatpak-linux-build.md), including the remaining manifest inputs and `scripts/build-flatpak.sh`.
+
 Run **Build and test human-authored Flatpak manifest** after adding your independently human-authored manifest to the repository. Enter its repository-relative path in `manifest_path`. The action validates desktop/AppStream metadata, installs the dependencies specified by that manifest, builds a local repository, installs the app, checks startup and uploads a `.flatpak` bundle. The manifest must use the application ID above, command `videoscrap2000`, and branch `stable` (the workflow default).
 
 Upstream desktop and AppStream sources are in `branding/linux/`. The application icon is in `MovieScrap2000/Assets/videoscrap-2000.png`. The manifest must install the desktop entry, correctly named icon, AppStream file and executable into their proper Flatpak locations. It must provide a maintained runtime and required .NET/native dependencies, offline NuGet inputs, and justified permissions for network access, display and the selected media folders. Validate real folder-picker portals and file permissions on Mint; a startup check alone does not prove library access works in the sandbox.

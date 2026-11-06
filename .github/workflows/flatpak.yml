@@ -35,10 +35,8 @@ jobs:
       - name: Build, install and export bundle
         run: |
           set -euo pipefail
-          flatpak-builder --user --default-branch=stable --install-deps-from=flathub --force-clean --install --repo=flatpak-repo flatpak-build "$MANIFEST_PATH"
-          mkdir -p artifacts
-          flatpak build-bundle flatpak-repo "artifacts/$APP_ID.flatpak" "$APP_ID" stable
-          xvfb-run -a flatpak run "$APP_ID" --startup-check
+          bash -n scripts/build-flatpak.sh
+          xvfb-run -a bash scripts/build-flatpak.sh "$MANIFEST_PATH"
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: VideoScrap2000-Flatpak
