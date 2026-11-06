@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/flatpak-tools
-          revision=5d8d8d321f17ca44be6bd9edcf77d73d8785854e
+          revision=9d86d336a39b9af38b86f114b6ce5820fe260f91
           printf '%s\n' "$revision" > artifacts/flatpak-tools/generator-commit.txt
           curl --fail --location "https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/$revision/dotnet/flatpak-dotnet-generator.py" -o artifacts/flatpak-tools/flatpak-dotnet-generator.py
           for rid in linux-x64 linux-arm64; do
