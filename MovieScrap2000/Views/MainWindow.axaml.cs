@@ -64,6 +64,9 @@ public partial class MainWindow : Window
     }
     private async void ShowAbout(object? sender, RoutedEventArgs e) => await new AboutWindow().ShowDialog(this);
     private async void ShowSettings(object? sender, RoutedEventArgs e)
+        => await OpenSettingsAsync();
+
+    private async Task OpenSettingsAsync()
     {
         var settingsDialog = new SettingsWindow(model);
         await settingsDialog.ShowDialog(this);
@@ -85,6 +88,17 @@ public partial class MainWindow : Window
 
     private async void ScanActiveLibrary(object? sender, RoutedEventArgs e)
     {
+        var series = LibraryTabs.SelectedIndex == 1;
+        if (string.IsNullOrWhiteSpace(series ? model.SeriesPath : model.LibraryPath))
+        {
+            var message = Localization.Locale.T(series
+                ? "Wähle zuerst einen Serienordner in den Einstellungen."
+                : "Wähle zuerst einen Filmordner in den Einstellungen.");
+            model.Status = message;
+            if (await new MissingLibraryFolderWindow(message).ShowDialog<bool>(this))
+                await OpenSettingsAsync();
+            return;
+        }
         if (LibraryTabs.SelectedIndex == 1) await model.Series.ScanAsync();
         else await model.ScanCommand.ExecuteAsync(null);
     }

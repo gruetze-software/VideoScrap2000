@@ -249,5 +249,8 @@
   "TMDB unterstützt viele ISO-639-1-Sprachen. Übersetzungen sind je nach Titel und Feld unterschiedlich vollständig. Ohne Übersetzung können Originaltexte oder leere Felder erscheinen. Texte werden nicht automatisch übersetzt.": "TMDB supports many ISO-639-1 languages. Translation coverage varies by title and field. Missing translations may result in original-language text or empty fields. Text is not translated automatically.",
   "TMDB und Fanart.tv bieten Bilder in den vorhandenen Sprachen. Die gewünschte Sprache wird zuerst angezeigt, danach sprachneutrale und andere Bilder. Bildtexte werden nicht übersetzt; Episodenbilder sind meist sprachneutral.": "TMDB and Fanart.tv provide images in the available languages. Your preferred language appears first, followed by language-neutral and other images. Image text is not translated; episode stills are usually language-neutral.",
   "Aktuelle Abfragesprache: {0}": "Current request language: {0}",
-  "Bevorzugte Bildsprache: {0}": "Preferred artwork language: {0}"
+  "Bevorzugte Bildsprache: {0}": "Preferred artwork language: {0}",
+  "Wähle zuerst einen Filmordner in den Einstellungen.": "Choose a movie folder in Settings first.",
+  "Ordner auswählen": "Choose a folder",
+  "Einstellungen öffnen": "Open Settings"
 }

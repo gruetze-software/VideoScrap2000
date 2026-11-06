@@ -18,6 +18,38 @@ public static class TestApp
 }
 public class LayoutTests
 {
+    [AvaloniaTheory]
+    [InlineData(0, "de")]
+    [InlineData(1, "de")]
+    [InlineData(0, "en")]
+    [InlineData(1, "en")]
+    public void ScanningWithoutAFolderShowsALocalizedSettingsHint(int tab, string language)
+    {
+        var previousLanguage = VideoScrap2000.Localization.Locale.IsEnglish ? "en" : "de";
+        using var model = new MainViewModel(settings: new AppSettings { Language = language });
+        var window = new MainWindow(model, initialize: false);
+        window.Show();
+        try
+        {
+            VideoScrap2000.Localization.Locale.Apply(language);
+            window.FindControl<TabControl>("LibraryTabs")!.SelectedIndex = tab;
+            window.FindControl<Button>("ScanLibraryButton")!.RaiseEvent(new(Avalonia.Controls.Button.ClickEvent));
+            var dialog = Assert.IsType<MissingLibraryFolderWindow>(Assert.Single(window.OwnedWindows));
+            var expected = VideoScrap2000.Localization.Locale.T(tab == 1
+                ? "Wähle zuerst einen Serienordner in den Einstellungen."
+                : "Wähle zuerst einen Filmordner in den Einstellungen.");
+            Assert.Contains(dialog.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == expected);
+            Assert.Contains(dialog.GetVisualDescendants().OfType<Button>(), button => button.Name == "OpenSettingsButton");
+            Assert.False(model.IsBusy);
+            dialog.Close(false);
+        }
+        finally
+        {
+            window.Close();
+            VideoScrap2000.Localization.Locale.Apply(previousLanguage);
+        }
+    }
+
     [AvaloniaFact]
     public async Task CancellingTheModalProgressDialogStopsTheOperationAndClosesIt()
     {
