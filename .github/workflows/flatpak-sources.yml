@@ -1,0 +1,50 @@
+name: Generate Flatpak NuGet sources with official tool
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check upstream installer syntax and metadata
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y flatpak desktop-file-utils appstream
+          bash -n scripts/install-flatpak.sh
+          bash scripts/install-flatpak.sh --help
+          desktop-file-validate branding/linux/de.gruetze_software.VideoScrap2000.desktop
+          appstreamcli validate --no-net branding/linux/de.gruetze_software.VideoScrap2000.metainfo.xml
+      - name: Install matching SDK and .NET extension
+        run: |
+          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y --noninteractive flathub org.freedesktop.Sdk//26.08 org.freedesktop.Sdk.Extension.dotnet10//26.08
+      - name: Generate unchanged source inputs with Flatpak's official generator
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/flatpak-tools
+          revision=$(gh api repos/flatpak/flatpak-builder-tools/commits/master --jq .sha)
+          printf '%s\n' "$revision" > artifacts/flatpak-tools/generator-commit.txt
+          curl --fail --location "https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/$revision/dotnet/flatpak-dotnet-generator.py" -o artifacts/flatpak-tools/flatpak-dotnet-generator.py
+          python3 artifacts/flatpak-tools/flatpak-dotnet-generator.py packaging/flatpak/nuget-sources.json MovieScrap2000/MovieScrap2000.csproj --dotnet 10 --freedesktop 26.08 --runtime linux-x64 linux-arm64 --dotnet-args -p:NuGetAudit=false -p:Configuration=Release
+          python3 - <<'PY'
+          import json
+          with open('packaging/flatpak/nuget-sources.json') as stream:
+              sources = json.load(stream)
+          assert sources and all(source['sha512'] and source['url'].startswith('https://api.nuget.org/') for source in sources)
+          assert any(source['dest-filename'].startswith('avalonia.x11.') for source in sources)
+          assert any('microsoft.netcore.app.host.linux-x64' in source['dest-filename'] for source in sources)
+          assert any('microsoft.netcore.app.host.linux-arm64' in source['dest-filename'] for source in sources)
+          print(f'Generated {len(sources)} NuGet sources for both Linux architectures.')
+          PY
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: VideoScrap2000-Flatpak-NuGet-sources
+          path: |
+            packaging/flatpak/nuget-sources.json
+            artifacts/flatpak-tools/generator-commit.txt
+          if-no-files-found: error
