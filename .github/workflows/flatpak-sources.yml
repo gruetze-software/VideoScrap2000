@@ -37,11 +37,38 @@ jobs:
               sources = json.load(stream)
           assert sources and all(source['sha512'] and source['url'].startswith('https://api.nuget.org/') for source in sources)
           assert any(source['dest-filename'].startswith('avalonia.x11.') for source in sources)
-          assert any('microsoft.netcore.app.host.linux-x64' in source['dest-filename'] for source in sources)
-          assert any('microsoft.netcore.app.host.linux-arm64' in source['dest-filename'] for source in sources)
+          assert any(source['dest-filename'].startswith('microsoft.data.sqlite.') for source in sources)
+          # AppHost/reference packs already provided by the matching SDK do not
+          # need separate downloads. An actual offline publish below checks this.
           print(f'Generated {len(sources)} NuGet sources for both Linux architectures.')
           PY
+      - name: Verify installer with the matching SDK and no network access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import concurrent.futures, hashlib, json, pathlib, urllib.request
+          feed = pathlib.Path('artifacts/flatpak-feed')
+          feed.mkdir(parents=True, exist_ok=True)
+          sources = json.loads(pathlib.Path('packaging/flatpak/nuget-sources.json').read_text())
+          def fetch(source):
+              data = urllib.request.urlopen(source['url'], timeout=120).read()
+              assert hashlib.sha512(data).hexdigest() == source['sha512'], source['url']
+              name = source['dest-filename']
+              assert pathlib.Path(name).name == name
+              (feed / name).write_bytes(data)
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+              list(pool.map(fetch, sources))
+          PY
+          flatpak run --unshare=network --filesystem=host --env=DOTNET_ROOT=/usr/lib/sdk/dotnet10/lib --command=bash --runtime=org.freedesktop.Sdk//26.08 org.freedesktop.Sdk.Extension.dotnet10//26.08 -c '
+            set -euo pipefail
+            export PATH="/usr/lib/sdk/dotnet10/bin:$PATH"
+            export LD_LIBRARY_PATH="/usr/lib/sdk/dotnet10/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            bash scripts/install-flatpak.sh --prefix "$PWD/artifacts/flatpak-stage" --nuget-source "$PWD/artifacts/flatpak-feed"
+            test -x artifacts/flatpak-stage/bin/videoscrap2000
+            test -f artifacts/flatpak-stage/share/metainfo/de.gruetze_software.VideoScrap2000.metainfo.xml
+          '
       - uses: actions/upload-artifact@v7.0.2
+        if: always()
         with:
           name: VideoScrap2000-Flatpak-NuGet-sources
           path: |
