@@ -1,12 +1,8 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using MovieScrap2000;
-using MovieScrap2000.TMDbScraper;
 using VideoScrap2000.Localization;
 using VideoScrap2000.ViewModels;
 
@@ -45,41 +41,11 @@ public partial class SeriesView : UserControl
     private async void SearchShow(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not SeriesViewModel { ShowEditor: { } editor } model || TopLevel.GetTopLevel(this) is not Window owner) return;
-        var matches = await model.FindShowsAsync(editor.Title);
-        if (matches.Count == 0 || !ReferenceEquals(editor, model.ShowEditor) || !owner.IsVisible) return;
-        var dialog = CreateMatchDialog(matches);
-        var selected = await dialog.ShowDialog<SearchTv?>(owner);
-        if (selected is { Id: > 0 } && ReferenceEquals(editor, model.ShowEditor)) await model.ApplyShowMatchAsync(selected.Id);
+        var dialog = new ScrapeWindow(editor.Title, model.SearchShowTitlesAsync);
+        await dialog.ShowDialog(owner);
+        if (dialog.SeriesResult is { Id: > 0 } selected && ReferenceEquals(editor, model.ShowEditor))
+            await model.ApplyShowMatchAsync(selected.Id);
     }
-
-    private static Window CreateMatchDialog(IReadOnlyList<SearchTv> matches)
-    {
-        var dialog = new Window
-        {
-            Title = Locale.T("Serien nach TMDB durchsuchen"), Width = 540, Height = 420,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner, ShowInTaskbar = false
-        };
-        var results = new ListBox
-        {
-            ItemsSource = matches.Select(show => new ShowMatch(show)).ToArray(), SelectedIndex = 0,
-            DisplayMemberBinding = new Binding(nameof(ShowMatch.Label))
-        };
-        var cancel = new Button { Content = Locale.T("Abbrechen"), IsCancel = true };
-        var accept = new Button { Content = Locale.T("Metadaten übernehmen"), IsDefault = true, Classes = { "primary" } };
-        cancel.Click += (_, _) => dialog.Close();
-        void Accept() { if (results.SelectedItem is ShowMatch match) dialog.Close(match.Show); }
-        accept.Click += (_, _) => Accept();
-        results.DoubleTapped += (_, _) => Accept();
-        var actions = new StackPanel
-        {
-            Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 12, 0, 0), Children = { cancel, accept }
-        };
-        Grid.SetRow(actions, 1);
-        dialog.Content = new Grid { RowDefinitions = new RowDefinitions("*,Auto"), Margin = new Thickness(20), Children = { results, actions } };
-        return dialog;
-    }
-
     private async void SearchEpisode(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SeriesViewModel model) await model.FindEpisodeAsync();
@@ -169,8 +135,4 @@ public partial class SeriesView : UserControl
         catch (Exception ex) { System.Diagnostics.Trace.WriteLine(ex); }
     }
 
-    private sealed record ShowMatch(SearchTv Show)
-    {
-        public string Label => Show.FirstAirDate is { } date ? $"{Show.Name} ({date:yyyy})" : Show.Name ?? "";
-    }
 }

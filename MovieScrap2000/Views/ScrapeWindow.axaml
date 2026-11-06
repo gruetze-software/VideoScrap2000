@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="using:VideoScrap2000.Views"
         x:Class="VideoScrap2000.Views.ScrapeWindow" x:CompileBindings="False" Title="{DynamicResource LF5009A6C802B}" Width="760" Height="580" MinWidth="580" MinHeight="450" WindowStartupLocation="CenterOwner">
   <Grid Margin="24" RowDefinitions="Auto,*,Auto,Auto">
-    <Grid ColumnDefinitions="*,90,Auto"><TextBox x:Name="SearchText" PlaceholderText="{DynamicResource L21F8BCCC0C75}"/><TextBox Grid.Column="1" x:Name="YearText" PlaceholderText="{DynamicResource LED1AD93B8967}" AutomationProperties.Name="{DynamicResource L5ABCD5D493B6}" Margin="8,0,0,0"/><Button Grid.Column="2" x:Name="SearchButton" Content="{DynamicResource LDD097E77DD73}" Click="Search" Classes="primary" Margin="10,0,0,0"/></Grid>
+    <Grid x:Name="SearchForm" ColumnDefinitions="*,90,Auto"><TextBox x:Name="SearchText" PlaceholderText="{DynamicResource L21F8BCCC0C75}"/><TextBox Grid.Column="1" x:Name="YearText" PlaceholderText="{DynamicResource LED1AD93B8967}" AutomationProperties.Name="{DynamicResource L5ABCD5D493B6}" Margin="8,0,0,0"/><Button Grid.Column="2" x:Name="SearchButton" Content="{DynamicResource LDD097E77DD73}" Click="Search" Classes="primary" Margin="10,0,0,0"/></Grid>
     <ListBox Grid.Row="1" x:Name="Results" Margin="0,16" SelectionChanged="SelectionChanged">
       <ListBox.ItemTemplate>
         <DataTemplate DataType="views:MovieSearchResult">
@@ -10,8 +10,8 @@
               <Image Source="{Binding Poster}" Stretch="Uniform"/>
             </Border>
             <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="5">
-              <TextBlock Text="{Binding Movie.Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-              <TextBlock Text="{Binding Movie.ReleaseDate, StringFormat={}{0:yyyy}}" Classes="secondary"/>
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding Year}" Classes="secondary"/>
             </StackPanel>
           </Grid>
         </DataTemplate>

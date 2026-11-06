@@ -260,11 +260,19 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         await main.RunAsync(async token =>
         {
             main.Status = "TMDb wird durchsucht …";
-            using var scraper = CreateScraper();
-            results = await scraper.SearchSeriesAsync(query, main.MetadataLanguage, token);
+            results = (await SearchShowTitlesAsync(query, token)).ToList();
             main.Status = results.Count switch { 0 => "Kein Treffer", 1 => "Ein Treffer", _ => $"{results.Count} Treffer" };
         }, reloadAfterCancellation: false);
         return results;
+    }
+
+    internal async Task<IReadOnlyList<SearchTv>> SearchShowTitlesAsync(string title, CancellationToken token)
+    {
+        if (UseDemoData()) return [];
+        var query = MovieNameParser.ParseSearchTitle(title).Title;
+        if (query.Length == 0) return [];
+        using var scraper = CreateScraper();
+        return await scraper.SearchSeriesAsync(query, main.MetadataLanguage, token);
     }
 
     public async Task ApplyShowMatchAsync(int id)

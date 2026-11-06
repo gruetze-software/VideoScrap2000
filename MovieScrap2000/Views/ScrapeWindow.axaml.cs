@@ -14,7 +14,9 @@ public partial class ScrapeWindow : Window
     private CancellationTokenSource? posterLoading;
     private bool busy;
     private readonly string language;
+    private readonly Func<string, CancellationToken, Task<IReadOnlyList<SearchTv>>>? seriesSearch;
     public TMDbMovie? Result { get; private set; }
+    public SearchTv? SeriesResult { get; private set; }
     public ScrapeWindow() : this("", "") { }
     public ScrapeWindow(string title, string imdb, string year = "", string language = "de-DE")
     {
@@ -25,6 +27,15 @@ public partial class ScrapeWindow : Window
         YearText.Text = string.IsNullOrWhiteSpace(year) ? parsed.Year?.ToString() : year;
         Opened += async (_, _) => await SearchAsync();
         Closed += (_, _) => { lifetime.Cancel(); ClearResults(); scraper.Dispose(); };
+    }
+    internal ScrapeWindow(string title, Func<string, CancellationToken, Task<IReadOnlyList<SearchTv>>> search)
+        : this(title, "")
+    {
+        seriesSearch = search;
+        SearchText.PlaceholderText = T("Serientitel");
+        YearText.Text = "";
+        YearText.IsVisible = false;
+        SearchForm.ColumnDefinitions[1].Width = new Avalonia.Controls.GridLength(0);
     }
     private async void Search(object? sender, RoutedEventArgs e) => await SearchAsync();
 
@@ -46,9 +57,13 @@ public partial class ScrapeWindow : Window
                 { StatusText.Text = T("Bitte ein gültiges Erscheinungsjahr eingeben oder das Jahr leeren."); return; }
                 year = parsed;
             }
-            var results = query.StartsWith("tt", StringComparison.OrdinalIgnoreCase)
-                ? await scraper.FindMovieByImdbIdAsync(query, language).WaitAsync(lifetime.Token)
-                : await scraper.SearchMoviesAsync(query, lifetime.Token, year, language);
+            IReadOnlyList<SearchMovieTvBase> results;
+            if (seriesSearch is not null)
+                results = await seriesSearch(query, lifetime.Token).WaitAsync(lifetime.Token);
+            else
+                results = query.StartsWith("tt", StringComparison.OrdinalIgnoreCase)
+                    ? await scraper.FindMovieByImdbIdAsync(query, language).WaitAsync(lifetime.Token)
+                    : await scraper.SearchMoviesAsync(query, lifetime.Token, year, language);
             lifetime.Token.ThrowIfCancellationRequested();
             var rows = results.Select(movie => new MovieSearchResult(movie)).ToArray();
             Results.ItemsSource = rows;
@@ -117,6 +132,12 @@ public partial class ScrapeWindow : Window
     private async void Accept(object? sender, RoutedEventArgs e)
     {
         if (busy || Results.SelectedItem is not MovieSearchResult row) return;
+        if (row.Movie is SearchTv show)
+        {
+            SeriesResult = show;
+            Close();
+            return;
+        }
         busy = true; AcceptButton.IsEnabled = false; SearchButton.IsEnabled = false;
         StatusText.Text = T("Filmdetails werden geladen …");
         try
@@ -131,11 +152,13 @@ public partial class ScrapeWindow : Window
     private void Cancel(object? sender, RoutedEventArgs e) => Close();
 }
 
-public sealed class MovieSearchResult(SearchMovie movie) : ObservableObject
+public sealed class MovieSearchResult(SearchMovieTvBase movie) : ObservableObject
 {
     internal ArtworkPreviewCache.Lease? CachedPreview { get; set; }
     private Bitmap? poster;
-    public SearchMovie Movie { get; } = movie;
+    public SearchMovieTvBase Movie { get; } = movie;
+    public string Title => Movie switch { SearchMovie film => film.Title ?? "", SearchTv show => show.Name ?? "", _ => "" };
+    public string Year => (Movie switch { SearchMovie film => film.ReleaseDate, SearchTv show => show.FirstAirDate, _ => null })?.ToString("yyyy") ?? "";
     public Bitmap? Poster { get => poster; set => SetProperty(ref poster, value); }
     public void DisposePoster()
     {
