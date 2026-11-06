@@ -6,7 +6,7 @@ The upstream installer, desktop integration, icon, AppStream metadata and offlin
 
 Review `packaging/flatpak/de.gruetze_software.VideoScrap2000.yml` before building:
 
-- Its current Git commit `f204fb505a17cecda5f982e29af187f44d5e64b0` does not identify this application's prepared source. Select a real commit containing the Wayland changes and `scripts/install-flatpak.sh`; `f04c98c80d4f6ce01e066dbc0996b9225ad280b5` contains both. The existing `v1.0.0` tag points to an older, different revision and cannot identify this newer source.
+- Select a source commit containing the updated native-library installer. Commit `344f937db3adb1eedd66aad1703dfcc7732b87b4` includes it; the manifest's previous `e0815db` source still uses the distribution-specific NuGet binaries. The existing `v1.0.0` tag predates this preparation.
 - Build libzen and libmediainfo against the selected Flatpak runtime before the application module, as in the human-maintained manifest. The updated installer replaces the distribution-specific NuGet native binaries with relative links to these libraries under `/app/lib`, checks their dependencies, and stops if a library is missing. This avoids the bundled binary's dependency on `libcurl-gnutls.so.4` and `libmms.so.0`. Installing libraries on the Linux host does not supply them inside the sandbox.
 - Keep the generated `nuget-sources.json` beside the manifest. It includes Wayland packages and both supported Linux architectures. Regenerate it with the existing official-generator workflow when changing managed dependencies.
 - Check access to the selected media directories through the folder picker. Broad host filesystem access should not be added merely to make a test pass.
