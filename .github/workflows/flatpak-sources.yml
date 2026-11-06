@@ -89,6 +89,7 @@ jobs:
                 cd "artifacts/flatpak-native/$library/Project/GNU/Library"
                 options=()
                 if [[ $library == libmediainfo ]]; then options+=(--with-libcurl); fi
+                autoreconf -fiv
                 ./configure --prefix="$prefix" --libdir="$prefix/lib" --enable-shared --disable-static "${options[@]}"
                 make -j2
                 make install
