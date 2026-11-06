@@ -70,15 +70,38 @@ jobs:
           with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
               list(pool.map(fetch, sources))
           PY
+          mkdir -p artifacts/flatpak-native
+          curl --fail --location --retry 3 https://mediaarea.net/download/source/libzen/0.4.41/libzen_0.4.41.tar.xz -o artifacts/flatpak-native/libzen.tar.xz
+          curl --fail --location --retry 3 https://mediaarea.net/download/source/libmediainfo/26.10/libmediainfo_26.10.tar.xz -o artifacts/flatpak-native/libmediainfo.tar.xz
+          echo '933bad3b7ecd29dc6bdc88a83645c83dfd098c15b0b90d6177a37fa1536704e8  artifacts/flatpak-native/libzen.tar.xz' | sha256sum -c -
+          echo 'a806fd36592549a03e810486f415a6858d4d8f14066bfbe97b32a447cd5eb590  artifacts/flatpak-native/libmediainfo.tar.xz' | sha256sum -c -
           flatpak run --unshare=network --filesystem=host --env=DOTNET_ROOT=/usr/lib/sdk/dotnet10/lib --command=bash --runtime=org.freedesktop.Sdk//26.08 org.freedesktop.Sdk.Extension.dotnet10//26.08 -c '
             set -euo pipefail
             export PATH="/usr/lib/sdk/dotnet10/bin:$PATH"
             export LD_LIBRARY_PATH="/usr/lib/sdk/dotnet10/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            prefix="$PWD/artifacts/flatpak-stage"
+            export PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+            export LD_LIBRARY_PATH="$prefix/lib:$LD_LIBRARY_PATH"
+            for library in libzen libmediainfo; do
+              mkdir -p "artifacts/flatpak-native/$library"
+              tar -xf "artifacts/flatpak-native/$library.tar.xz" -C "artifacts/flatpak-native/$library" --strip-components=1
+              (
+                cd "artifacts/flatpak-native/$library/Project/GNU/Library"
+                options=()
+                if [[ $library == libmediainfo ]]; then options+=(--with-libcurl); fi
+                ./configure --prefix="$prefix" --libdir="$prefix/lib" --enable-shared --disable-static "${options[@]}"
+                make -j2
+                make install
+              )
+            done
             bash scripts/install-flatpak.sh --prefix "$PWD/artifacts/flatpak-stage" --nuget-source "$PWD/artifacts/flatpak-feed"
             test -x artifacts/flatpak-stage/bin/videoscrap2000
             test -f artifacts/flatpak-stage/share/metainfo/de.gruetze_software.VideoScrap2000.metainfo.xml
             export LD_LIBRARY_PATH="$PWD/artifacts/flatpak-stage/lib/videoscrap2000:$PWD/artifacts/flatpak-stage/lib:$LD_LIBRARY_PATH"
             ldd artifacts/flatpak-stage/lib/videoscrap2000/libmediainfo.so | tee artifacts/flatpak-native-dependencies.txt
+            ! grep -q "not found" artifacts/flatpak-native-dependencies.txt
+            test -L artifacts/flatpak-stage/lib/videoscrap2000/libmediainfo.so
+            test -L artifacts/flatpak-stage/lib/videoscrap2000/libzen.so.0
           '
       - uses: actions/upload-artifact@v7.0.2
         if: always()

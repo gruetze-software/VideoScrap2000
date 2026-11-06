@@ -42,6 +42,24 @@ dotnet publish MovieScrap2000/MovieScrap2000.csproj -c Release -r "$rid" --self-
     -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false \
     -p:RestorePackagesPath="$work/packages" -m:1 -nr:false -o "$work/publish"
 test -x "$work/publish/VideoScrap2000"
+# NuGet supplies distribution-specific native binaries. Flatpak uses the
+# libraries built by the preceding native modules against its own runtime.
+# Keep links in the application directory for .NET's app-local native loader.
+for library in libmediainfo.so libzen.so.0; do
+    [[ -f "$prefix/lib/$library" ]] || {
+        echo "Missing Flatpak-built library: $prefix/lib/$library. Build the native modules before the application." >&2
+        exit 1
+    }
+done
+find "$work/publish" -maxdepth 1 \( -name 'libmediainfo.so*' -o -name 'libzen.so*' \) -delete
+ln -s ../libmediainfo.so "$work/publish/libmediainfo.so"
+ln -s ../libzen.so.0 "$work/publish/libzen.so.0"
+dependencies=$(LD_LIBRARY_PATH="$prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ldd "$prefix/lib/libmediainfo.so")
+printf '%s\n' "$dependencies"
+if printf '%s\n' "$dependencies" | grep -q 'not found'; then
+    echo 'Flatpak-built MediaInfo has unresolved native dependencies.' >&2
+    exit 1
+fi
 forbidden=$(find "$work/publish" -type f \( -name '*.pdb' -o -name '*.dbg' -o -name '*.debug' \
     -o -name '*.dylib' -o -name '*.lib' -o -name '*.exp' -o -name '*.a' \
     -o -name 'Avalonia.Win32*.dll' -o -name 'Avalonia.Native.dll' -o -name 'testhost*' \) -print)
