@@ -15,6 +15,16 @@ $packageName = "VideoScrap2000-$version-$Runtime$flavor"
 dotnet publish $project -c Release -r $Runtime --self-contained $selfContained -o $output -p:PublishTrimmed=false -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false -m:1 -nr:false
 if ($LASTEXITCODE -ne 0) { throw 'Publish fehlgeschlagen.' }
 
+# Exercise the actual RID-specific bootstrap, which headless unit tests do not use.
+if ($IsWindows -and $Runtime -eq 'win-x64' -and [Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'X64') {
+    $startup = Start-Process -FilePath (Join-Path $output 'VideoScrap2000.exe') -ArgumentList '--startup-check' -WindowStyle Hidden -PassThru
+    if (!$startup.WaitForExit(30000)) {
+        $startup.Kill()
+        throw 'Release startup check timed out.'
+    }
+    if ($startup.ExitCode -ne 0) { throw 'Release startup check failed.' }
+}
+
 if ($Runtime.StartsWith('linux-') -and $IsLinux) {
     $triplet = if ($Runtime.EndsWith('arm64')) { 'aarch64-linux-gnu' } else { 'x86_64-linux-gnu' }
     $mms = "/usr/lib/$triplet/libmms.so.0"

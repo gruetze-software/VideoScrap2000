@@ -10,6 +10,10 @@ on:
         description: Create or update the unpublished release draft after packaging
         type: boolean
         default: false
+      replace_published_release:
+        description: Replace the published release and recreate its version tag (manual repair only)
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -83,7 +87,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.create_release_draft)
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && (inputs.create_release_draft || inputs.replace_published_release))
     needs: package
     runs-on: ubuntu-latest
     permissions:
@@ -101,6 +105,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_REF: ${{ github.ref }}
           RELEASE_COMMIT: ${{ github.sha }}
+          REPLACE_PUBLISHED_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.replace_published_release }}
         run: |
           [xml]$project = Get-Content MovieScrap2000/MovieScrap2000.csproj -Raw
           $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0]
@@ -115,7 +120,27 @@ jobs:
           $assets = @($archives.FullName) + @((Get-Item SHA256SUMS.txt).FullName)
           $existing = gh release view $releaseTag --json isDraft 2>$null
           if ($LASTEXITCODE -eq 0) {
-            if (!(($existing | ConvertFrom-Json).isDraft)) { throw 'An already published release must not be overwritten.' }
+            if (!(($existing | ConvertFrom-Json).isDraft)) {
+              if ($env:REPLACE_PUBLISHED_RELEASE -ne 'true') { throw 'An already published release must not be overwritten.' }
+              $release = gh api "repos/$env:GH_REPO/releases/tags/$releaseTag" | ConvertFrom-Json
+              if ($LASTEXITCODE -ne 0 -or $release.immutable) { throw 'The release cannot be replaced.' }
+              gh release upload $releaseTag @assets --clobber
+              if ($LASTEXITCODE -ne 0) { throw 'Replacement upload failed; rerun this repair before updating the tag.' }
+              $oldRef = gh api "repos/$env:GH_REPO/git/ref/tags/$releaseTag" | ConvertFrom-Json
+              if ($LASTEXITCODE -ne 0) { throw 'Cannot read the existing tag.' }
+              $newTag = gh api --method POST "repos/$env:GH_REPO/git/tags" -f "tag=$releaseTag" -f "message=VideoScrap 2000 $releaseTag (replaced release)" -f "object=$env:RELEASE_COMMIT" -f type=commit | ConvertFrom-Json
+              if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare replacement tag.' }
+              gh api --method DELETE "repos/$env:GH_REPO/git/refs/tags/$releaseTag"
+              if ($LASTEXITCODE -ne 0) { throw 'Cannot remove the existing tag.' }
+              gh api --method POST "repos/$env:GH_REPO/git/refs" -f "ref=refs/tags/$releaseTag" -f "sha=$($newTag.sha)"
+              if ($LASTEXITCODE -ne 0) {
+                gh api --method POST "repos/$env:GH_REPO/git/refs" -f "ref=refs/tags/$releaseTag" -f "sha=$($oldRef.object.sha)"
+                throw 'Tag recreation failed; attempted to restore the original tag.'
+              }
+              gh release edit $releaseTag --notes-file $releaseNotes --title "VideoScrap 2000 $releaseTag"
+              if ($LASTEXITCODE -ne 0) { throw 'Release notes update failed.' }
+              exit 0
+            }
             gh release upload $releaseTag @assets --clobber
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             gh release edit $releaseTag --draft --target $env:RELEASE_COMMIT --notes-file $releaseNotes --title "VideoScrap 2000 $releaseTag"

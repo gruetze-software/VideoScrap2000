@@ -34,6 +34,7 @@
     <PackageReference Include="Avalonia.X11" Version="12.1.4" Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))" />
     <PackageReference Include="Avalonia.Native" Version="12.1.4" Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-'))" />
     <PackageReference Include="Avalonia.Skia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
