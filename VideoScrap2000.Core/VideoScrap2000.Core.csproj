@@ -9,6 +9,7 @@
     <AssemblyMetadata Include="FanartTvProjectApiKey" Value="$(FANART_TV_PROJECT_API_KEY)" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="VideoScrap2000.Tests" />
     <PackageReference Include="MediaInfo.Wrapper.Core" Version="26.10.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />

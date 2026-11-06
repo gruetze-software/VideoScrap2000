@@ -10,7 +10,7 @@ dotnet test VideoScrap2000.Tests/VideoScrap2000.Tests.csproj -m:1
 ./scripts/Publish.ps1 -Runtime win-x64
 ```
 
-The desktop app lives in `MovieScrap2000`, the platform-independent core in `VideoScrap2000.Core`, and the test suite in `VideoScrap2000.Tests`. The app continues to use the existing SQLite cache in its `MovieScrap2000` application data folder.
+The desktop app lives in `MovieScrap2000`, the platform-independent core in `VideoScrap2000.Core`, and the test suite in `VideoScrap2000.Tests`. The app stores settings, its SQLite cache and window placement in the `VideoScrap2000` application data folder (`%APPDATA%\VideoScrap2000` on Windows). On first use, an existing `MovieScrap2000` data folder is moved there automatically if the new folder does not yet exist. Existing new-folder data is never overwritten.
 
 GitHub Actions tests on Windows, Linux, and macOS. The packaging workflow builds separate x64 and ARM64 archives for each platform. Each platform has two downloads. **Self-contained** packages include .NET 10 and run after extraction. Smaller **framework-dependent** packages require the matching .NET 10 Runtime to be installed. Use `-FrameworkDependent` to build this smaller variant locally. Packages are checked for debug symbols, test components, editor files, and libraries for other operating systems. Archives use maximum compression. CI artifacts retain per-package checksums and size manifests; public releases provide one combined SHA256SUMS.txt. Universal macOS libraries are reduced to the selected CPU architecture when packaging on macOS. Linux uses X11 or XWayland. macOS packages contain an executable directory.
 
