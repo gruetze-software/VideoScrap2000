@@ -18,6 +18,7 @@ while (($#)); do
     esac
 done
 [[ $(uname -s) == Linux ]] || { echo 'A Linux build environment is required' >&2; exit 1; }
+command -v gio >/dev/null || { echo 'GIO is required for opening files through the desktop portal.' >&2; exit 1; }
 [[ $prefix == /* && $prefix != / ]] || { echo 'Invalid install prefix' >&2; exit 2; }
 [[ -d $feed ]] || { echo "Offline NuGet feed missing: $feed" >&2; exit 1; }
 feed=$(cd -- "$feed" && pwd)

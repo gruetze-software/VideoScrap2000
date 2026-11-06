@@ -192,7 +192,7 @@ public partial class MainWindow : Window
         {
             var path = await model.GetActorOpenPathAsync(actor);
             var file = path is null ? null : await StorageProvider.TryGetFileFromPathAsync(path);
-            if (file is null || !await Launcher.LaunchFileAsync(file)) model.Status = "Kein Darstellerbild verfügbar.";
+            if (file is null || !await DefaultFileLauncher.LaunchAsync(this, file)) model.Status = "Kein Darstellerbild verfügbar.";
         }
         catch (Exception ex) { model.Status = ex.Message; }
     }
@@ -213,7 +213,7 @@ public partial class MainWindow : Window
         {
             var path = await image.GetOpenPathAsync();
             var file = await StorageProvider.TryGetFileFromPathAsync(path);
-            if (file is null || !await Launcher.LaunchFileAsync(file)) model.Status = "Das Bild konnte nicht mit der Standard-App geöffnet werden.";
+            if (file is null || !await DefaultFileLauncher.LaunchAsync(this, file)) model.Status = "Das Bild konnte nicht mit der Standard-App geöffnet werden.";
         }
         catch (Exception ex) { model.Status = ex.Message; }
     }
@@ -296,7 +296,7 @@ public partial class MainWindow : Window
         try
         {
             var file = await StorageProvider.TryGetFileFromPathAsync(path);
-            if (file is null || !await Launcher.LaunchFileAsync(file))
+            if (file is null || !await DefaultFileLauncher.LaunchAsync(this, file))
                 model.Status = "Die Videodatei konnte nicht mit der Standardanwendung geöffnet werden.";
         }
         catch (Exception ex)

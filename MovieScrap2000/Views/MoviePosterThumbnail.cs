@@ -95,6 +95,6 @@ public sealed class MoviePosterThumbnail : Image
         if (!ReferenceEquals(requested, loadTask)) return;
         if (thumbnail is null || loadedPath is null) return;
         var path = await new ArtworkViewModel("", loadedPath, thumbnail, downloaded).GetOpenPathAsync();
-        if (await owner.StorageProvider.TryGetFileFromPathAsync(path) is { } file) await owner.Launcher.LaunchFileAsync(file);
+        if (await owner.StorageProvider.TryGetFileFromPathAsync(path) is { } file) await DefaultFileLauncher.LaunchAsync(owner, file);
     }
 }

@@ -23,6 +23,7 @@ flatpak-builder --user --default-branch=stable --install-deps-from=flathub \
 # A successful managed startup does not exercise MediaInfo. Check its native
 # dependencies separately inside the actual build sandbox before exporting.
 flatpak-builder --run artifacts/flatpak-build "$manifest" sh -ec '
+    command -v gio
     export LD_LIBRARY_PATH="/app/lib/videoscrap2000:/app/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     test -f /app/lib/videoscrap2000/Avalonia.Wayland.dll
     dependencies=$(ldd /app/lib/videoscrap2000/libmediainfo.so)

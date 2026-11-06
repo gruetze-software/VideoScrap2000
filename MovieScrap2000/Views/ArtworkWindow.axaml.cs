@@ -180,7 +180,7 @@ public partial class ArtworkWindow : Window
             var image = new VideoScrap2000.ViewModels.ArtworkViewModel(candidate.Type, "", candidate.Preview, bytes);
             var path = await image.GetOpenPathAsync();
             var file = await StorageProvider.TryGetFileFromPathAsync(path);
-            StatusText.Text = T(file is not null && await Launcher.LaunchFileAsync(file) ? "Originalbild in der Standard-App geöffnet." : "Das Bild konnte nicht geöffnet werden.");
+            StatusText.Text = T(file is not null && await DefaultFileLauncher.LaunchAsync(this, file) ? "Originalbild in der Standard-App geöffnet." : "Das Bild konnte nicht geöffnet werden.");
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) { StatusText.Text = T(ex.Message); }
