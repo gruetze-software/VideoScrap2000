@@ -21,6 +21,7 @@ cp -a "$publish_dir/." "$stage/opt/videoscrap2000/"
 cp "$repository/MovieScrap2000/Assets/videoscrap-2000.png" "$stage/usr/share/pixmaps/videoscrap2000.png"
 cat > "$stage/usr/bin/videoscrap2000" <<'EOF'
 #!/bin/sh
+export LD_LIBRARY_PATH="/opt/videoscrap2000${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 exec /opt/videoscrap2000/VideoScrap2000 "$@"
 EOF
 cat > "$stage/usr/share/applications/videoscrap2000.desktop" <<'EOF'
@@ -62,6 +63,6 @@ EOF
 chmod 644 "$stage/DEBIAN/control"
 package="$output/videoscrap2000_${version}_amd64.deb"
 dpkg-deb --root-owner-group -Zxz -z9 --build "$stage" "$package"
-sha256sum "$package" > "$package.sha256"
+(cd "$output" && sha256sum "${package##*/}" > "${package##*/}.sha256")
 dpkg-deb --info "$package"
 echo "Package: $package"

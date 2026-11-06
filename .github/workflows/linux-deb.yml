@@ -39,6 +39,7 @@ jobs:
               test -x /usr/bin/videoscrap2000
               test -f /usr/share/applications/videoscrap2000.desktop
               test -f /usr/share/pixmaps/videoscrap2000.png
+              export LD_LIBRARY_PATH="/opt/videoscrap2000${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
               for library in /opt/videoscrap2000/*.so*; do
                 # Optional .NET event tracing is not used by the app and can require
                 # an older LTTng ABI. Normal startup must work without that plugin.
