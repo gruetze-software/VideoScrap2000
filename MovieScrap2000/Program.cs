@@ -44,11 +44,11 @@ internal static class Program
 #if TARGET_WINDOWS
         return builder.UseWin32().UseSkia();
 #elif TARGET_LINUX
-        return builder.UseX11().UseSkia();
+        return LinuxDesktop.Configure(builder.UseX11().UseSkia());
 #elif TARGET_MACOS
         return builder.UseAvaloniaNative().UseSkia();
 #else
-        return builder.UsePlatformDetect();
+        return LinuxDesktop.Configure(builder.UsePlatformDetect());
 #endif
     }
 }

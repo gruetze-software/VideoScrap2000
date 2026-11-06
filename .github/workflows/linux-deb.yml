@@ -57,8 +57,8 @@ jobs:
               apt-get install -y --no-install-recommends /packages/*.deb xvfb xauth
               ! command -v dotnet
               test -x /usr/bin/videoscrap2000
-              test -f /usr/share/applications/videoscrap2000.desktop
-              test -f /usr/share/pixmaps/videoscrap2000.png
+              test -f /usr/share/applications/de.gruetze_software.VideoScrap2000.desktop
+              test -f /usr/share/icons/hicolor/256x256/apps/de.gruetze_software.VideoScrap2000.png
               export LD_LIBRARY_PATH="/opt/videoscrap2000${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
               for library in /opt/videoscrap2000/*.so*; do
                 # Optional .NET event tracing is not used by the app and can require
@@ -69,7 +69,7 @@ jobs:
               xvfb-run -a /usr/bin/videoscrap2000 --startup-check
               apt-get remove -y videoscrap2000
               test ! -e /usr/bin/videoscrap2000
-              test ! -e /usr/share/applications/videoscrap2000.desktop
+              test ! -e /usr/share/applications/de.gruetze_software.VideoScrap2000.desktop
             '
           done
       - uses: actions/upload-artifact@v7.0.2

@@ -14,6 +14,9 @@ $flavor = if ($FrameworkDependent) { '-framework-dependent' } else { '' }
 $packageName = "VideoScrap2000-$version-$Runtime$flavor"
 dotnet publish $project -c Release -r $Runtime --self-contained $selfContained -o $output -p:PublishTrimmed=false -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false -m:1 -nr:false
 if ($LASTEXITCODE -ne 0) { throw 'Publish fehlgeschlagen.' }
+if ($Runtime.StartsWith('linux-') -and !(Test-Path -LiteralPath (Join-Path $output 'Avalonia.Wayland.dll'))) {
+    throw 'The Linux package must include the native Wayland backend.'
+}
 
 # Exercise the actual RID-specific bootstrap, which headless unit tests do not use.
 if ($IsWindows -and $Runtime -eq 'win-x64' -and [Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'X64') {
@@ -68,9 +71,9 @@ $files = Get-ChildItem -LiteralPath $output -File -Recurse
 $forbidden = $files | Where-Object {
     $_.Extension -in @('.pdb','.dbg','.debug','.mdb','.lib','.exp','.a','.pdn','.nupkg','.nuspec','.cs','.csproj','.sln','.slnx') -or
     $_.FullName -match '\.dSYM[\\/]' -or $_.Name -match 'Avalonia\.Diagnostics|testhost|xunit|Microsoft\.VisualStudio\.TestPlatform' -or
-    ($Runtime.StartsWith('win-') -and ($_.Name -match '\.so($|\.)|\.dylib$|Avalonia\.(X11|Native|FreeDesktop)' )) -or
+    ($Runtime.StartsWith('win-') -and ($_.Name -match '\.so($|\.)|\.dylib$|Avalonia\.(X11|Wayland|Native|FreeDesktop)|^NWayland' )) -or
     ($Runtime.StartsWith('linux-') -and ($_.Name -match '\.dylib$|Avalonia\.(Win32|Native)|^av_libglesv2\.dll$|^libSkiaSharp\.dll$|^e_sqlite3\.dll$')) -or
-    ($Runtime.StartsWith('osx-') -and ($_.Name -match '\.so($|\.)|Avalonia\.(Win32|X11|FreeDesktop)|^av_libglesv2\.dll$|^libSkiaSharp\.dll$|^e_sqlite3\.dll$')) -or
+    ($Runtime.StartsWith('osx-') -and ($_.Name -match '\.so($|\.)|Avalonia\.(Win32|X11|Wayland|FreeDesktop)|^NWayland|^av_libglesv2\.dll$|^libSkiaSharp\.dll$|^e_sqlite3\.dll$')) -or
     ($_.FullName -match '[\\/]runtimes[\\/](?<rid>[^\\/]+)' -and $Matches.rid -ne $Runtime)
 }
 if ($forbidden) { throw ('Unerwartete Release-Dateien: ' + ($forbidden.Name -join ', ')) }

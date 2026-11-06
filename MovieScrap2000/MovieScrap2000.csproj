@@ -23,6 +23,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="VideoScrap2000.Tests" />
+    <InternalsVisibleTo Include="VideoScrap2000.DisplaySmoke" />
     <Compile Remove="Properties/**/*.cs" />
     <EmbeddedResource Remove="Properties/**/*.resx" />
     <AvaloniaResource Include="Assets/**" Exclude="Assets/*.ico" />
@@ -32,6 +33,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" Condition="'$(RuntimeIdentifier)' == ''" />
     <PackageReference Include="Avalonia.Win32" Version="12.1.4" Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))" />
     <PackageReference Include="Avalonia.X11" Version="12.1.4" Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))" />
+    <PackageReference Include="Avalonia.Wayland" Version="12.1.4" Condition="'$(RuntimeIdentifier)' == '' Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))" />
     <PackageReference Include="Avalonia.Native" Version="12.1.4" Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-'))" />
     <PackageReference Include="Avalonia.Skia" Version="12.1.4" />
     <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.4" />

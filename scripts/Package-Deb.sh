@@ -21,31 +21,17 @@ output=$(realpath -e -- "$3")
 stage=$(mktemp -d "$output/.deb-stage.XXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
 
-mkdir -p "$stage/opt/videoscrap2000" "$stage/usr/bin" "$stage/usr/share/applications" "$stage/usr/share/pixmaps"
+app_id=de.gruetze_software.VideoScrap2000
+mkdir -p "$stage/opt/videoscrap2000" "$stage/usr/bin" "$stage/usr/share/applications" "$stage/usr/share/icons/hicolor/256x256/apps"
 cp -a "$publish_dir/." "$stage/opt/videoscrap2000/"
-cp "$repository/MovieScrap2000/Assets/videoscrap-2000.png" "$stage/usr/share/pixmaps/videoscrap2000.png"
+cp "$repository/MovieScrap2000/Assets/videoscrap-2000.png" "$stage/usr/share/icons/hicolor/256x256/apps/$app_id.png"
 cat > "$stage/usr/bin/videoscrap2000" <<'EOF'
 #!/bin/sh
 export LD_LIBRARY_PATH="/opt/videoscrap2000${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 exec /opt/videoscrap2000/VideoScrap2000 "$@"
 EOF
-cat > "$stage/usr/share/applications/videoscrap2000.desktop" <<'EOF'
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=VideoScrap 2000
-GenericName=Movie and TV Library Manager
-GenericName[de]=Film- und Serienverwaltung
-Comment=Manage metadata and artwork for your movies and TV shows
-Comment[de]=Metadaten und Bilder deiner Filme und Serien verwalten
-Exec=videoscrap2000
-Icon=videoscrap2000
-Terminal=false
-Categories=AudioVideo;Video;
-Keywords=Movies;TV;Kodi;Metadata;Artwork;
-StartupNotify=true
-EOF
-desktop-file-validate "$stage/usr/share/applications/videoscrap2000.desktop"
+cp "$repository/branding/linux/$app_id.desktop" "$stage/usr/share/applications/$app_id.desktop"
+desktop-file-validate "$stage/usr/share/applications/$app_id.desktop"
 find "$stage" -type d -exec chmod 755 {} +
 find "$stage" -type f -exec chmod 644 {} +
 chmod 755 "$stage/usr/bin/videoscrap2000" "$stage/opt/videoscrap2000/VideoScrap2000"
@@ -60,7 +46,7 @@ Architecture: $architecture
 Maintainer: Grütze-Software
 Homepage: https://github.com/gruetze-software/VideoScrap2000
 Installed-Size: $installed_size
-Depends: ca-certificates, libc6 (>= 2.35), libgcc-s1, libstdc++6, libgssapi-krb5-2, libicu70 | libicu72 | libicu74 | libicu76 | libicu78, libssl3 | libssl3t64, tzdata, zlib1g, libx11-6, libice6, libsm6, libfontconfig1, libfreetype6, libxext6, libxrender1, libxcursor1, libxi6, libxrandr2, libxkbcommon0, libgl1, libcurl3-gnutls | libcurl3t64-gnutls
+Depends: ca-certificates, libc6 (>= 2.35), libgcc-s1, libstdc++6, libgssapi-krb5-2, libicu70 | libicu72 | libicu74 | libicu76 | libicu78, libssl3 | libssl3t64, tzdata, zlib1g, libx11-6, libice6, libsm6, libfontconfig1, libfreetype6, libxext6, libxrender1, libxcursor1, libxi6, libxrandr2, libxkbcommon0, libgl1, libwayland-client0, libwayland-cursor0, libwayland-egl1, libegl1, libgles2, libgbm1, libcurl3-gnutls | libcurl3t64-gnutls
 Description: Movie and TV-show metadata and artwork manager
  Manage local movie and TV-show libraries and save Kodi-compatible NFO files
  and artwork beside your videos. Includes the .NET 10 runtime.

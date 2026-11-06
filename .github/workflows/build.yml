@@ -40,9 +40,27 @@ jobs:
         if: failure() && runner.os == 'Linux'
         run: find VideoScrap2000.Tests/bin -name 'libmediainfo.so' -exec ldd {} \;
 
+  linux-display:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install native display test dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y weston xvfb xauth libmms0 libwayland-client0 libwayland-cursor0 libwayland-egl1 libegl1 libgles2 libgbm1 libgl1-mesa-dri
+      - name: Exercise native Wayland and X11 fallback with real windows
+        run: bash scripts/test-linux-backends.sh
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: VideoScrap2000-linux-display-logs
+          path: artifacts/linux-backends/*
+          if-no-files-found: warn
+
   package:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-    needs: verify
+    needs: [verify, linux-display]
     strategy:
       fail-fast: false
       matrix:
@@ -83,7 +101,7 @@ jobs:
 
   deb:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-    needs: verify
+    needs: [verify, linux-display]
     uses: ./.github/workflows/linux-deb.yml
     with:
       only_x64: ${{ inputs.windows_linux_x64_only || false }}
