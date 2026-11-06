@@ -27,14 +27,24 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/flatpak-tools
-          revision=$(gh api repos/flatpak/flatpak-builder-tools/commits/master --jq .sha)
+          revision=5d8d8d321f17ca44be6bd9edcf77d73d8785854e
           printf '%s\n' "$revision" > artifacts/flatpak-tools/generator-commit.txt
           curl --fail --location "https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/$revision/dotnet/flatpak-dotnet-generator.py" -o artifacts/flatpak-tools/flatpak-dotnet-generator.py
-          python3 artifacts/flatpak-tools/flatpak-dotnet-generator.py packaging/flatpak/nuget-sources.json MovieScrap2000/MovieScrap2000.csproj --dotnet 10 --freedesktop 26.08 --runtime linux-x64 linux-arm64 --dotnet-args -p:NuGetAudit=false -p:Configuration=Release
+          for rid in linux-x64 linux-arm64; do
+            python3 artifacts/flatpak-tools/flatpak-dotnet-generator.py "artifacts/flatpak-tools/$rid.json" MovieScrap2000/MovieScrap2000.csproj --dotnet 10 --freedesktop 26.08 --runtime "$rid" --dotnet-args -p:NuGetAudit=false -p:Configuration=Release
+          done
           python3 - <<'PY'
-          import json
-          with open('packaging/flatpak/nuget-sources.json') as stream:
-              sources = json.load(stream)
+          import json, pathlib
+          merged = {}
+          for rid in ('linux-x64', 'linux-arm64'):
+              entries = json.loads(pathlib.Path(f'artifacts/flatpak-tools/{rid}.json').read_text())
+              assert entries, rid
+              for source in entries:
+                  name = source['dest-filename']
+                  assert name not in merged or merged[name] == source, name
+                  merged[name] = source
+          sources = [merged[name] for name in sorted(merged)]
+          pathlib.Path('packaging/flatpak/nuget-sources.json').write_text(json.dumps(sources, indent=4)+'\n')
           assert sources and all(source['sha512'] and source['url'].startswith('https://api.nuget.org/') for source in sources)
           assert any(source['dest-filename'].startswith('avalonia.x11.') for source in sources)
           assert any(source['dest-filename'].startswith('microsoft.data.sqlite.') for source in sources)
