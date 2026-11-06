@@ -1,0 +1,55 @@
+name: Linux Mint DEB test package
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install packaging dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y libmms0 desktop-file-utils
+      - name: Publish with bundled .NET 10
+        shell: pwsh
+        env:
+          FANART_TV_PROJECT_API_KEY: ${{ secrets.FANART_TV_PROJECT_API_KEY }}
+        run: |
+          if ($env:FANART_TV_PROJECT_API_KEY -notmatch '^[0-9a-fA-F]{32}$') { throw 'Missing Fanart.tv project key.' }
+          ./scripts/Publish.ps1 -Runtime linux-x64
+          $manifestFile = Get-ChildItem artifacts/linux-x64 -Recurse -Filter '*.manifest.json' | Select-Object -First 1
+          $manifest = Get-Content $manifestFile.FullName -Raw | ConvertFrom-Json
+          $publish = Join-Path $manifestFile.DirectoryName 'VideoScrap2000'
+          bash scripts/Package-Deb.sh $publish $manifest.version artifacts/deb
+          if ($LASTEXITCODE -ne 0) { throw 'DEB packaging failed.' }
+      - name: Verify installation and startup without installed .NET
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in ubuntu:22.04 ubuntu:24.04; do
+            docker run --rm -v "$PWD/artifacts/deb:/packages:ro" "$base" bash -c '
+              set -euo pipefail
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq
+              apt-get install -y --no-install-recommends /packages/*.deb xvfb xauth
+              ! command -v dotnet
+              test -x /usr/bin/videoscrap2000
+              test -f /usr/share/applications/videoscrap2000.desktop
+              test -f /usr/share/pixmaps/videoscrap2000.png
+              for library in /opt/videoscrap2000/*.so*; do
+                if ldd "$library" | grep "not found"; then echo "Missing dependency: $library"; exit 1; fi
+              done
+              xvfb-run -a /usr/bin/videoscrap2000 --startup-check
+              apt-get remove -y videoscrap2000
+              test ! -e /usr/bin/videoscrap2000
+              test ! -e /usr/share/applications/videoscrap2000.desktop
+            '
+          done
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: VideoScrap2000-Linux-Mint-DEB-amd64
+          path: artifacts/deb/*
+          if-no-files-found: error
