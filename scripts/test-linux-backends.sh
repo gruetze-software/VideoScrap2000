@@ -19,12 +19,13 @@ dotnet build tools/DisplaySmoke/DisplaySmoke.csproj -c Release
 smoke="$root/tools/DisplaySmoke/bin/Release/net10.0/VideoScrap2000.DisplaySmoke.dll"
 weston --backend=headless-backend.so --use-gl --width=1280 --height=960 --socket=videoscrap-test --idle-time=0 --no-config >"$logs/weston.log" 2>&1 &
 weston_pid=$!
-for attempt in {1..100}; do
-    if [[ -S "$XDG_RUNTIME_DIR/videoscrap-test" ]] && WAYLAND_DISPLAY=videoscrap-test timeout 1s weston-info >"$logs/wayland-globals.log" 2>&1; then break; fi
+ready=false
+for attempt in {1..600}; do
+    if [[ -S "$XDG_RUNTIME_DIR/videoscrap-test" ]] && WAYLAND_DISPLAY=videoscrap-test timeout 1s weston-info >"$logs/wayland-globals.log" 2>&1; then ready=true; break; fi
     if ! kill -0 "$weston_pid" 2>/dev/null; then cat "$logs/weston.log"; exit 1; fi
     sleep 0.1
 done
-test -S "$XDG_RUNTIME_DIR/videoscrap-test"
+if [[ $ready != true ]]; then cat "$logs/weston.log"; echo 'Weston did not become ready in time' >&2; exit 1; fi
 check() {
     local name=$1; shift
     if ! timeout 30s "$@" >"$logs/$name.log" 2>&1; then cat "$logs/$name.log"; return 1; fi
