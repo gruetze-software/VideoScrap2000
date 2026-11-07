@@ -114,20 +114,23 @@ public sealed class LibraryTests : IDisposable
         }
     }
 
-    [Fact]
-    public async Task StoredCreationTimeSurvivesPlatformChangesWithoutChangingKodiDate()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task StoredCreationTimeSurvivesPlatformChangesWithoutChangingKodiDate(bool hasKodiDate)
     {
         var path = Path.Combine(root, "Film.nfo");
         var video = Path.Combine(root, "Film.mkv");
         var created = new DateTime(2020, 2, 3, 4, 5, 6, DateTimeKind.Utc);
         var document = new XDocument(new XElement("movie",
             new XAttribute(MovieFileFacts.CreationAttribute, created.ToString("O")),
-            new XElement("title", "Film"), new XElement("dateadded", "2019-01-02 03:04:05")));
+            new XElement("title", "Film"), hasKodiDate ? new XElement("dateadded", "2019-01-02 03:04:05") : null));
         await File.WriteAllTextAsync(path, document.ToString(), Ct);
         Assert.Equal(created, MovieFileFacts.Read(root, video).NfoCreatedAtUtc);
         await MovieManager.SaveNfoFileAsync(new Movie { Title = "Edited" }, root, video, Ct);
         Assert.Equal(created, MovieFileFacts.Read(root, video).NfoCreatedAtUtc);
-        Assert.Equal("2019-01-02 03:04:05", XDocument.Load(path).Root!.Element("dateadded")!.Value);
+        Assert.Equal(hasKodiDate ? "2019-01-02 03:04:05" : created.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
+            XDocument.Load(path).Root!.Element("dateadded")!.Value);
     }
 
     [Fact]

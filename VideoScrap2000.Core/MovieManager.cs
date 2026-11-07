@@ -437,11 +437,14 @@ namespace MovieScrap2000
       var existingNfo = GetNfoFile(folderPath, videoFilePath);
       nfoFilePath = existingNfo ?? nfoFilePath;
       var previous = File.Exists(nfoFilePath) ? LoadExistingNfoDocument(nfoFilePath) : null;
+      var originalCreation = previous is null ? DateTime.UtcNow
+          : MovieFileFacts.StoredCreationTime((string?)previous.Root?.Attribute(MovieFileFacts.CreationAttribute))
+              ?? File.GetCreationTimeUtc(nfoFilePath);
       var storedDate = (string?)previous?.Root?.Element("dateadded") ?? nfo.DateAdded;
       if (!DateTime.TryParseExact(storedDate, "yyyy-MM-dd HH:mm:ss",
           System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dateAdded))
       {
-        dateAdded = previous is null ? DateTime.Now : File.GetCreationTime(nfoFilePath);
+        dateAdded = previous is null ? DateTime.Now : originalCreation.ToLocalTime();
         if (dateAdded.Year < 1900) dateAdded = DateTime.Now;
       }
       nfo.DateAdded = dateAdded.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
@@ -449,8 +452,6 @@ namespace MovieScrap2000
       DateTime? creationTimeUtc = null;
       if (previous is not null)
       {
-        var originalCreation = MovieFileFacts.StoredCreationTime((string?)previous.Root?.Attribute(MovieFileFacts.CreationAttribute))
-            ?? File.GetCreationTimeUtc(nfoFilePath);
         if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) creationTimeUtc = originalCreation;
         // Keep fields from other media managers that our model does not understand.
         var next = System.Xml.Linq.XDocument.Parse(xmlContent);
