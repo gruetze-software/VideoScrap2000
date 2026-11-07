@@ -129,6 +129,7 @@ public sealed class ArtworkOptimizationTests : IDisposable
             Assert.True(model.CanEdit);
             model.Title = "Updated title";
             await model.SaveCommand.ExecuteAsync(null);
+            await model.ArtworkLoadingTask;
             Assert.Equal(originalBytes, await File.ReadAllBytesAsync(poster, TestContext.Current.CancellationToken));
             Assert.Equal(2020, File.GetLastWriteTimeUtc(poster).Year);
             Assert.False(Directory.Exists(Path.Combine(folder, ArtworkOptimizer.OriginalFolder)));

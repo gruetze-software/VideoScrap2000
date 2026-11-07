@@ -462,16 +462,24 @@ namespace MovieScrap2000
             next.Root!.Add(new System.Xml.Linq.XElement(element));
         foreach (var attribute in previous.Root.Attributes().Where(a => !a.IsNamespaceDeclaration && next.Root!.Attribute(a.Name) is null))
             next.Root!.Add(new System.Xml.Linq.XAttribute(attribute));
-        if (OperatingSystem.IsLinux())
-            next.Root!.SetAttributeValue(MovieFileFacts.CreationAttribute,
-                originalCreation.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+        next.Root!.SetAttributeValue(MovieFileFacts.CreationAttribute,
+            originalCreation.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         xmlContent = next.ToString();
       }
       var temporary = nfoFilePath + ".tmp";
       try
       {
         await File.WriteAllTextAsync(temporary, xmlContent, new System.Text.UTF8Encoding(false), cancellationToken);
-        if (creationTimeUtc is { } created) File.SetCreationTimeUtc(temporary, created);
+        if (creationTimeUtc is { } created)
+        {
+          try { File.SetCreationTimeUtc(temporary, created); }
+          catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+          {
+            // Some mounted shares cannot set birth time. The NFO attribute
+            // still preserves the capture date without blocking metadata edits.
+            System.Diagnostics.Trace.WriteLine($"NFO creation time retained in metadata: {ex.Message}");
+          }
+        }
         cancellationToken.ThrowIfCancellationRequested();
         if (File.Exists(nfoFilePath)) File.Copy(nfoFilePath, nfoFilePath + ".bak", true);
         File.Move(temporary, nfoFilePath, true);
