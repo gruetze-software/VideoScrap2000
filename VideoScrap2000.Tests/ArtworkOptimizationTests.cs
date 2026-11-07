@@ -110,6 +110,33 @@ public sealed class ArtworkOptimizationTests : IDisposable
     }
 
     [Avalonia.Headless.XUnit.AvaloniaFact]
+    public async Task MetadataOnlySaveDoesNotRewriteExistingArtworkWithCompactEnabled()
+    {
+        var video = Path.Combine(folder, "Film.mkv");
+        await File.WriteAllBytesAsync(video, [0], TestContext.Current.CancellationToken);
+        var database = new DatabaseManager(Path.Combine(folder, "cache.sqlite"));
+        await database.InitializeDatabaseAsync();
+        using (var service = new MetadataService(database))
+            await service.SaveMovieAsync(new Movie { Title = "Film", FanArtPics = [new() { ImageType = ImageTypes.Poster, ImageData = Picture(1200, 1800) }] },
+                folder, video, false, TestContext.Current.CancellationToken);
+        var poster = Path.Combine(folder, "Film-poster.jpg");
+        var originalBytes = await File.ReadAllBytesAsync(poster, TestContext.Current.CancellationToken);
+        File.SetLastWriteTimeUtc(poster, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        using (var model = new VideoScrap2000.ViewModels.MainViewModel(database, new AppSettings { ArtworkOptimizationProfile = 1 }))
+        {
+            await model.InitializeAsync();
+            await model.ArtworkLoadingTask;
+            Assert.True(model.CanEdit);
+            model.Title = "Updated title";
+            await model.SaveCommand.ExecuteAsync(null);
+            Assert.Equal(originalBytes, await File.ReadAllBytesAsync(poster, TestContext.Current.CancellationToken));
+            Assert.Equal(2020, File.GetLastWriteTimeUtc(poster).Year);
+            Assert.False(Directory.Exists(Path.Combine(folder, ArtworkOptimizer.OriginalFolder)));
+        }
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+    }
+
+    [Avalonia.Headless.XUnit.AvaloniaFact]
     public void SettingsAndBatchDialogExposeTheOptionalProfiles()
     {
         var settings = new AppSettings();
