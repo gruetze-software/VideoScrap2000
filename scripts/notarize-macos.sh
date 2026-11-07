@@ -2,6 +2,7 @@
 # Submit once, retry waiting on the same submission, then staple its ticket.
 set +x
 set -euo pipefail
+source "$(dirname -- "${BASH_SOURCE[0]}")/apple-check-retry.sh"
 [[ $# == 2 ]] || { echo 'Usage: notarize-macos.sh ARCHIVE APP_OR_DMG_TO_STAPLE' >&2; exit 2; }
 for name in MACOS_NOTARY_KEY_PATH APPLE_API_KEY_ID APPLE_API_ISSUER_ID; do
   [[ -n "${!name:-}" ]] || { echo "Missing notarization setting: $name" >&2; exit 1; }
@@ -27,11 +28,5 @@ if [[ "$STATUS" != Accepted ]]; then
   xcrun notarytool log "$ID" "${AUTH[@]}" || true
   exit 1
 fi
-for attempt in 1 2 3; do
-  if xcrun stapler staple "$2" && xcrun stapler validate "$2"; then
-    exit 0
-  fi
-  [[ "$attempt" == 3 ]] || sleep 10
-done
-echo 'Apple accepted the upload, but attaching the ticket failed.' >&2
-exit 1
+retry_apple_check xcrun stapler staple "$2"
+retry_apple_check xcrun stapler validate "$2"

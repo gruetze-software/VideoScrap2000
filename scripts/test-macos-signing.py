@@ -44,7 +44,12 @@ elif command == 'xcrun':
         Path(args[2], 'ticket').touch()
     elif args[:2] == ['stapler', 'validate']:
         validations = sum(json.loads(line)[:3] == ['xcrun','stapler','validate'] for line in log.read_text().splitlines())
-        if os.environ.get('MOCK_VALIDATE_TRANSIENT') and validations == 1: sys.exit(68)
+        if os.environ.get('MOCK_VALIDATE_PERMANENT'):
+            print('Invalid code signature', file=sys.stderr)
+            sys.exit(65)
+        if validations <= int(os.environ.get('MOCK_VALIDATE_TRANSIENT', '0')):
+            print('NSURLErrorDomain Code=-1005: The network connection was lost.', file=sys.stderr)
+            sys.exit(68)
         sys.exit(0 if Path(args[2], 'ticket').exists() else 1)
 '''
 CHILD = '''#!/usr/bin/env bash
@@ -68,7 +73,7 @@ class SigningTests(unittest.TestCase):
         scripts = self.root / 'repo' / 'scripts'
         scripts.mkdir(parents=True)
         self.scripts = scripts
-        for name in ('build-macos-signed.sh', 'notarize-macos.sh'):
+        for name in ('build-macos-signed.sh', 'notarize-macos.sh', 'apple-check-retry.sh'):
             shutil.copyfile(ROOT / 'scripts' / name, scripts / name)
         (scripts / 'build-macos.sh').write_text(CHILD)
         mocks = self.root / 'bin'
@@ -155,6 +160,22 @@ class SigningTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.events().count(['xcrun', 'notarytool', 'submit']), 1)
         self.assertEqual(self.events().count(['xcrun', 'stapler', 'validate']), 2)
+
+    def test_repeated_network_failures_recover_after_four_attempts(self):
+        result = self.run_script('notarize-macos.sh', 'test.zip', str(self.target), MOCK_VALIDATE_TRANSIENT='3')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.events().count(['xcrun', 'stapler', 'validate']), 4)
+        self.assertEqual(self.events().count(['xcrun', 'notarytool', 'submit']), 1)
+
+    def test_network_failure_eventually_stops(self):
+        result = self.run_script('notarize-macos.sh', 'test.zip', str(self.target), MOCK_VALIDATE_TRANSIENT='99')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.events().count(['xcrun', 'stapler', 'validate']), 6)
+
+    def test_invalid_signature_is_not_retried(self):
+        result = self.run_script('notarize-macos.sh', 'test.zip', str(self.target), MOCK_VALIDATE_PERMANENT='1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.events().count(['xcrun', 'stapler', 'validate']), 1)
 
 
 if __name__ == '__main__':
