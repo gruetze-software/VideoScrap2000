@@ -8,6 +8,14 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 case "$RID" in osx-x64|osx-arm64) ;; *) exit 2 ;; esac
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 2
 MODE=${MACOS_SIGNING_MODE:-adhoc}
+retry_assessment() {
+  local attempt
+  for attempt in 1 2 3; do
+    if "$@"; then return 0; fi
+    [[ $attempt == 3 ]] || sleep 10
+  done
+  return 1
+}
 case "$MODE" in
   adhoc) SIGN=(--force --sign -) ;;
   developer-id)
@@ -74,13 +82,13 @@ fi
 if [[ $MODE == developer-id ]]; then
   ditto -c -k --sequesterRsrc --keepParent "$APP" "$WORK/notarization.zip"
   bash "$ROOT/scripts/notarize-macos.sh" "$WORK/notarization.zip" "$APP"
-  spctl --assess --type execute "$APP"
+  retry_assessment spctl --assess --type execute "$APP"
 fi
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$BASE.zip"
 # Verify the distributed archive preserves the stapled ticket and signatures.
 ditto -x -k "$BASE.zip" "$WORK/extracted"
 codesign --verify --deep --strict "$WORK/extracted/VideoScrap 2000.app"
-if [[ $MODE == developer-id ]]; then xcrun stapler validate "$WORK/extracted/VideoScrap 2000.app"; fi
+if [[ $MODE == developer-id ]]; then retry_assessment xcrun stapler validate "$WORK/extracted/VideoScrap 2000.app"; fi
 if [[ $SELF_CONTAINED == true ]]; then
   mkdir "$WORK/dmg"
   chmod 755 "$WORK/dmg"
@@ -90,7 +98,7 @@ if [[ $SELF_CONTAINED == true ]]; then
   if [[ $MODE == developer-id ]]; then
     codesign --force --sign "$MACOS_SIGNING_IDENTITY" --keychain "$MACOS_SIGNING_KEYCHAIN" --timestamp "$BASE.dmg"
     bash "$ROOT/scripts/notarize-macos.sh" "$BASE.dmg" "$BASE.dmg"
-    spctl --assess --type open --context context:primary-signature "$BASE.dmg"
+    retry_assessment spctl --assess --type open --context context:primary-signature "$BASE.dmg"
   fi
 fi
 python3 - "$APP" "$BASE.bundle-info.json" <<'PY'

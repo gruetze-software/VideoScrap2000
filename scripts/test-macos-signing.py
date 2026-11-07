@@ -43,6 +43,8 @@ elif command == 'xcrun':
         if os.environ.get('MOCK_STAPLE_FAILURE'): sys.exit(1)
         Path(args[2], 'ticket').touch()
     elif args[:2] == ['stapler', 'validate']:
+        validations = sum(json.loads(line)[:3] == ['xcrun','stapler','validate'] for line in log.read_text().splitlines())
+        if os.environ.get('MOCK_VALIDATE_TRANSIENT') and validations == 1: sys.exit(68)
         sys.exit(0 if Path(args[2], 'ticket').exists() else 1)
 '''
 CHILD = '''#!/usr/bin/env bash
@@ -147,6 +149,12 @@ class SigningTests(unittest.TestCase):
         result = self.run_script('notarize-macos.sh', 'test.zip', str(self.target), MOCK_STAPLE_FAILURE='1')
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse((self.target / 'ticket').exists())
+
+    def test_transient_ticket_validation_failure_retries_without_resubmission(self):
+        result = self.run_script('notarize-macos.sh', 'test.zip', str(self.target), MOCK_VALIDATE_TRANSIENT='1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.events().count(['xcrun', 'notarytool', 'submit']), 1)
+        self.assertEqual(self.events().count(['xcrun', 'stapler', 'validate']), 2)
 
 
 if __name__ == '__main__':

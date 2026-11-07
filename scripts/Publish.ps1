@@ -12,6 +12,7 @@ $project = Join-Path $repository 'MovieScrap2000/MovieScrap2000.csproj'
 $version = @($projectMetadata.Project.PropertyGroup.Version | Where-Object { $_ })[0]
 $flavor = if ($FrameworkDependent) { '-framework-dependent' } else { '' }
 $packageName = "VideoScrap2000-$version-$Runtime$flavor"
+New-Item -ItemType Directory -Path $output -Force | Out-Null
 dotnet publish $project -c Release -r $Runtime --self-contained $selfContained -o $output -p:PublishTrimmed=false -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false -m:1 -nr:false
 if ($LASTEXITCODE -ne 0) { throw 'Publish fehlgeschlagen.' }
 if ($Runtime.StartsWith('linux-') -and !(Test-Path -LiteralPath (Join-Path $output 'Avalonia.Wayland.dll'))) {

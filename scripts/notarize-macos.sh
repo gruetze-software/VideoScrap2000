@@ -28,8 +28,7 @@ if [[ "$STATUS" != Accepted ]]; then
   exit 1
 fi
 for attempt in 1 2 3; do
-  if xcrun stapler staple "$2"; then
-    xcrun stapler validate "$2"
+  if xcrun stapler staple "$2" && xcrun stapler validate "$2"; then
     exit 0
   fi
   [[ "$attempt" == 3 ]] || sleep 10
