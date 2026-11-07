@@ -38,6 +38,12 @@
           <Grid ColumnDefinitions="*,Auto"><TextBox Text="{Binding SeriesPath}" AutomationProperties.Name="{DynamicResource L5AE9A8131D9B}"/><Button Grid.Column="1" Content="{DynamicResource L0BF1EDDB22BF}" Click="ChooseSeries" Margin="8,0,0,0"/></Grid>
           <TextBlock Text="{DynamicResource LAD360AF2108C}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"/>
         </StackPanel></Border>
+        <Border Classes="card" Padding="18"><StackPanel Spacing="8">
+          <TextBlock Text="{Binding OptimizationTitle}" FontSize="17" FontWeight="SemiBold"/>
+          <ComboBox ItemsSource="{Binding OptimizationProfiles}" SelectedIndex="{Binding ArtworkOptimizationProfile}" HorizontalAlignment="Stretch"/>
+          <TextBlock Text="{Binding OptimizationInfo}" Classes="secondary" TextWrapping="Wrap"/>
+          <Button Content="{Binding OptimizationAction}" Click="OptimizeExisting" IsEnabled="{Binding !IsDemo}"/>
+        </StackPanel></Border>
         <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Classes="secondary"/>
       </StackPanel>
     </ScrollViewer>

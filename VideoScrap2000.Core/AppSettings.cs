@@ -10,6 +10,7 @@ public sealed class AppSettings
     public string MetadataLanguage { get; set; } = "System";
     public string ArtworkLanguage { get; set; } = "System";
     public bool UseFanartBackground { get; set; }
+    public int ArtworkOptimizationProfile { get; set; }
     private static string FilePath => Path.Combine(Utils.GetOptionsPath(), "settings.json");
     public static AppSettings Load()
     {

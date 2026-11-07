@@ -243,7 +243,8 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         {
             foreach (var (name, picture) in pending)
             {
-                var file = await Task.Run(() => ArtworkFiles.SaveNamedAsync(show.Show.FolderPath, name, picture.PendingData!, token), token);
+                var file = await Task.Run(() => ArtworkOptimizer.SaveAsync(show.Show.FolderPath, name, picture.PendingData!,
+                    ArtworkOptimizer.Kind(name + ".jpg") ?? "", (ArtworkProfile)main.ArtworkOptimizationProfile, token), token);
                 show.Artwork[name] = new(file);
             }
         }

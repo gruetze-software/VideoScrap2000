@@ -321,7 +321,8 @@ public class MetadataService : IDisposable
 			string folderPath,
 			string videoFilePath,
 			bool isPlaceholder,
-			CancellationToken cancellationToken, bool writeFiles = true)
+			CancellationToken cancellationToken, bool writeFiles = true,
+            Func<string, string, ImageCacheItem, CancellationToken, Task>? saveImage = null)
 	{
 
 		if (writeFiles && !isPlaceholder)
@@ -330,7 +331,7 @@ public class MetadataService : IDisposable
             await MovieManager.SynchronizeMovieImagesAsync(folderPath,
                 Path.GetFileNameWithoutExtension(videoFilePath), movieNfo.FanArtPics
                 .Where(p => p.ImageData is { Length: > 0 })
-                .Select(p => new ImageCacheItem { Type = p.ImageType ?? "", Data = p.ImageData! }).ToList(), cancellationToken);
+                .Select(p => new ImageCacheItem { Type = p.ImageType ?? "", Data = p.ImageData! }).ToList(), cancellationToken, saveImage);
         }
 
         // Die gesamte Speicherlogik läuft nun im thread-sicheren, asynchronen Block

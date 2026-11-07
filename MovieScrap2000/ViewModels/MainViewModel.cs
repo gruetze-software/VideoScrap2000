@@ -42,6 +42,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int languageIndex;
     [ObservableProperty] private int metadataLanguageIndex;
     [ObservableProperty] private int artworkLanguageIndex;
+    public int ArtworkOptimizationProfile => Math.Clamp(settings.ArtworkOptimizationProfile, 0, 2);
     public string MetadataLanguage => LanguagePreferences.ResolveContent(settings.MetadataLanguage);
     public string ArtworkLanguage => LanguagePreferences.ResolveContent(settings.ArtworkLanguage);
     partial void OnStatusChanged(string value)
@@ -158,7 +159,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         settings.Theme = value switch { 1 => "Light", 2 => "Dark", _ => "System" };
         ThemeRequested?.Invoke(settings.Theme);
     }
-    public void ApplySettings(string movies, string series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false)
+    public void ApplySettings(string movies, string series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0)
     {
         if (!IsDemo)
         {
@@ -170,6 +171,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         settings.MetadataLanguage = LanguagePreferences.ContentFromIndex(metadataLanguage);
         settings.ArtworkLanguage = LanguagePreferences.ContentFromIndex(artworkLanguage);
         settings.UseFanartBackground = useFanartBackground;
+        settings.ArtworkOptimizationProfile = Math.Clamp(artworkOptimizationProfile, 0, 2);
         if (!IsDemo) settings.Save();
         UseFanartBackground = useFanartBackground;
         LanguageIndex = language; MetadataLanguageIndex = metadataLanguage; ArtworkLanguageIndex = artworkLanguage;
@@ -432,7 +434,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
         nfo.Genres = Split(Genres).Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
         nfo.Directors = Split(Directors);
         var artworkChanged = Artwork.Any(image => image.PendingData is not null);
-        try { await Task.Run(() => metadata.SaveMovieAsync(nfo, movie.FolderPath, movie.VideoFilePath, false, token), token); }
+        var pendingArtworkTypes = Artwork.Where(image => image.PendingData is not null).Select(image => image.Type).ToHashSet();
+        try { await Task.Run(() => metadata.SaveMovieAsync(nfo, movie.FolderPath, movie.VideoFilePath, false, token,
+            saveImage: (folder, stem, image, ct) => pendingArtworkTypes.Contains(image.Type)
+                ? ArtworkOptimizer.SaveMovieImageAsync(folder, stem, image, (ArtworkProfile)ArtworkOptimizationProfile, ct)
+                : Task.CompletedTask), token); }
         finally { if (artworkChanged) ArtworkPreviewCache.Shared.InvalidateFolder(movie.FolderPath); }
         await RefreshSavedMovieAsync(movie.Id);
         Status = "Metadaten gespeichert. Die vorherige NFO wurde als .bak gesichert.";

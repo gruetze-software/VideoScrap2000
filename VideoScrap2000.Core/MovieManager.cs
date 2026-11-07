@@ -237,12 +237,14 @@ namespace MovieScrap2000
     /// <param name="imageCacheItems">Die Liste der zu speichernden Bilder (muss Data enthalten).</param>
     /// <param name="cancellationToken">Das Abbruch-Token.</param>
     public static async Task SynchronizeMovieImagesAsync(string movieFolderPath,
-        string videoFileNameWithoutExtension, List<ImageCacheItem> imageCacheItems, CancellationToken cancellationToken)
+        string videoFileNameWithoutExtension, List<ImageCacheItem> imageCacheItems, CancellationToken cancellationToken,
+        Func<string, string, ImageCacheItem, CancellationToken, Task>? saveImage = null)
     {
         foreach (var image in imageCacheItems)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await ArtworkFiles.SaveAsync(movieFolderPath, videoFileNameWithoutExtension, image, cancellationToken);
+            if (saveImage is not null) await saveImage(movieFolderPath, videoFileNameWithoutExtension, image, cancellationToken);
+            else await ArtworkFiles.SaveAsync(movieFolderPath, videoFileNameWithoutExtension, image, cancellationToken);
         }
     }
     /// <summary>

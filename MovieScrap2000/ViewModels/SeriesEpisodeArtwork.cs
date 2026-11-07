@@ -36,7 +36,8 @@ public partial class SeriesViewModel
     {
         if (row.PendingPicture?.PendingData is not { } bytes) return;
         var stem = EpisodePictureStem(row);
-        var path = await ArtworkFiles.SaveNamedAsync(Path.GetDirectoryName(stem)!, Path.GetFileName(stem), bytes, token);
+        var path = await Task.Run(() => ArtworkOptimizer.SaveAsync(Path.GetDirectoryName(stem)!, Path.GetFileName(stem), bytes,
+            "thumb", (ArtworkProfile)main.ArtworkOptimizationProfile, token), token);
         ArtworkPreviewCache.Shared.InvalidateFolder(Path.GetDirectoryName(stem)!);
         row.PendingPicture = null;
         if (ReferenceEquals(row, SelectedEpisode)) EpisodePicture = new(path);

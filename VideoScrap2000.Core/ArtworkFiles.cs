@@ -21,7 +21,7 @@ public static class ArtworkFiles
             : throw new InvalidDataException("Unterstützt werden PNG-, JPEG- und WebP-Bilder.");
         var stem = Path.Combine(folder, name);
         var path = stem + extension;
-        var temporary = path + ".tmp";
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
             await File.WriteAllBytesAsync(temporary, bytes, token);
