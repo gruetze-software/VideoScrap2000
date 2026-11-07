@@ -99,19 +99,35 @@ public sealed class LibraryTests : IDisposable
     [Fact]
     public async Task RepeatedSavesPreservePhysicalCreationDateAndKodiDateIndependently()
     {
-        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS()) return;
         var video = Path.Combine(root, "Film.mkv");
         var path = Path.ChangeExtension(video, ".nfo");
         await File.WriteAllTextAsync(path, "<movie><title>Film</title><dateadded>2019-03-04 12:34:56</dateadded></movie>", Ct);
-        File.SetCreationTimeUtc(path, new DateTime(2021, 5, 6, 7, 8, 9, DateTimeKind.Utc));
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
+            File.SetCreationTimeUtc(path, new DateTime(2021, 5, 6, 7, 8, 9, DateTimeKind.Utc));
         var created = File.GetCreationTimeUtc(path);
         for (var save = 0; save < 2; save++)
         {
             await MovieManager.SaveNfoFileAsync(new Movie { Title = "Edited" }, root, video, Ct);
-            Assert.Equal(created, File.GetCreationTimeUtc(path));
+            if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) Assert.Equal(created, File.GetCreationTimeUtc(path));
             Assert.Equal(created, MovieFileFacts.Read(root, video).NfoCreatedAtUtc);
             Assert.Equal("2019-03-04 12:34:56", XDocument.Load(path).Root!.Element("dateadded")!.Value);
         }
+    }
+
+    [Fact]
+    public async Task StoredCreationTimeSurvivesPlatformChangesWithoutChangingKodiDate()
+    {
+        var path = Path.Combine(root, "Film.nfo");
+        var video = Path.Combine(root, "Film.mkv");
+        var created = new DateTime(2020, 2, 3, 4, 5, 6, DateTimeKind.Utc);
+        var document = new XDocument(new XElement("movie",
+            new XAttribute(MovieFileFacts.CreationAttribute, created.ToString("O")),
+            new XElement("title", "Film"), new XElement("dateadded", "2019-01-02 03:04:05")));
+        await File.WriteAllTextAsync(path, document.ToString(), Ct);
+        Assert.Equal(created, MovieFileFacts.Read(root, video).NfoCreatedAtUtc);
+        await MovieManager.SaveNfoFileAsync(new Movie { Title = "Edited" }, root, video, Ct);
+        Assert.Equal(created, MovieFileFacts.Read(root, video).NfoCreatedAtUtc);
+        Assert.Equal("2019-01-02 03:04:05", XDocument.Load(path).Root!.Element("dateadded")!.Value);
     }
 
     [Fact]

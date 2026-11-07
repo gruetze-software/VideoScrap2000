@@ -449,7 +449,9 @@ namespace MovieScrap2000
       DateTime? creationTimeUtc = null;
       if (previous is not null)
       {
-        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) creationTimeUtc = File.GetCreationTimeUtc(nfoFilePath);
+        var originalCreation = MovieFileFacts.StoredCreationTime((string?)previous.Root?.Attribute(MovieFileFacts.CreationAttribute))
+            ?? File.GetCreationTimeUtc(nfoFilePath);
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) creationTimeUtc = originalCreation;
         // Keep fields from other media managers that our model does not understand.
         var next = System.Xml.Linq.XDocument.Parse(xmlContent);
         var knownNames = typeof(Movie).GetProperties()
@@ -459,6 +461,9 @@ namespace MovieScrap2000
             next.Root!.Add(new System.Xml.Linq.XElement(element));
         foreach (var attribute in previous.Root.Attributes().Where(a => !a.IsNamespaceDeclaration && next.Root!.Attribute(a.Name) is null))
             next.Root!.Add(new System.Xml.Linq.XAttribute(attribute));
+        if (OperatingSystem.IsLinux())
+            next.Root!.SetAttributeValue(MovieFileFacts.CreationAttribute,
+                originalCreation.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         xmlContent = next.ToString();
       }
       var temporary = nfoFilePath + ".tmp";
