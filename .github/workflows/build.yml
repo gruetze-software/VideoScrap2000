@@ -163,7 +163,10 @@ jobs:
           $existing = gh release view $releaseTag --json isDraft 2>$null
           if ($LASTEXITCODE -eq 0) {
             if (!(($existing | ConvertFrom-Json).isDraft)) {
-              if ($env:REPLACE_PUBLISHED_RELEASE -ne 'true') { throw 'An already published release must not be overwritten.' }
+              if ($env:REPLACE_PUBLISHED_RELEASE -ne 'true') {
+                Write-Host 'This release is already public. Keeping the published files unchanged; use the explicit replacement option to rebuild a published release.'
+                exit 0
+              }
               $release = gh api "repos/$env:GH_REPO/releases/tags/$releaseTag" | ConvertFrom-Json
               if ($LASTEXITCODE -ne 0 -or $release.immutable) { throw 'The release cannot be replaced.' }
               gh release upload $releaseTag @assets --clobber
