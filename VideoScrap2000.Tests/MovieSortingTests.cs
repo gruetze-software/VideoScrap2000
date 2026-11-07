@@ -54,7 +54,7 @@ public class MovieSortingTests
                 var video = Path.Combine(folder, name + ".mkv"); File.WriteAllBytes(video, [0]);
                 File.SetLastWriteTime(video, new DateTime(2020, 1, day));
                 await service.SaveMovieAsync(new Movie { Title = name, Year = year }, folder, video, false, TestContext.Current.CancellationToken);
-                if (OperatingSystem.IsWindows()) File.SetCreationTimeUtc(Path.ChangeExtension(video, ".nfo"), new DateTime(2024, 1, day, 0, 0, 0, DateTimeKind.Utc));
+                if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) File.SetCreationTimeUtc(Path.ChangeExtension(video, ".nfo"), new DateTime(2024, 1, day, 0, 0, 0, DateTimeKind.Utc));
             }
             DateTime NfoCreation(string name) => File.GetCreationTimeUtc(Path.Combine(root, name, name + ".nfo"));
             string[] ExpectedOrder() => new[] { "Alpha", "Middle", "Zulu" }.OrderByDescending(NfoCreation).ThenBy(name => name).ToArray();
@@ -75,7 +75,7 @@ public class MovieSortingTests
             Assert.NotEmpty(publishedDates);
             Assert.All(publishedDates, Assert.True);
             Assert.Equal(ExpectedOrder(), model.Movies.Select(m => m.Title));
-            if (OperatingSystem.IsWindows()) Assert.Equal(alphaCreation, NfoCreation("Alpha"));
+            if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) Assert.Equal(alphaCreation, NfoCreation("Alpha"));
             Assert.Equal(NfoCreation("Alpha"), model.Movies.Single(movie => movie.Title == "Alpha").MetadataCapturedAtUtc);
             Assert.Equal(selected, model.SelectedMovie!.Id);
             model.MovieSortIndex = 1;

@@ -449,7 +449,7 @@ namespace MovieScrap2000
       DateTime? creationTimeUtc = null;
       if (previous is not null)
       {
-        if (OperatingSystem.IsWindows()) creationTimeUtc = File.GetCreationTimeUtc(nfoFilePath);
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) creationTimeUtc = File.GetCreationTimeUtc(nfoFilePath);
         // Keep fields from other media managers that our model does not understand.
         var next = System.Xml.Linq.XDocument.Parse(xmlContent);
         var knownNames = typeof(Movie).GetProperties()

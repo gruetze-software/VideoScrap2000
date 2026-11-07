@@ -89,11 +89,29 @@ public sealed class LibraryTests : IDisposable
     {
         var path = Path.Combine(root, "Film.nfo");
         await File.WriteAllTextAsync(path, $"<movie><title>Film</title>{dateTag}</movie>", Ct);
-        if (OperatingSystem.IsWindows()) File.SetCreationTime(path, new DateTime(2026, 11, 4, 8, 45, 33));
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) File.SetCreationTime(path, new DateTime(2026, 11, 4, 8, 45, 33));
         var created = File.GetCreationTime(path).ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
         await MovieManager.SaveNfoFileAsync(new Movie { Title = "Edited" }, root, Path.Combine(root, "Film.mkv"), Ct);
         Assert.Equal(dateTag.Contains("2024", StringComparison.Ordinal) ? "2024-02-03 12:34:56" : created,
             XDocument.Load(path).Root!.Element("dateadded")!.Value);
+    }
+
+    [Fact]
+    public async Task RepeatedSavesPreservePhysicalCreationDateAndKodiDateIndependently()
+    {
+        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS()) return;
+        var video = Path.Combine(root, "Film.mkv");
+        var path = Path.ChangeExtension(video, ".nfo");
+        await File.WriteAllTextAsync(path, "<movie><title>Film</title><dateadded>2019-03-04 12:34:56</dateadded></movie>", Ct);
+        File.SetCreationTimeUtc(path, new DateTime(2021, 5, 6, 7, 8, 9, DateTimeKind.Utc));
+        var created = File.GetCreationTimeUtc(path);
+        for (var save = 0; save < 2; save++)
+        {
+            await MovieManager.SaveNfoFileAsync(new Movie { Title = "Edited" }, root, video, Ct);
+            Assert.Equal(created, File.GetCreationTimeUtc(path));
+            Assert.Equal(created, MovieFileFacts.Read(root, video).NfoCreatedAtUtc);
+            Assert.Equal("2019-03-04 12:34:56", XDocument.Load(path).Root!.Element("dateadded")!.Value);
+        }
     }
 
     [Fact]
