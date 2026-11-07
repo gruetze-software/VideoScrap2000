@@ -1,0 +1,51 @@
+name: Build signed and notarized macOS packages
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  macos:
+    name: macOS ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: macos-15-intel
+          - arch: arm64
+            os: macos-15
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify signing and notarization control flow
+        run: |
+          bash -n scripts/build-macos.sh scripts/build-macos-signed.sh scripts/package-macos.sh scripts/notarize-macos.sh
+          python3 scripts/test-macos-signing.py
+      - name: Test application on native architecture
+        run: dotnet test VideoScrap2000.Tests/VideoScrap2000.Tests.csproj -c Release -m:1
+      - name: Sign and notarize both runtime variants
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.MACOS_CERTIFICATE_P12_BASE64 || '' }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.MACOS_CERTIFICATE_PASSWORD || '' }}
+          APPLE_API_KEY_P8: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.APPLE_API_KEY_P8 || '' }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          FANART_TV_PROJECT_API_KEY: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.FANART_TV_PROJECT_API_KEY || '' }}
+        run: |
+          test -n "$FANART_TV_PROJECT_API_KEY"
+          bash scripts/build-macos-signed.sh '${{ matrix.arch }}'
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: VideoScrap2000-macos-${{ matrix.arch }}
+          path: |
+            artifacts/**/*.zip
+            artifacts/**/*.dmg
+            artifacts/**/*.manifest.json
+            artifacts/**/*.dmg-info.json
+            artifacts/**/*.sha256
+          if-no-files-found: error

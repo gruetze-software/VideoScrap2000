@@ -78,7 +78,25 @@ $forbidden = $files | Where-Object {
 }
 if ($forbidden) { throw ('Unerwartete Release-Dateien: ' + ($forbidden.Name -join ', ')) }
 $bytes = ($files | Measure-Object Length -Sum).Sum
-if ($Runtime.StartsWith('win-')) {
+$fileCount = $files.Count
+if ($Runtime.StartsWith('osx-')) {
+    if (!$IsMacOS) { throw 'Build macOS application bundles on macOS.' }
+    $packageBase = Join-Path $run $packageName
+    bash (Join-Path $repository 'scripts/package-macos.sh') $output $Runtime $version $packageBase $selfContained
+    if ($LASTEXITCODE -ne 0) { throw 'macOS signing or application packaging failed.' }
+    $archive = $packageBase + '.zip'
+    $bundleInfo = Get-Content -LiteralPath ($packageBase + '.bundle-info.json') -Raw | ConvertFrom-Json
+    $bytes = $bundleInfo.installedBytes
+    $fileCount = $bundleInfo.files
+    if (!$FrameworkDependent) {
+        $dmg = Get-Item -LiteralPath ($packageBase + '.dmg')
+        $dmgHash = (Get-FileHash -LiteralPath $dmg.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        [IO.File]::WriteAllText($dmg.FullName + '.sha256', "$dmgHash  $($dmg.Name)`n")
+        [ordered]@{ version=$version; runtime=$Runtime; archive=$dmg.Name; downloadBytes=$dmg.Length; sha256=$dmgHash;
+            signed=($env:MACOS_SIGNING_MODE -eq 'developer-id'); notarized=($env:MACOS_SIGNING_MODE -eq 'developer-id') } |
+            ConvertTo-Json | Set-Content -LiteralPath ($packageBase + '.dmg-info.json')
+    }
+} elseif ($Runtime.StartsWith('win-')) {
     $archive = Join-Path $run "$packageName.zip"
     [IO.Compression.ZipFile]::CreateFromDirectory($output, $archive, [IO.Compression.CompressionLevel]::SmallestSize, $true)
 } else {
@@ -95,11 +113,13 @@ $manifest = [ordered]@{
     version = $version
     runtime = $Runtime
     selfContained = !$FrameworkDependent
-    files = $files.Count
+    files = $fileCount
     installedBytes = $bytes
     downloadBytes = $downloadBytes
     archive = Split-Path -Leaf $archive
     sha256 = $checksum
+    signed = ($Runtime.StartsWith('osx-') -and $env:MACOS_SIGNING_MODE -eq 'developer-id')
+    notarized = ($Runtime.StartsWith('osx-') -and $env:MACOS_SIGNING_MODE -eq 'developer-id')
 }
 $manifest | ConvertTo-Json | Set-Content (Join-Path $run "$packageName.manifest.json")
 Write-Host ("Geprüft: {0}, {1:N1} MiB entpackt, {2:N1} MiB Download" -f $Runtime, ($bytes / 1MB), ((Get-Item $archive).Length / 1MB))

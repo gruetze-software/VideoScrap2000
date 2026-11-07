@@ -67,7 +67,7 @@ jobs:
         platform: >-
           ${{ fromJSON(inputs.windows_linux_x64_only &&
           '[{"os":"windows-latest","rids":"win-x64","name":"windows"},{"os":"ubuntu-latest","rids":"linux-x64","name":"linux-x64"}]' ||
-          '[{"os":"windows-latest","rids":"win-x64,win-arm64","name":"windows"},{"os":"ubuntu-latest","rids":"linux-x64","name":"linux-x64"},{"os":"ubuntu-24.04-arm","rids":"linux-arm64","name":"linux-arm64"},{"os":"macos-15-intel","rids":"osx-x64,osx-arm64","name":"macos"}]') }}
+          '[{"os":"windows-latest","rids":"win-x64,win-arm64","name":"windows"},{"os":"ubuntu-latest","rids":"linux-x64","name":"linux-x64"},{"os":"ubuntu-24.04-arm","rids":"linux-arm64","name":"linux-arm64"}]') }}
     name: Package ${{ matrix.platform.name }}
     runs-on: ${{ matrix.platform.os }}
     steps:
@@ -99,6 +99,12 @@ jobs:
             artifacts/**/*.sha256
           if-no-files-found: error
 
+  macos:
+    if: (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && !inputs.windows_linux_x64_only
+    needs: [verify, linux-display]
+    uses: ./.github/workflows/macos.yml
+    secrets: inherit
+
   deb:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     needs: [verify, linux-display]
@@ -109,7 +115,7 @@ jobs:
 
   release:
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && (inputs.create_release_draft || inputs.replace_published_release))
-    needs: [package, deb]
+    needs: [package, deb, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -138,9 +144,15 @@ jobs:
           if ($archives.Count -ne 12) { throw "Expected twelve platform archives, found $($archives.Count)." }
           $installers = @(Get-ChildItem packages -Filter '*.deb' -File -Recurse)
           if ($installers.Count -ne 2) { throw 'Expected AMD64 and ARM64 DEB installers.' }
+          $diskImages = @(Get-ChildItem packages -Filter '*.dmg' -File -Recurse)
+          if ($diskImages.Count -ne 2) { throw 'Expected signed Intel and Apple Silicon DMG installers.' }
+          foreach ($infoFile in Get-ChildItem packages -Filter '*.dmg-info.json' -File -Recurse) {
+            $info = Get-Content $infoFile.FullName -Raw | ConvertFrom-Json
+            if (!$info.signed -or !$info.notarized) { throw 'Official macOS installers must be signed and notarized.' }
+          }
           $releaseNotes = 'release-notes.md'
           ./scripts/New-ReleaseSummary.ps1 -PackageRoot packages -Version $version -Repository $env:GH_REPO -NotesPath $releaseNotes -ChecksumPath SHA256SUMS.txt
-          $assets = @($archives.FullName) + @($installers.FullName) + @((Get-Item SHA256SUMS.txt).FullName)
+          $assets = @($archives.FullName) + @($installers.FullName) + @($diskImages.FullName) + @((Get-Item SHA256SUMS.txt).FullName)
           $existing = gh release view $releaseTag --json isDraft 2>$null
           if ($LASTEXITCODE -eq 0) {
             if (!(($existing | ConvertFrom-Json).isDraft)) {
@@ -149,6 +161,10 @@ jobs:
               if ($LASTEXITCODE -ne 0 -or $release.immutable) { throw 'The release cannot be replaced.' }
               gh release upload $releaseTag @assets --clobber
               if ($LASTEXITCODE -ne 0) { throw 'Replacement upload failed; rerun this repair before updating the tag.' }
+              foreach ($oldAsset in $release.assets | Where-Object name -Match '^VideoScrap2000-.*-osx-.*\.tar\.gz$') {
+                gh api --method DELETE "repos/$env:GH_REPO/releases/assets/$($oldAsset.id)"
+                if ($LASTEXITCODE -ne 0) { throw 'Could not remove an obsolete macOS archive.' }
+              }
               $oldRef = gh api "repos/$env:GH_REPO/git/ref/tags/$releaseTag" | ConvertFrom-Json
               if ($LASTEXITCODE -ne 0) { throw 'Cannot read the existing tag.' }
               $newTag = gh api --method POST "repos/$env:GH_REPO/git/tags" -f "tag=$releaseTag" -f "message=VideoScrap 2000 $releaseTag (replaced release)" -f "object=$env:RELEASE_COMMIT" -f type=commit | ConvertFrom-Json

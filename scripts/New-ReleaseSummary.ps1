@@ -15,7 +15,7 @@ foreach ($runtime in $runtimes) {
     if ($variants.Count -ne 2 -or @($variants | Where-Object selfContained).Count -ne 1) { throw "Missing package variant: $runtime" }
 }
 foreach ($package in $packages) {
-    $extension = if ($package.runtime.StartsWith('win-')) { '.zip' } else { '.tar.gz' }
+    $extension = if ($package.runtime.StartsWith('win-') -or $package.runtime.StartsWith('osx-')) { '.zip' } else { '.tar.gz' }
     $flavor = if ($package.selfContained) { '' } else { '-framework-dependent' }
     if ($package.version -ne $Version -or $package.sha256 -notmatch '^[a-f0-9]{64}$' -or
         $package.archive -ne "VideoScrap2000-$Version-$($package.runtime)$flavor$extension") { throw 'Invalid package manifest.' }
@@ -44,12 +44,30 @@ function Get-DownloadLink([string]$Runtime, [bool]$Bundled, [string]$Label) {
     $size = ($package.downloadBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
     return "[$Label · $size MiB]($baseUrl/$($package.archive))"
 }
+$diskImages = @(Get-ChildItem -LiteralPath $PackageRoot -Filter '*.dmg-info.json' -File -Recurse |
+    ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json })
+if ($diskImages.Count -gt 0) {
+    if ($diskImages.Count -ne 2 -or @($diskImages.runtime | Sort-Object -Unique).Count -ne 2) { throw 'Expected Intel and Apple Silicon DMG manifests.' }
+    foreach ($disk in $diskImages) {
+        if ($disk.runtime -notin @('osx-x64','osx-arm64') -or !$disk.signed -or !$disk.notarized -or
+            $disk.version -ne $Version -or $disk.archive -ne "VideoScrap2000-$Version-$($disk.runtime).dmg") { throw 'Invalid signed DMG manifest.' }
+        $image = @(Get-ChildItem -LiteralPath $PackageRoot -Filter $disk.archive -File -Recurse)
+        if ($image.Count -ne 1 -or $image[0].Length -ne $disk.downloadBytes -or
+            (Get-FileHash -LiteralPath $image[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant() -ne $disk.sha256) { throw 'DMG integrity check failed.' }
+    }
+}
+function Get-MacLink([string]$Runtime, [bool]$Bundled, [string]$Label) {
+    $disk = $diskImages | Where-Object runtime -eq $Runtime
+    if (!$Bundled -or !$disk) { return Get-DownloadLink $Runtime $Bundled $Label }
+    $size = ($disk.downloadBytes / 1MB).ToString('F1', [Globalization.CultureInfo]::InvariantCulture)
+    return "[$Label · DMG · $size MiB]($baseUrl/$($disk.archive))"
+}
 function Get-DownloadTable([bool]$Bundled) {
     @(
         '| System | Intel / AMD 64-bit | ARM64 / Apple Silicon |'
         '| --- | --- | --- |'
         "| Windows | $(Get-DownloadLink 'win-x64' $Bundled 'Windows 64-bit') | $(Get-DownloadLink 'win-arm64' $Bundled 'Windows ARM64') |"
-        "| macOS | $(Get-DownloadLink 'osx-x64' $Bundled 'Intel Mac') | $(Get-DownloadLink 'osx-arm64' $Bundled 'Apple Silicon Mac') |"
+        "| macOS | $(Get-MacLink 'osx-x64' $Bundled 'Intel Mac') | $(Get-MacLink 'osx-arm64' $Bundled 'Apple Silicon Mac') |"
         $(if ($Bundled -and $installers.Count -gt 0) {
             "| Linux Mint / Ubuntu / Debian | $(Get-InstallerLink 'amd64' 'DEB · 64-bit') | $(Get-InstallerLink 'arm64' 'DEB · ARM64') |"
         } else {
@@ -64,6 +82,9 @@ $downloads = @(
     ''
     (Get-DownloadTable $true)
     ''
+    $(if ($diskImages.Count -gt 0) {
+        "**macOS:** open the DMG and drag **VideoScrap 2000.app** into **Applications**. Developer ID signed and notarized by Apple. No separate .NET installation required.`n`n<details>`n<summary>macOS ZIP alternatives</summary>`n`n$(Get-DownloadLink 'osx-x64' $true 'Intel Mac ZIP') · $(Get-DownloadLink 'osx-arm64' $true 'Apple Silicon Mac ZIP')`n`n</details>`n"
+    })
     $(if ($installers.Count -gt 0) {
         "**Linux DEB:** install the downloaded file, then start **VideoScrap 2000** from the application menu. Includes .NET 10. Tested on Ubuntu 22.04/24.04 (Linux Mint 21/22 bases).`n`n<details>`n<summary>Linux archives for other distributions or portable use</summary>`n`n$(Get-DownloadLink 'linux-x64' $true 'Linux 64-bit') · $(Get-DownloadLink 'linux-arm64' $true 'Linux ARM64')`n`n</details>`n"
     })
@@ -91,5 +112,5 @@ foreach ($package in $packages) {
 }
 $body += "`n</details>`n"
 [IO.File]::WriteAllText([IO.Path]::GetFullPath($NotesPath), $body)
-[IO.File]::WriteAllText([IO.Path]::GetFullPath($ChecksumPath), ((@($packages) + @($installers) | ForEach-Object { "$($_.sha256)  $($_.archive)" }) -join "`n") + "`n")
-Write-Host "Prepared download tables and one checksum file for $($packages.Count + $installers.Count) packages."
+[IO.File]::WriteAllText([IO.Path]::GetFullPath($ChecksumPath), ((@($packages) + @($installers) + @($diskImages) | ForEach-Object { "$($_.sha256)  $($_.archive)" }) -join "`n") + "`n")
+Write-Host "Prepared download tables and one checksum file for $($packages.Count + $installers.Count + $diskImages.Count) packages."
