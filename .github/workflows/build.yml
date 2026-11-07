@@ -146,7 +146,14 @@ jobs:
           if ($installers.Count -ne 2) { throw 'Expected AMD64 and ARM64 DEB installers.' }
           $diskImages = @(Get-ChildItem packages -Filter '*.dmg' -File -Recurse)
           if ($diskImages.Count -ne 2) { throw 'Expected signed Intel and Apple Silicon DMG installers.' }
-          foreach ($infoFile in Get-ChildItem packages -Filter '*.dmg-info.json' -File -Recurse) {
+          $dmgManifests = @(Get-ChildItem packages -Filter '*.dmg-info.json' -File -Recurse)
+          if ($dmgManifests.Count -ne 2) { throw 'Expected two signed DMG manifests.' }
+          $macManifests = @(Get-ChildItem packages -Filter '*.manifest.json' -File -Recurse |
+            ForEach-Object { Get-Content $_.FullName -Raw | ConvertFrom-Json } | Where-Object runtime -Like 'osx-*')
+          if ($macManifests.Count -ne 4 -or @($macManifests | Where-Object { !$_.signed -or !$_.notarized }).Count -gt 0) {
+            throw 'All official macOS archives must be signed and notarized.'
+          }
+          foreach ($infoFile in $dmgManifests) {
             $info = Get-Content $infoFile.FullName -Raw | ConvertFrom-Json
             if (!$info.signed -or !$info.notarized) { throw 'Official macOS installers must be signed and notarized.' }
           }
@@ -164,6 +171,20 @@ jobs:
               foreach ($oldAsset in $release.assets | Where-Object name -Match '^VideoScrap2000-.*-osx-.*\.tar\.gz$') {
                 gh api --method DELETE "repos/$env:GH_REPO/releases/assets/$($oldAsset.id)"
                 if ($LASTEXITCODE -ne 0) { throw 'Could not remove an obsolete macOS archive.' }
+              }
+              # Separate Snap/Flatpak workflows may have supplied unchanged store
+              # bundles. Keep their checksums when repairing an existing release.
+              $uploaded = gh api "repos/$env:GH_REPO/releases/$($release.id)" | ConvertFrom-Json
+              if ($LASTEXITCODE -ne 0) { throw 'Cannot verify uploaded release assets.' }
+              $checksumLines = foreach ($asset in $uploaded.assets | Where-Object name -ne 'SHA256SUMS.txt' | Sort-Object name) {
+                if ($asset.digest -notmatch '^sha256:([a-f0-9]{64})$') { throw "Missing asset digest: $($asset.name)" }
+                "$($Matches[1])  $($asset.name)"
+              }
+              [IO.File]::WriteAllText((Join-Path $PWD 'SHA256SUMS.txt'), ($checksumLines -join "`n") + "`n")
+              gh release upload $releaseTag SHA256SUMS.txt --clobber
+              if ($LASTEXITCODE -ne 0) { throw 'Cannot update the complete checksum file.' }
+              foreach ($storeAsset in $uploaded.assets | Where-Object name -Match '\.(snap|flatpak)$') {
+                [IO.File]::AppendAllText((Join-Path $PWD $releaseNotes), "`nLinux alternative: [$($storeAsset.name)]($($storeAsset.browser_download_url)).`n")
               }
               $oldRef = gh api "repos/$env:GH_REPO/git/ref/tags/$releaseTag" | ConvertFrom-Json
               if ($LASTEXITCODE -ne 0) { throw 'Cannot read the existing tag.' }

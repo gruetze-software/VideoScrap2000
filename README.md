@@ -28,7 +28,7 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 
 ## Get started
 
-1. Download the package for your operating system and architecture from **GitHub Releases**. On Linux Mint, Ubuntu or Debian, install the **DEB** package; extract the archives on other systems. Choose **self-contained** to include .NET 10, or **framework-dependent** if .NET 10 is already installed.
+1. Download the package for your operating system and architecture from **GitHub Releases**. On Linux Mint, Ubuntu or Debian, install the **DEB** package. On macOS, open the signed and notarized **DMG** and drag the app into **Applications**. Extract the archives on other systems. Choose **self-contained** to include .NET 10, or **framework-dependent** if .NET 10 is already installed.
 2. Open **Settings** and choose your movie and TV folders. Use one subfolder per movie or show; TV shows may contain season folders.
 3. Select **Scan library**, find metadata, review the results and choose **Save changes**.
 
