@@ -19,7 +19,9 @@ public partial class MainWindow : Window
     public MainWindow(MainViewModel model, bool initialize, WindowPlacementStore? placementStore = null)
     {
         InitializeComponent();
-        Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://VideoScrap2000/Assets/videoscrap-2000.png")));
+        // macOS uses the dedicated ICNS in the signed app bundle.
+        if (!OperatingSystem.IsMacOS())
+            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://VideoScrap2000/Assets/videoscrap-2000.png")));
         this.model = model;
         ConfigureWindowPlacement(placementStore ?? (initialize ? WindowPlacementStore.ForMode(model.IsDemo) : null));
         DataContext = model;
