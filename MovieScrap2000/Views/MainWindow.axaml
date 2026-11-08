@@ -46,6 +46,7 @@
                   </Border>
                 <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center">
                   <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" Classes.missing="{Binding MissingMetadata}" Classes.unavailable="{Binding IsFolderUnavailable}"/>
+                  <TextBlock Text="{Binding VersionLabel}" IsVisible="{Binding HasVersionLabel}" ToolTip.Tip="{Binding VideoFilePath}" Classes="secondary" FontSize="11" TextTrimming="CharacterEllipsis"/>
                   <Grid ColumnDefinitions="Auto,*"><TextBlock Text="{Binding Year}" Classes="secondary" FontSize="12"/><TextBlock Grid.Column="1" Text="{Binding MetadataCapturedDateText}" Classes="secondary" FontSize="12" HorizontalAlignment="Right" ToolTip.Tip="{DynamicResource LB5BC23B377E2}"/></Grid>
                   <TextBlock Text="{Binding MetadataStatus, Converter={StaticResource Translate}}" IsVisible="{Binding HasMetadataStatus}" Classes="secondary" Classes.missing="{Binding MissingMetadata}" Classes.unavailable="{Binding IsFolderUnavailable}" FontSize="11"/>
                   <ItemsControl ItemsSource="{Binding Rating, Converter={StaticResource RatingStars}}" ItemsPanel="{StaticResource RatingStarsPanel}" ItemTemplate="{StaticResource RatingStar}"/>

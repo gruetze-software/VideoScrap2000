@@ -24,11 +24,12 @@ public class MetadataService : IDisposable
 	});
 
 	private readonly DatabaseManager _dbManager;
-	private readonly HttpClient _httpClient = new HttpClient(); // Nur einmal instanziieren!
+	private readonly HttpClient _httpClient;
 
-	public MetadataService(DatabaseManager dbManager)
+	public MetadataService(DatabaseManager dbManager, HttpClient? httpClient = null)
 	{
 		_dbManager = dbManager;
+		_httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
 		_httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.60 Safari/537.36");
 	}
 
@@ -429,6 +430,11 @@ public class MetadataService : IDisposable
 					// 2. Transaktion abschließen
 					transaction.Commit();
 					return true; // Erfolg
+				}
+				catch (OperationCanceledException)
+				{
+					transaction.Rollback();
+					throw;
 				}
 				catch (Exception ex)
 				{
@@ -1098,7 +1104,7 @@ public class MetadataService : IDisposable
 
 	#region Image & Actor Management
 	/// <summary>
-	/// Spezialisiertes Upsert für Actors, einschließlich Download von Thumbnails von einer URL.
+	/// Speichert Darsteller und bereits vorhandene Bilddaten ohne Netzwerkzugriff.
 	/// </summary>
 	/// <param name="connection"></param>
 	/// <param name="transaction"></param>
@@ -1108,113 +1114,31 @@ public class MetadataService : IDisposable
 	/// <param name="cancellationToken"></param>
 	/// <returns></returns>
 	public async Task<int> UpsertActorWithThumbAsync(
-		SqliteConnection connection,
-		SqliteTransaction transaction,
-		string name,
-		int? tmdbId, // TMDbId aus der NFO
-		string? thumbUrl, // Thumb URL aus der NFO
-		byte[]? thumbData, // Optional: Direktes Thumb-Bild a
-    CancellationToken cancellationToken)
-	{
-    Trace.WriteLine($"UpsertActorWithThumbAsync() ({name})");
+        SqliteConnection connection, SqliteTransaction transaction,
+        string name, int? tmdbId, string? thumbUrl, byte[]? thumbData,
+        CancellationToken cancellationToken)
+    {
+        // Network downloads while holding the writer lock stall all scan workers.
+        // Portraits are loaded on demand by the editor instead.
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT Id FROM Actor WHERE Name=@Name OR (@TMDbId>0 AND TMDbId=@TMDbId) ORDER BY (Name=@Name) DESC LIMIT 1;";
+        command.Parameters.AddWithValue("@Name", name);
+        command.Parameters.AddWithValue("@TMDbId", (object?)tmdbId ?? DBNull.Value);
+        var existing = await command.ExecuteScalarAsync(cancellationToken);
+        command.Parameters.AddWithValue("@Thumb", thumbData is { Length: > 0 } ? thumbData : DBNull.Value);
+        if (existing is not null && existing != DBNull.Value)
+        {
+            command.CommandText = "UPDATE Actor SET TMDbId=COALESCE(@TMDbId,TMDbId), Thumb=COALESCE(@Thumb,Thumb) WHERE Id=@Id;";
+            command.Parameters.AddWithValue("@Id", existing);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return Convert.ToInt32(existing);
+        }
+        command.CommandText = "INSERT INTO Actor(Name,TMDbId,Thumb) VALUES(@Name,@TMDbId,@Thumb); SELECT last_insert_rowid();";
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
+    }
 
-    // 1. Definiere den Platzhalter für den Fallback
-    byte[] defaultImageBytes = GetEmptyImageBytes()!;
-
-		// 2. Suche nach vorhandenem Actor (Prüfen auf Existenz und fehlenden Thumb)
-		// Wir suchen nach TMDbId ODER Name, um Dubletten zu vermeiden.
-		var selectQuery = @"SELECT Id, Thumb FROM Actor WHERE Name = @Name OR (@TMDbId > 0 AND TMDbId = @TMDbId) LIMIT 1;";
-
-		using (var command = connection.CreateCommand())
-		{
-			command.Transaction = transaction;
-			command.CommandText = selectQuery;
-			command.Parameters.AddWithValue("@TMDbId", tmdbId);
-			command.Parameters.AddWithValue("@Name", name);
-			DatabaseManager.TraceSql(command, true);
-			using (var reader = await command.ExecuteReaderAsync(cancellationToken))
-			{
-				if (await reader.ReadAsync(cancellationToken))
-				{
-					// FALL 1: Actor existiert bereits
-					int actorId = reader.GetInt32(0);
-
-					// Prüfen, ob Thumb BLOB gefüllt ist
-					if (reader.IsDBNull(1) && !string.IsNullOrEmpty(thumbUrl))
-					{
-						// Thumb fehlt -> Laden und aktualisieren (nur wenn eine URL vorhanden ist)
-						try
-						{
-							byte[] downloadedBytes;
-							// thumbdata hat Vorrang vor dem Download
-							if (thumbData != null && thumbData.Length > 0)
-							{
-								downloadedBytes = thumbData;
-							}
-							else
-							{
-								downloadedBytes = await DownloadImageAsync(thumbUrl, cancellationToken);
-
-								// Aktualisiere den Actor-Eintrag in derselben Transaktion
-								var updateQuery = "UPDATE Actor SET Thumb = @Thumb WHERE Id = @Id;";
-								using (var updateCommand = connection.CreateCommand())
-								{
-									updateCommand.Transaction = transaction;
-									updateCommand.CommandText = updateQuery;
-									updateCommand.Parameters.AddWithValue("@Thumb", downloadedBytes);
-									updateCommand.Parameters.AddWithValue("@Id", actorId);
-									DatabaseManager.TraceSql(updateCommand, true);
-                  await updateCommand.ExecuteNonQueryAsync(cancellationToken);
-								}
-							}
-						}
-						catch (Exception ex)
-						{
-							System.Diagnostics.Trace.WriteLine($"Fehler beim Laden von Actor-Thumb für {name}: {ex.Message}");
-							// Weiter mit leerem oder altem Thumb
-						}
-					}
-					return actorId;
-				}
-				else
-				{
-					// FALL 2: Actor existiert nicht -> Einfügen
-
-					byte[] finalThumbBytes = defaultImageBytes;
-
-					// Versuche, das Bild von der URL zu laden
-					if (!string.IsNullOrEmpty(thumbUrl))
-					{
-						try
-						{
-              // thumbdata hat Vorrang vor dem Download
-							if (thumbData != null && thumbData.Length > 0)
-								finalThumbBytes = thumbData;
-							else
-								finalThumbBytes = await DownloadImageAsync(thumbUrl, cancellationToken);
-						}
-						catch { /* Fallback auf defaultImageBytes */ }
-					}
-
-					var insertQuery = "INSERT INTO Actor (Name, TMDbId, Thumb) VALUES (@Name, @TMDbId, @Thumb); SELECT last_insert_rowid();";
-
-					using (var insertCommand = connection.CreateCommand())
-					{
-						insertCommand.Transaction = transaction;
-						insertCommand.CommandText = insertQuery;
-						insertCommand.Parameters.AddWithValue("@Name", name);
-						insertCommand.Parameters.AddWithValue("@TMDbId", tmdbId);
-						insertCommand.Parameters.AddWithValue("@Thumb", finalThumbBytes);
-						DatabaseManager.TraceSql(insertCommand, true);
-            // Führt den Insert aus und gibt die neue ID zurück
-            return Convert.ToInt32(await insertCommand.ExecuteScalarAsync(cancellationToken));
-					}
-				}
-			}
-		}
-	}
-
-	/// <summary>
+    /// <summary>
 	/// Lädt Bilder zu dem Film, wie z. B. Poster oder Fanart aus der DB, sucht nach fehlenden Bildern
 	/// lokal und speichert sie in der DB als BLOB.
 	/// </summary>
@@ -1817,6 +1741,8 @@ public class MovieViewModel : System.ComponentModel.INotifyPropertyChanged
     public DateTime? MetadataCapturedAtUtc => FileFacts?.NfoCreatedAtUtc;
     public string MetadataCapturedDateText => MetadataCapturedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "–";
     public bool IsPlaceholder { get; set; }
+    public string VersionLabel { get; set; } = "";
+    public bool HasVersionLabel => VersionLabel.Length > 0;
     public string MetadataStatus => IsFolderUnavailable ? "Ordner nicht erreichbar" : MissingMetadata ? "Neu" : "";
     public bool HasMetadataStatus => MetadataStatus.Length > 0;
     public void UpdateFileFacts(MovieFileFacts facts)

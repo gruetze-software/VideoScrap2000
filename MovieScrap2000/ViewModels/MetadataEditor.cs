@@ -149,6 +149,7 @@ public partial class MainViewModel
             byte[]? bytes = actor.ThumbData;
             if (bytes is not { Length: > 0 } && actor.Id > 0) bytes = await metadata.GetActorPictureAsync(actor.Id, cts.Token);
             if (bytes is { Length: > 0 } && metadata.GetEmptyImageBytes() is { } empty && bytes.AsSpan().SequenceEqual(empty)) bytes = null;
+            var cacheLoadedPortrait = bytes is not { Length: > 0 };
             if (bytes is not { Length: > 0 } && folder is not null)
             {
                 bytes = await Task.Run(() =>
@@ -164,7 +165,12 @@ public partial class MainViewModel
             var preview = await ArtworkPreviewCache.Shared.AcquireAsync(actor.Thumb.Length > 0 ? actor.Thumb : $"actor:{actor.Name}",
                 240, bytes, cts.Token, retainOriginal: false);
             if (version != actorVersion || cts.IsCancellationRequested) preview?.Dispose();
-            else { actor.ThumbData = bytes; actorPhotoLease = preview; ActorPhoto = preview?.Image; }
+            else
+            {
+                actor.ThumbData = bytes; actorPhotoLease = preview; ActorPhoto = preview?.Image;
+                if (cacheLoadedPortrait && preview is not null && actor.Id > 0)
+                    await metadata.UpdateActorThumbExternalAsync(actor.Id, bytes, cts.Token);
+            }
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) { if (version == actorVersion) Status = $"Darstellerbild konnte nicht geladen werden: {ex.Message}"; }

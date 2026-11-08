@@ -18,6 +18,7 @@ namespace MovieScrap2000
 		// --- Events ---
 		public event EventHandler<LogMessageObject>? LogMessage;
 		public event EventHandler<int>? ProgressReport;
+        public event EventHandler<ScanProgress>? DetailedProgress;
 
 		public MovieManager(MetadataService metadataService)
 		{
@@ -86,10 +87,17 @@ namespace MovieScrap2000
             RootPath = rootPath;
             var folders = Directory.GetDirectories(rootPath);
             int completed = 0;
+            var progressLock = new object();
+            DetailedProgress?.Invoke(this, new(0, folders.Length, "", ScanErrors));
             await Parallel.ForEachAsync(folders, new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = 4 }, async (folder, token) =>
             {
                 await AnalyzeAndSaveMovieFolderAsync(folder, token);
-                OnProgressReport((int)(100d * Interlocked.Increment(ref completed) / Math.Max(1, folders.Length)));
+                lock (progressLock)
+                {
+                    completed++;
+                    OnProgressReport((int)(100d * completed / Math.Max(1, folders.Length)));
+                    DetailedProgress?.Invoke(this, new(completed, folders.Length, folder, ScanErrors));
+                }
             });
             cancellationToken.ThrowIfCancellationRequested();
             OnProgressReport(100);
@@ -130,7 +138,7 @@ namespace MovieScrap2000
 				}
 
 				// 2. NFO-Datei identifizieren UND LESEN
-				string? nfoFile = GetNfoFile(folderPath, videoFilePath);
+				string? nfoFile = FindNfoFile(filesInFolder, videoFilePath)?.FullName;
 				if (!string.IsNullOrEmpty(nfoFile))
 				{
 					OnLogMessage($"Lese Nfo-Datei '{Path.GetFileName(nfoFile)}' im Ordner '{movieTitleFromFolder}'.", LogLevel.Info, "Scanner");
@@ -184,12 +192,13 @@ namespace MovieScrap2000
 							OnLogMessage($"Update bestehender Film (NFO) in Datenbank: '{movieTitleFromFolder}'.", LogLevel.Info, "Scanner");
 
 							// 🛑 Neue DB-Methode, die nur UPDATET und die Junctions neu erstellt
-							await _metadataService.UpdateMovieFromNfoAsync(
+							var updated = await _metadataService.UpdateMovieFromNfoAsync(
 									existingMovieId, // Wir benötigen die ID für das Update
 									movieNfo,
 									folderPath,
 									videoFilePath,
 									cancellationToken);
+                            if (!updated) throw new InvalidOperationException("Die Metadaten konnten nicht in der Datenbank aktualisiert werden.");
 
 							status = "Metadaten aktualisiert";
 						}
@@ -554,4 +563,5 @@ namespace MovieScrap2000
 			}
 		}
 	}
+    public sealed record ScanProgress(int Completed, int Total, string Folder, int Errors);
 }

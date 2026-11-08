@@ -78,7 +78,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsProgressIndeterminate))]
     private int progress;
-    public bool IsProgressIndeterminate => Progress == 0;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsProgressIndeterminate))]
+    private bool hasScanProgress;
+    [ObservableProperty] private string scanProgressText = "";
+    [ObservableProperty] private string scanFolder = "";
+    public bool IsProgressIndeterminate => Progress == 0 && !HasScanProgress;
     [ObservableProperty] private string title = "";
     [ObservableProperty] private string originalTitle = "";
     [ObservableProperty] private string year = "";
@@ -128,7 +133,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
         themeIndex = this.settings.Theme switch { "Light" => 1, "Dark" => 2, _ => 0 };
         metadata = new MetadataService(this.database);
         scanner = new MovieManager(metadata);
-        scanner.ProgressReport += (_, value) => Avalonia.Threading.Dispatcher.UIThread.Post(() => Progress = value);
+        scanner.DetailedProgress += (_, value) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (!IsBusy) return;
+            HasScanProgress = true;
+            Progress = value.Total == 0 ? 90 : 90 * value.Completed / value.Total;
+            ScanProgressText = Locale.T($"{value.Completed} von {value.Total} Ordnern geprüft · {value.Errors} Fehler");
+            ScanFolder = value.Folder.Length == 0 ? "" : Locale.T($"Zuletzt geprüft: {Path.GetFileName(value.Folder)}");
+        });
         scanner.LogMessage += (_, log) =>
         {
             if (log.Level is LogLevel.Error or LogLevel.Critical)
@@ -144,7 +156,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             await Task.Run(database.InitializeDatabaseAsync, token);
             if (IsDemo) await Task.Run(() => scanner.ScanDirectoryAsync(LibraryPath, token), token);
-            await ReloadAsync(token);
+            await ReloadAsync(token, reportProgress: true);
             SelectedMovie = Movies.FirstOrDefault();
         }
         finally { IsInitializing = false; }
@@ -274,7 +286,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(EmptyDescription));
     }
 
-    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    public async Task ReloadAsync(CancellationToken cancellationToken = default, bool reportProgress = false)
     {
         var id = SelectedMovie?.Id;
         factsLoading?.Cancel();
@@ -287,13 +299,37 @@ public partial class MainViewModel : ObservableObject, IDisposable
             if (inferred.Year.HasValue) movie.Year = inferred.Year.Value.ToString();
         }
         // Keep the current list visible until all sort keys and the new/NFO status are known.
+        var prepared = 0;
+        var progressLock = new object();
+        var progressStart = Progress;
+        if (reportProgress)
+        {
+            HasScanProgress = true;
+            ScanProgressText = Locale.T($"{0} von {loadedMovies.Count} Einträgen vorbereitet");
+            ScanFolder = "";
+        }
         await Parallel.ForEachAsync(loadedMovies, new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = cancellationToken }, async (movie, token) =>
         {
             var facts = await Task.Run(() => MovieFileFacts.Read(movie.FolderPath, movie.VideoFilePath), token);
             movie.UpdateFileFacts(facts);
+            if (reportProgress)
+            {
+                lock (progressLock)
+                {
+                    var done = ++prepared;
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        if (!IsBusy) return;
+                        Progress = progressStart + (100 - progressStart) * done / Math.Max(1, loadedMovies.Count);
+                        ScanProgressText = Locale.T($"{done} von {loadedMovies.Count} Einträgen vorbereitet");
+                    });
+                }
+            }
         });
         cancellationToken.ThrowIfCancellationRequested();
         allMovies = loadedMovies;
+        foreach (var group in loadedMovies.GroupBy(m => (m.Title.ToUpperInvariant(), m.Year)).Where(g => g.Count() > 1))
+            foreach (var movie in group) movie.VersionLabel = Path.GetFileName(movie.FolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         Filter(id);
     }
 
@@ -407,8 +443,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (!IsDemo) settings.Save();
         Status = "Filmsammlung wird eingelesen …";
         await Task.Run(() => scanner.ScanDirectoryAsync(LibraryPath, token), token);
+        Status = "Filmsammlung wird geladen …";
         ArtworkPreviewCache.Shared.RefreshFileState();
-        await ReloadAsync(token);
+        await ReloadAsync(token, reportProgress: true);
         Status = scanner.ScanErrors == 0 ? $"Scan abgeschlossen. {allMovies.Count} Filme in deiner Sammlung."
             : $"Scan beendet: {allMovies.Count} Filme, {scanner.ScanErrors} Fehler. Prüfe die betroffenen Ordner.";
     });
@@ -505,6 +542,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (IsBusy) return;
         using var cts = new CancellationTokenSource(); operation = cts;
         Progress = 0;
+        HasScanProgress = false; ScanProgressText = ""; ScanFolder = "";
         IsBusy = true;
         try { await action(cts.Token); }
         catch (OperationCanceledException)
@@ -513,7 +551,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Status = "Vorgang abgebrochen.";
         }
         catch (Exception ex) { Status = Utils.GetExcMsg(ex); }
-        finally { operation = null; IsBusy = false; Progress = 0; }
+        finally { operation = null; IsBusy = false; Progress = 0; HasScanProgress = false; ScanProgressText = ""; ScanFolder = ""; }
     }
     public void Dispose()
     {

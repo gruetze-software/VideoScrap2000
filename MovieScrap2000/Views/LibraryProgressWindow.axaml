@@ -6,6 +6,8 @@
     <TextBlock Text="{Binding Status}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/>
     <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress}" Height="6"
                  Foreground="{DynamicResource AccentBrush}" IsIndeterminate="{Binding IsProgressIndeterminate}"/>
+    <TextBlock Text="{Binding ScanProgressText}" IsVisible="{Binding HasScanProgress}" TextWrapping="Wrap"/>
+    <TextBlock Text="{Binding ScanFolder}" IsVisible="{Binding HasScanProgress}" Classes="secondary" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ScanFolder}"/>
     <Button x:Name="CancelButton" HorizontalAlignment="Right" Content="{DynamicResource LF7FF1178AF20}"
             IsCancel="True" Click="Cancel"/>
   </StackPanel>

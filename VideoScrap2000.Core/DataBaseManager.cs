@@ -11,7 +11,7 @@ namespace MovieScrap2000
     private readonly string _databasePath;
     private readonly string _connectionString;
     private static readonly SemaphoreSlim AsyncDbLock = new SemaphoreSlim(1, 1);
-    private const int SchemaVersion = 1; // Für zukünftige Datenbank-Upgrades
+    private const int SchemaVersion = 2;
 
     // Konstruktor: Definiert den Pfad und den Connection String
     public DatabaseManager(string dbFileName = "MovieScrap2000_Cache.sqlite")
@@ -35,7 +35,50 @@ namespace MovieScrap2000
           DatabaseManager.TraceSql(command, true);
           await command.ExecuteNonQueryAsync();
         }
+        await MigrateMovieIdentityAsync(connection);
       });
+    }
+
+    private async Task MigrateMovieIdentityAsync(SqliteConnection connection)
+    {
+      using var check = connection.CreateCommand();
+      check.CommandText = @"SELECT EXISTS(SELECT 1 FROM pragma_index_list('Movie') i
+        WHERE i.""unique"" = 1 AND (SELECT COUNT(*) FROM pragma_index_info(i.name)) = 1
+        AND EXISTS(SELECT 1 FROM pragma_index_info(i.name) WHERE name = 'ImdbId'));";
+      var needsMigration = Convert.ToInt64(await check.ExecuteScalarAsync()) != 0;
+      if (needsMigration)
+      {
+        // SQLite cannot drop an inline UNIQUE constraint. Rebuild the parent
+        // table atomically, preserving IDs and all child rows/cache entries.
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA foreign_keys=OFF;";
+        await command.ExecuteNonQueryAsync();
+        try
+        {
+          using var transaction = connection.BeginTransaction();
+          command.Transaction = transaction;
+          var movieSchema = System.Text.RegularExpressions.Regex.Match(GetCreationSQL(),
+            @"CREATE TABLE IF NOT EXISTS Movie \([\s\S]*?\n\);").Value;
+          if (movieSchema.Length == 0) throw new InvalidOperationException("Movie schema missing.");
+          command.CommandText = movieSchema.Replace("IF NOT EXISTS Movie", "Movie_new") + @"
+            INSERT INTO Movie_new SELECT * FROM Movie;
+            DROP TABLE Movie;
+            ALTER TABLE Movie_new RENAME TO Movie;";
+          await command.ExecuteNonQueryAsync();
+          command.CommandText = "PRAGMA foreign_key_check;";
+          using (var reader = await command.ExecuteReaderAsync())
+            if (await reader.ReadAsync()) throw new InvalidOperationException("Movie migration failed its relationship check.");
+          command.CommandText = $"PRAGMA user_version={SchemaVersion};";
+          await command.ExecuteNonQueryAsync();
+          transaction.Commit();
+        }
+        finally
+        {
+          command.Transaction = null;
+          command.CommandText = "PRAGMA foreign_keys=ON;";
+          await command.ExecuteNonQueryAsync();
+        }
+      }
     }
 
     /// <summary>
@@ -156,6 +199,7 @@ CREATE TABLE IF NOT EXISTS Actor (
     TMDbId INTEGER,
     Thumb BLOB
 );
+CREATE INDEX IF NOT EXISTS IX_Actor_TMDbId ON Actor(TMDbId);
 
 CREATE TABLE IF NOT EXISTS Director (
     Id INTEGER PRIMARY KEY,
@@ -185,7 +229,7 @@ CREATE TABLE IF NOT EXISTS Credit (
 -- II. Haupttabellen (Inhaltstypen)
 CREATE TABLE IF NOT EXISTS Movie (
     Id INTEGER PRIMARY KEY,
-    ImdbId TEXT UNIQUE,
+    ImdbId TEXT,
     TMDbId INTEGER,
     Title TEXT NOT NULL,
     OriginalTitle TEXT,
