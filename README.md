@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="branding/screenshots/banner.png" width="900" alt="BingWallE icon" />
+  <img src="branding/screenshots/banner.png" width="900" alt="VideoScrap 2000" />
 </p>
 
 VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows, Linux, and macOS. Browse your collection, find metadata and artwork, and save the results as NFO and image files beside your videos. It works with local folders and mounted network shares.
