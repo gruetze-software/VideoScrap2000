@@ -8,12 +8,12 @@ internal static class DefaultFileLauncher
 {
     public static async Task<bool> LaunchAsync(TopLevel owner, IStorageItem file)
     {
-        if (!OperatingSystem.IsLinux() || !File.Exists("/.flatpak-info"))
+        if (!RequiresDesktopPortal(OperatingSystem.IsLinux(), File.Exists("/.flatpak-info"), Environment.GetEnvironmentVariable("SNAP")))
             return await owner.Launcher.LaunchFileAsync(file);
 
         var path = file.TryGetLocalPath();
         if (path is null) return false;
-        // GIO exports local files through OpenURI.OpenFile in Flatpak. Passing
+        // GIO exports local files through OpenURI.OpenFile in sandboxed apps. Passing
         // a sandbox-local file URI to a host process cannot do that reliably.
         var start = CreatePortalStartInfo(path);
         using var process = Process.Start(start);
@@ -31,6 +31,9 @@ internal static class DefaultFileLauncher
             throw new IOException(string.IsNullOrWhiteSpace(details) ? "The desktop could not open the file." : details.Trim());
         return true;
     }
+
+    internal static bool RequiresDesktopPortal(bool linux, bool flatpak, string? snapDirectory) =>
+        linux && (flatpak || !string.IsNullOrWhiteSpace(snapDirectory));
 
     internal static ProcessStartInfo CreatePortalStartInfo(string path)
     {

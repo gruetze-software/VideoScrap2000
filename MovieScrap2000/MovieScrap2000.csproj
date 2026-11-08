@@ -9,7 +9,7 @@
     <Product>VideoScrap 2000</Product>
     <ApplicationIcon>Assets/videoscrap-2000.ico</ApplicationIcon>
     <Company>Grütze-Software</Company>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Copyright>© 2026 Grütze-Software</Copyright>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>

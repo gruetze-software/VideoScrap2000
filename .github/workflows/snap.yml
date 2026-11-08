@@ -36,6 +36,7 @@ jobs:
           set -euo pipefail
           sudo snap install --dangerous artifacts/videoscrap2000_*_amd64.snap
           snap connections videoscrap2000
+          snap run --shell videoscrap2000 -c 'command -v gio'
           xvfb-run -a --auth-file "$HOME/.Xauthority" snap run videoscrap2000 --startup-check
       - uses: actions/upload-artifact@v7.0.2
         with:

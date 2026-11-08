@@ -67,7 +67,14 @@
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1" />
-  <releases><release version="1.0.0" type="stable" date="2026-11-06">
+  <releases>
+    <release version="1.1.0" type="stable" date="2026-11-08">
+      <description>
+        <p>Preserves original metadata capture dates across platforms, improves sandboxed image opening, and adds a dedicated macOS application icon.</p>
+        <p xml:lang="de">Bewahrt das ursprüngliche Erfassungsdatum plattformübergreifend, verbessert das Öffnen von Bildern in Sandbox-Paketen und ergänzt ein eigenes macOS-Anwendungssymbol.</p>
+      </description>
+    </release>
+    <release version="1.0.0" type="stable" date="2026-11-06">
       <description>
           <p>First stable release of VideoScrap 2000. See the README for features.</p>
           <p xml:lang="de">Erste stabile Release-Version von VideoScrap 2000. Features siehe ReadMe.</p>

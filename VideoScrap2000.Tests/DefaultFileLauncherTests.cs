@@ -5,6 +5,16 @@ namespace VideoScrap2000.Tests;
 
 public class DefaultFileLauncherTests
 {
+    [Theory]
+    [InlineData(true, false, "/snap/videoscrap2000/1", true)]
+    [InlineData(true, true, null, true)]
+    [InlineData(true, false, null, false)]
+    [InlineData(false, false, "/snap/videoscrap2000/1", false)]
+    public void SandboxedLinuxExportsFilesThroughPortal(bool linux, bool flatpak, string? snap, bool expected)
+    {
+        Assert.Equal(expected, DefaultFileLauncher.RequiresDesktopPortal(linux, flatpak, snap));
+    }
+
     [Fact]
     public void PortalLaunchKeepsSpecialCharactersInOneFileUriArgument()
     {
