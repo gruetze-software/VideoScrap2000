@@ -1,22 +1,14 @@
-# VideoScrap 2000
-
-<img src="docs/videoscrap-2000-icon-64.png" alt="VideoScrap 2000" width="64" height="64" />
+<p align="center">
+  <img src="branding/screenshots/banner.png" width="900" alt="BingWallE icon" />
+</p>
 
 VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows, Linux, and macOS. Browse your collection, find metadata and artwork, and save the results as NFO and image files beside your videos. It works with local folders and mounted network shares.
 
-[Download VideoScrap 2000](https://github.com/gruetze-software/VideoScrap2000/releases/latest#downloads)
-
-[![Get it from the Snap Store](https://snapcraft.io/en/light/install.svg)](https://snapcraft.io/videoscrap2000)
-
-<img src="branding/screenshots/screenshot1.png" width="724" alt="Movie Mainform" />
-
+<p align="center">
 <img src="branding/screenshots/screenshot1_2.png" width="724" alt="Movie Mainform Actors" />
-
 <img src="branding/screenshots/screenshot1_1.png" width="724" alt="Movie Plot KI" />
-
-<img src="branding/screenshots/screenshot1_3.png" width="724" alt="Movie Mainform Artworks" />
-
 <img src="branding/screenshots/screenshot2.png" width="724" alt="TV Series Mainform" />
+</p>
 
 ## Features
 
@@ -29,6 +21,15 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 - **Everyday browsing:** poster thumbnails, star ratings, search, sorting and automatic technical media details.
 
 ## Get started
+
+#### Snap: Ubuntu and other distributions with Snap support
+
+<a href="https://snapcraft.io/bingwalle">
+  <img src="https://snapcraft.io/static/images/badges/en/snap-store-black.svg"
+       alt="Get it from the Snap Store" width="200">
+</a>
+
+[Other Downloads](https://github.com/gruetze-software/VideoScrap2000/releases/latest#downloads)
 
 1. Download the package for your operating system and architecture from **GitHub Releases**. On Linux Mint, Ubuntu or Debian, install the **DEB** package. On macOS, open the signed and notarized **DMG** and drag the app into **Applications**. Extract the archives on other systems. Choose **self-contained** to include .NET 10, or **framework-dependent** if .NET 10 is already installed.
 2. Open **Settings** and choose your movie and TV folders. Use one subfolder per movie or show; TV shows may contain season folders.
