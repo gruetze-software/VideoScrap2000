@@ -24,7 +24,7 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 
 #### Snap: Ubuntu and other distributions with Snap support
 
-<a href="https://snapcraft.io/bingwalle">
+<a href="https://snapcraft.io/videoscrap2000">
   <img src="https://snapcraft.io/static/images/badges/en/snap-store-black.svg"
        alt="Get it from the Snap Store" width="200">
 </a>
