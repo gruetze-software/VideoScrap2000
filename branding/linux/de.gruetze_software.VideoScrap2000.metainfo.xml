@@ -68,6 +68,12 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.0" type="stable" date="2026-11-09">
+      <description>
+        <p>Allows movie editions in separate folders to share an IMDb ID, migrates existing databases, removes portrait downloads from library scans, and displays detailed scan progress.</p>
+        <p xml:lang="de">Erlaubt dieselbe IMDb-ID für Filmfassungen in getrennten Ordnern, migriert bestehende Datenbanken, entfernt Porträt-Downloads aus dem Scan und zeigt den Einlesefortschritt detailliert an.</p>
+      </description>
+    </release>
     <release version="1.1.0" type="stable" date="2026-11-08">
       <description>
         <p>Preserves original metadata capture dates across platforms, improves sandboxed image opening, and adds a dedicated macOS application icon.</p>
