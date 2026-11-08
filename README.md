@@ -6,6 +6,8 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 
 [Download VideoScrap 2000](https://github.com/gruetze-software/VideoScrap2000/releases/latest#downloads)
 
+[![Get it from the Snap Store](https://snapcraft.io/en/light/install.svg)](https://snapcraft.io/videoscrap2000)
+
 <img src="branding/screenshots/screenshot1.png" width="724" alt="Movie Mainform" />
 
 <img src="branding/screenshots/screenshot1_2.png" width="724" alt="Movie Mainform Actors" />
