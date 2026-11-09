@@ -25,7 +25,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         return true;
     }
 
-    public ObservableCollection<SeriesShowRow> Shows { get; } = [];
+    public LibraryCollection<SeriesShowRow> Shows { get; } = [];
     public ObservableCollection<SeriesSeason> Seasons { get; } = [];
     public ObservableCollection<SeriesEpisodeRow> Episodes { get; } = [];
 
@@ -105,22 +105,33 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 
     private void FilterShows(string? selectedPath)
     {
-        var matches = allShows.Where(show => show.Title.Contains(Query.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToArray();
-        var desired = matches.ToHashSet();
-        for (var index = Shows.Count - 1; index >= 0; index--)
-            if (!desired.Contains(Shows[index])) Shows.RemoveAt(index);
-        for (var index = 0; index < matches.Length; index++)
+        var previousSelection = SelectedShow;
+        updatingShowList = true;
+        try
         {
-            if (index < Shows.Count && ReferenceEquals(Shows[index], matches[index])) continue;
-            var previous = Shows.IndexOf(matches[index]);
-            if (previous < 0) Shows.Insert(index, matches[index]);
-            else Shows.Move(previous, index);
+            var query = Query.Trim();
+            var matches = allShows.Where(show => show.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+            var desired = matches.ToHashSet();
+            if (Math.Abs(Shows.Count - matches.Length) > 16) Shows.ReplaceAll(matches);
+            for (var index = Shows.Count - 1; index >= 0; index--)
+                if (!desired.Contains(Shows[index])) Shows.RemoveAt(index);
+            for (var index = 0; index < matches.Length; index++)
+            {
+                if (index < Shows.Count && ReferenceEquals(Shows[index], matches[index])) continue;
+                var previous = Shows.IndexOf(matches[index]);
+                if (previous < 0) Shows.Insert(index, matches[index]);
+                else Shows.Move(previous, index);
+            }
+            SelectedShow = Shows.FirstOrDefault(show => show.Show.FolderPath == selectedPath) ?? Shows.FirstOrDefault();
         }
-        SelectedShow = Shows.FirstOrDefault(show => show.Show.FolderPath == selectedPath) ?? Shows.FirstOrDefault();
+        finally { updatingShowList = false; }
+        if (!ReferenceEquals(previousSelection, SelectedShow)) OnSelectedShowChanged(SelectedShow);
     }
 
+    private bool updatingShowList;
     partial void OnSelectedShowChanged(SeriesShowRow? value)
     {
+        if (updatingShowList) return;
         SelectedSeriesArtwork = null;
         ArtworkSourceWarning = "";
         SelectedActor = null;

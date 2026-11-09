@@ -8,6 +8,23 @@ namespace VideoScrap2000.Tests;
 public class MovieSortingTests
 {
     [AvaloniaFact]
+    public void ClearingFilterRestoresLargeLibraryWithOneNotificationAndKeepsSelection()
+    {
+        using var model = new MainViewModel(settings: new AppSettings());
+        var movies = Enumerable.Range(0, 680).Select(i => new MovieViewModel { Id = i + 1, Title = $"Movie {i:0000}" }).ToList();
+        typeof(MainViewModel).GetField("allMovies", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(model, movies);
+        typeof(MainViewModel).GetField("selectedMovie", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(model, movies[300]);
+        model.Query = "Movie 0300";
+        var notifications = 0;
+        model.Movies.CollectionChanged += (_, _) => notifications++;
+        model.Query = "";
+        Assert.Equal(680, model.Movies.Count);
+        Assert.Equal(1, notifications);
+        Assert.Same(movies[300], model.SelectedMovie);
+        Assert.All(model.Movies, movie => Assert.Contains(movie, movies));
+    }
+
+    [AvaloniaFact]
     public void SortChangesKeepNewMoviesFirstAndPreserveSelection()
     {
         using var model = new MainViewModel(settings: new AppSettings());

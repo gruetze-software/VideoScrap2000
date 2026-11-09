@@ -23,7 +23,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     internal Task ArtworkLoadingTask { get; private set; } = Task.CompletedTask;
     internal Task TechnicalDetailsLoadingTask { get; private set; } = Task.CompletedTask;
     private CancellationTokenSource? factsLoading;
-    public ObservableCollection<MovieViewModel> Movies { get; } = [];
+    public LibraryCollection<MovieViewModel> Movies { get; } = [];
     public SeriesViewModel Series { get; }
     public ObservableCollection<ArtworkViewModel> Artwork { get; } = [];
     public IReadOnlyList<string> ArtworkTypes { get; } = new[] { "Alle" }.Concat(ImageTypes.AllTypes).ToArray();
@@ -280,6 +280,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         updatingMovieList = true;
         try
         {
+            // Clearing a filter can restore hundreds of rows. Notify the virtualized
+            // list once instead of forcing layout and selection changes per insert.
+            if (Math.Abs(Movies.Count - desired.Count) > 16) Movies.ReplaceAll(desired);
             for (var i = Movies.Count - 1; i >= 0; i--)
                 if (!desiredSet.Contains(Movies[i])) Movies.RemoveAt(i);
             for (var i = 0; i < desired.Count; i++)

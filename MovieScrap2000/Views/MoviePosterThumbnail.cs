@@ -54,14 +54,17 @@ public sealed class MoviePosterThumbnail : Image
         var width = DecodeWidth;
         try
         {
-            var path = picture?.Path ?? (await ArtworkPreviewCache.Shared.FindArtworkAsync(folder!, video!, token))
+            // Complete shared cache work even if this recycled row disappears.
+            // Cancellation is a stale-result check, not an exception per thumbnail.
+            var path = picture?.Path ?? (await ArtworkPreviewCache.Shared.FindArtworkAsync(folder!, video!, CancellationToken.None))
                 .FirstOrDefault(item => item.Type == ImageTypes.Poster).Path;
-            if (path is null) return;
+            if (path is null || token.IsCancellationRequested) return;
             ArtworkPreviewCache.Lease? result;
-            try { result = await ArtworkPreviewCache.Shared.AcquireAsync(path, width, picture?.PendingData, token); }
+            try { result = await ArtworkPreviewCache.Shared.AcquireAsync(path, width, picture?.PendingData); }
             catch (FileNotFoundException) when (picture?.FallbackPath is not null)
             {
-                result = await ArtworkPreviewCache.Shared.AcquireAsync(picture.FallbackPath, width, token: token);
+                if (token.IsCancellationRequested) return;
+                result = await ArtworkPreviewCache.Shared.AcquireAsync(picture.FallbackPath, width);
             }
             if (token.IsCancellationRequested) result?.Dispose();
             else
