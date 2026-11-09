@@ -26,16 +26,32 @@ public partial class SettingsWindow : Window
     }
     private async Task ChooseAsync(bool series)
     {
+        if (draft.IsSelectingFolder) return;
+        draft.IsSelectingFolder = true;
+        draft.Status = Localization.Locale.T("Ordnerauswahl wird geöffnet …");
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            var folders = await StorageProvider.OpenFolderPickerAsync(new() { Title = Localization.Locale.T(series ? "Serienordner auswählen" : "Filmordner auswählen"), AllowMultiple = true });
+            var options = new FolderPickerOpenOptions { Title = Localization.Locale.T(series ? "Serienordner auswählen" : "Filmordner auswählen"), AllowMultiple = true };
+            if (OperatingSystem.IsWindows())
+            {
+                // Do not let the second picker restore a slow/offline NAS
+                // location from the first picker's Windows shell history.
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                if (!string.IsNullOrWhiteSpace(home)) options.SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(home);
+            }
+            System.Diagnostics.Trace.WriteLine($"Folder picker: requesting {(series ? "TV" : "movie")} dialog after {elapsed.ElapsedMilliseconds} ms of preparation.");
+            var folders = await StorageProvider.OpenFolderPickerAsync(options);
+            System.Diagnostics.Trace.WriteLine($"Folder picker: returned after {elapsed.ElapsedMilliseconds} ms (including user selection).");
             var target = series ? draft.SeriesFolders : draft.MovieFolders;
             foreach (var path in MovieScrap2000.LibrarySources.Normalize(folders.Select(folder => folder.TryGetLocalPath()).OfType<string>()))
             {
                 if (!target.Contains(path, MovieScrap2000.LibrarySources.PathComparer)) target.Add(path);
             }
+            draft.Status = "";
         }
         catch (Exception ex) { draft.Status = ex.Message; }
+        finally { draft.IsSelectingFolder = false; }
     }
     private async void ChooseMovies(object? sender, RoutedEventArgs e) => await ChooseAsync(false);
     private async void ChooseSeries(object? sender, RoutedEventArgs e) => await ChooseAsync(true);

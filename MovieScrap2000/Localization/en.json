@@ -265,6 +265,7 @@
   "{0} von {1} Einträgen vorbereitet": "{0} of {1} entries prepared",
   "Zuletzt geprüft: {0}": "Last checked: {0}",
   "Ordner hinzufügen …": "Add folder …",
+  "Ordnerauswahl wird geöffnet …": "Opening folder picker …",
   "Filmquellen": "Movie folders",
   "Serienquellen": "TV-show folders",
   "Jede Quelle enthält die Unterordner deiner Filme oder Serien. Das Entfernen einer Quelle löscht keine Dateien.": "Each source contains your movie or TV-show subfolders. Removing a source does not delete any files.",

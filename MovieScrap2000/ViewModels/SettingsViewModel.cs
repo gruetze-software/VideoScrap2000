@@ -39,6 +39,7 @@ public partial class SettingsViewModel : ObservableObject
     public string OptimizationInfo => Localization.Locale.T("Optional für Android und schwächere Geräte. Wird beim Speichern neuer Artworks angewendet. Seitenverhältnis bleibt erhalten; kleine Bilder werden nicht vergrößert. Originale bleiben im Unterordner .artwork-originals erhalten. Transparente Bilder und Logos werden nicht verändert.");
     public IReadOnlyList<string> OptimizationProfiles => new[] { "Original (unverändert)", "Kompakt · Poster 600 × 900, Fanart 1280 × 720", "Ausgewogen · Poster 1000 × 1500, Fanart 1920 × 1080" }.Select(Localization.Locale.T).ToArray();
     [ObservableProperty] private string status = "";
+    [ObservableProperty] private bool isSelectingFolder;
     partial void OnStatusChanged(string value)
     {
         var translated = Localization.Locale.T(value);

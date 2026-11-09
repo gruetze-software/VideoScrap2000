@@ -14,13 +14,11 @@ public sealed record MovieFileFacts(DateTime? Modified, bool HasMetadata, bool I
         if (nfo is null) return null;
         try
         {
-            using var stream = new FileStream(nfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            using var reader = System.Xml.XmlReader.Create(stream, new System.Xml.XmlReaderSettings
-            { DtdProcessing = System.Xml.DtdProcessing.Prohibit, XmlResolver = null });
+            using var reader = NfoXmlReader.Open(nfo.FullName);
             reader.MoveToContent();
             if (StoredCreationTime(reader.GetAttribute(CreationAttribute)) is { } stored) return stored;
         }
-        catch (Exception ex) when (ex is System.Xml.XmlException or IOException or UnauthorizedAccessException) { }
+        catch (Exception ex) when (ex is System.Xml.XmlException or IOException or UnauthorizedAccessException or System.Text.DecoderFallbackException) { }
         return nfo.CreationTimeUtc;
     }
     public DateTime? NfoCreatedAtUtc { get; init; }

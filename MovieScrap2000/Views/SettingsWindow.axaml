@@ -36,12 +36,12 @@
           <ListBox x:Name="MovieSources" ItemsSource="{Binding MovieFolders}" SelectionMode="Multiple" MinHeight="68" MaxHeight="140" KeyDown="SourcesKeyDown" AutomationProperties.Name="{Binding MovieSourcesTitle}">
             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" ToolTip.Tip="{Binding}" TextTrimming="CharacterEllipsis"/></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,8"><Button Content="{Binding AddFolderText}" Click="ChooseMovies"/><Button Content="{Binding RemoveFolderText}" Click="RemoveMovies"/></StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,8"><Button Content="{Binding AddFolderText}" Click="ChooseMovies" IsEnabled="{Binding !IsSelectingFolder}"/><Button Content="{Binding RemoveFolderText}" Click="RemoveMovies"/></StackPanel>
           <TextBlock Text="{Binding SeriesSourcesTitle}" Classes="label"/>
           <ListBox x:Name="SeriesSources" ItemsSource="{Binding SeriesFolders}" SelectionMode="Multiple" MinHeight="68" MaxHeight="140" KeyDown="SourcesKeyDown" AutomationProperties.Name="{Binding SeriesSourcesTitle}">
             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" ToolTip.Tip="{Binding}" TextTrimming="CharacterEllipsis"/></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0"><Button Content="{Binding AddFolderText}" Click="ChooseSeries"/><Button Content="{Binding RemoveFolderText}" Click="RemoveSeries"/></StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0"><Button Content="{Binding AddFolderText}" Click="ChooseSeries" IsEnabled="{Binding !IsSelectingFolder}"/><Button Content="{Binding RemoveFolderText}" Click="RemoveSeries"/></StackPanel>
           <TextBlock Text="{Binding SourcesInfo}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"/>
         </StackPanel></Border>
         <Border Classes="card" Padding="18"><StackPanel Spacing="8">

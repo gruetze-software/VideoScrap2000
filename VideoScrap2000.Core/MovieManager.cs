@@ -509,13 +509,8 @@ namespace MovieScrap2000
 
     internal static System.Xml.Linq.XDocument LoadExistingNfoDocument(string path)
     {
-        try { return System.Xml.Linq.XDocument.Load(path); }
-        catch (System.Xml.XmlException)
-        {
-            // Some older NFOs declare UTF-16 even though the file was written as UTF-8.
-            using var reader = new StreamReader(path, new UTF8Encoding(false, throwOnInvalidBytes: true), detectEncodingFromByteOrderMarks: false);
-            return System.Xml.Linq.XDocument.Load(reader);
-        }
+        using var reader = NfoXmlReader.Open(path);
+        return System.Xml.Linq.XDocument.Load(reader);
     }
 
     private static string? GetNfoFile(string folder, string video) =>
@@ -545,7 +540,7 @@ namespace MovieScrap2000
 				// Typ auf MovieNFO angepasst (angenommen)
 				XmlSerializer serializer = new XmlSerializer(typeof(Movie));
 
-				using (TextReader reader = new StreamReader(nfoFilePath))
+				using (var reader = NfoXmlReader.Open(nfoFilePath))
 				{
 					object? deserializedObject = serializer.Deserialize(reader);
 					if (deserializedObject is Movie movieData)
