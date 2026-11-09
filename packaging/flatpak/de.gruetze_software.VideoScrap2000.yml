@@ -51,7 +51,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/gruetze-software/VideoScrap2000.git
-        commit: f8620a31081c048b13aa81052b3335c0aeec02fb
+        commit: 73c1ef49ec38527106c7cb5854a5da06cc5a60c5
       - ./nuget-sources.json
     build-commands:
       - bash scripts/install-flatpak.sh
