@@ -32,7 +32,7 @@ public sealed class ScraperSettingsWindow : Window
             button.Click += async (_, _) => { try { await Launcher.LaunchUriAsync(new Uri(url)); } catch { status.Text = T("Der Link konnte nicht geöffnet werden."); } };
             panel.Children.Add(button);
         }
-        Label("Ohne eigene Zugangsdaten werden die mitgelieferten TMDB- und Fanart.tv-Projektzugänge verwendet. Zugangsdaten werden nur lokal gespeichert, nicht verschlüsselt. Teile deine Einstellungsdatei nicht.");
+        Label("In offiziellen Builds brauchst du keine eigenen API-Keys. TMDB, Fanart.tv und TheTVDB verwenden die enthaltenen Projektzugänge; TVmaze benötigt keinen Key. Eigene Zugangsdaten sind optional. Sie werden nur lokal und ohne Verschlüsselung gespeichert. Teile deine Einstellungsdatei nicht.");
         var tmdb = Secret("TMDB · API Read Access Token (v4)", current.TmdbReadToken);
         Link("TMDB-Zugang beantragen ↗", "https://www.themoviedb.org/settings/api");
         var tmdbImages = Toggle("Bilder von TMDB", current.EnableTmdbArtwork);
@@ -42,8 +42,7 @@ public sealed class ScraperSettingsWindow : Window
         var maze = Toggle("TVmaze · zusätzliche Episodenbilder (ohne API-Key)", current.EnableTvmaze);
         Link("TVmaze ↗", "https://www.tvmaze.com/api");
         var tvdb = Toggle("TheTVDB für Serien aktivieren", current.EnableTvdb);
-        Label("TheTVDB benötigt einen für dieses Projekt freigegebenen v4-API-Key. Beim nutzerfinanzierten Zugang ist zusätzlich eine kostenpflichtige persönliche Abo-PIN nötig. Eine PIN allein genügt nicht.");
-        var key = Secret("TheTVDB · Projekt-API-Key (v4)", current.TvdbApiKey);
+        Label("Der TheTVDB-Projektzugang ist in offiziellen Builds enthalten. Ein eigener API-Key ist nicht erforderlich. Eine persönliche PIN wird nur benötigt, wenn der Anbieter sie für den Projektzugang verlangt.");
         var pin = Secret("TheTVDB · persönliche PIN", current.TvdbPin);
         Link("TheTVDB · Zugang und Kosten ↗", "https://www.thetvdb.com/api-information");
         Label("Standardquelle für Serien");
@@ -63,7 +62,7 @@ public sealed class ScraperSettingsWindow : Window
         var save = new Button { Content = T("Übernehmen") };
         save.Click += (_, _) =>
         {
-            var result = new ScraperSettings { TmdbReadToken = tmdb.Text ?? "", FanartPersonalKey = personal.Text ?? "", TvdbApiKey = key.Text ?? "", TvdbPin = pin.Text ?? "", EnableTmdbArtwork = tmdbImages.IsChecked == true, EnableFanart = fanart.IsChecked == true, EnableTvmaze = maze.IsChecked == true, EnableTvdb = tvdb.IsChecked == true, SeriesProvider = source.SelectedIndex == 1 ? "TheTVDB" : "TMDB" };
+            var result = new ScraperSettings { TmdbReadToken = tmdb.Text ?? "", FanartPersonalKey = personal.Text ?? "", TvdbApiKey = current.TvdbApiKey, TvdbPin = pin.Text ?? "", EnableTmdbArtwork = tmdbImages.IsChecked == true, EnableFanart = fanart.IsChecked == true, EnableTvmaze = maze.IsChecked == true, EnableTvdb = tvdb.IsChecked == true, SeriesProvider = source.SelectedIndex == 1 ? "TheTVDB" : "TMDB" };
             try { result.Normalize(); Close(result); } catch (InvalidOperationException ex) { status.Text = T(ex.Message); }
         };
         buttons.Children.Add(cancel); buttons.Children.Add(save);

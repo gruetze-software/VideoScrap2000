@@ -21,8 +21,10 @@ jobs:
         shell: pwsh
         env:
           FANART_TV_PROJECT_API_KEY: ${{ secrets.FANART_TV_PROJECT_API_KEY }}
+          TVDB_PROJECT_API_KEY: ${{ secrets.TVDB_PROJECT_API_KEY }}
         run: |
           if ($env:FANART_TV_PROJECT_API_KEY -notmatch '^[0-9a-fA-F]{32}$') { throw 'Missing Fanart.tv project key.' }
+          if ($env:TVDB_PROJECT_API_KEY -notmatch '^[0-9a-fA-F-]{36}$') { throw 'Missing TheTVDB project key.' }
           ./scripts/Publish.ps1 -Runtime linux-x64
           $file = Get-ChildItem artifacts/linux-x64 -Filter '*.manifest.json' -Recurse | Select-Object -First 1
           $manifest = Get-Content $file.FullName -Raw | ConvertFrom-Json

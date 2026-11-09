@@ -34,8 +34,12 @@ public sealed class TvdbScraper : IDisposable
     }
     private async Task<string> LoginAsync(CancellationToken token)
     {
-        if (!settings.EnableTvdb || string.IsNullOrWhiteSpace(settings.TvdbApiKey)) throw new InvalidOperationException("Bitte TheTVDB in den Scraper-Einstellungen aktivieren und den Projekt-API-Key eintragen.");
-        using var response = await client.PostAsJsonAsync("login", new { apikey = settings.TvdbApiKey, pin = string.IsNullOrWhiteSpace(settings.TvdbPin) ? null : settings.TvdbPin }, token);
+        if (!settings.EnableTvdb) throw new InvalidOperationException("Bitte TheTVDB in den Scraper-Einstellungen aktivieren.");
+        var key = ProjectApiKeys.Tvdb(settings.TvdbApiKey);
+        if (string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException("Der TheTVDB-Projektzugang fehlt in diesem Build. Bitte eine offizielle Version verwenden.");
+        var credentials = new Dictionary<string, string> { ["apikey"] = key };
+        if (!string.IsNullOrWhiteSpace(settings.TvdbPin)) credentials["pin"] = settings.TvdbPin;
+        using var response = await client.PostAsJsonAsync("login", credentials, token);
         Check(response);
         var root = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: token);
         return Text(Property(root, "data"), "token") ?? throw new InvalidOperationException("TheTVDB hat keinen Zugangstoken geliefert.");
@@ -97,8 +101,14 @@ public sealed class TvdbScraper : IDisposable
                 Text(image, "image") ?? "", Text(image, "language"))).ToList();
         foreach (var item in Array(data, "seasons"))
             if (seasons.ContainsKey(Text(item, "id") ?? "") && int.TryParse(Text(item, "number"), out var number) && Text(item, "image") is { } image
-                && !pictures.Any(picture => picture.Season == number && picture.Type == ImageTypes.Poster))
-                pictures.Add(new(ImageTypes.Poster, number, image, null));
+                && types.TryGetValue(Text(item, "imageType") ?? "", out var imageType))
+            {
+                var type = imageType.Contains("Poster", StringComparison.OrdinalIgnoreCase) ? ImageTypes.Poster
+                    : imageType.Contains("Background", StringComparison.OrdinalIgnoreCase) ? ImageTypes.Fanart
+                    : imageType.Contains("Banner", StringComparison.OrdinalIgnoreCase) ? ImageTypes.Banner : null;
+                if (type is not null && !pictures.Any(picture => picture.Season == number && picture.Type == type))
+                    pictures.Add(new(type, number, image, null));
+            }
         if (!pictures.Any(image => image.Type == ImageTypes.Poster && image.Season is null) && Text(data, "image") is { Length: > 0 } poster)
             pictures.Add(new(ImageTypes.Poster, null, poster, null));
         string? Remote(string source) => Array(data, "remoteIds").Where(item => Text(item, "sourceName")?.Contains(source, StringComparison.OrdinalIgnoreCase) == true).Select(item => Text(item, "id")).FirstOrDefault();

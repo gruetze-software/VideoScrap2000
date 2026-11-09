@@ -1,4 +1,8 @@
 {
+  "In offiziellen Builds brauchst du keine eigenen API-Keys. TMDB, Fanart.tv und TheTVDB verwenden die enthaltenen Projektzugänge; TVmaze benötigt keinen Key. Eigene Zugangsdaten sind optional. Sie werden nur lokal und ohne Verschlüsselung gespeichert. Teile deine Einstellungsdatei nicht.": "Official builds do not require your own API keys. TMDB, Fanart.tv and TheTVDB use included project access; TVmaze needs no key. Your own credentials are optional. They are stored locally without encryption. Do not share your settings file.",
+  "Bitte TheTVDB in den Scraper-Einstellungen aktivieren.": "Enable TheTVDB in the scraper settings.",
+  "Der TheTVDB-Projektzugang fehlt in diesem Build. Bitte eine offizielle Version verwenden.": "TheTVDB project access is missing from this build. Please use an official version.",
+  "Der TheTVDB-Projektzugang ist in offiziellen Builds enthalten. Ein eigener API-Key ist nicht erforderlich. Eine persönliche PIN wird nur benötigt, wenn der Anbieter sie für den Projektzugang verlangt.": "Official builds include TheTVDB project access. You do not need your own API key. A personal PIN is only needed if the provider requires one for the project access.",
   "Episode bei TheTVDB suchen": "Find episode on TheTVDB",
   "Ordne die Serie zuerst einem Metadaten-Treffer zu.": "Match the show with a metadata result first.",
   "Scraper und API-Zugänge …": "Scrapers and API access …",

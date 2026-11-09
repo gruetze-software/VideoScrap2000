@@ -29,7 +29,7 @@ public sealed class ScraperProviderTests
         try
         {
             var inputs = dialog.GetVisualDescendants().OfType<TextBox>().Where(input => input.Classes.Contains("apiCredential")).ToArray();
-            Assert.Equal(4, inputs.Length);
+            Assert.Equal(3, inputs.Length);
             Assert.All(inputs, input => Assert.Equal('●', input.PasswordChar));
             inputs[0].Text = "changed";
             var cancel = dialog.GetVisualDescendants().OfType<Button>().Single(button => button.IsCancel);
@@ -65,6 +65,8 @@ public sealed class ScraperProviderTests
         Assert.Equal("https://artworks.thetvdb.com/person.jpg", actor.Thumb);
         var pictures = details.GetProperty("tvdb_artworks").Deserialize<List<TvdbArtwork>>()!;
         Assert.Contains(pictures, image => image.Type == ImageTypes.Poster && image.Season == 1);
+        Assert.Contains(pictures, image => image.Type == ImageTypes.Fanart && image.Season == 2);
+        Assert.DoesNotContain(pictures, image => image.Type == ImageTypes.Poster && image.Season == 2);
         var season = await provider.GetSeasonAsync(42, 1, "de-DE", token);
         var episodes = season.GetProperty("episodes").EnumerateArray().ToArray();
         Assert.Equal(2, episodes.Length);
@@ -77,6 +79,17 @@ public sealed class ScraperProviderTests
         Assert.Equal(1, handler.Logins);
         Assert.Contains(handler.Urls, url => url.Contains("page=1"));
         Assert.DoesNotContain(handler.Urls, url => url.Contains("personal") || url.Contains("project"));
+    }
+
+    [Fact]
+    public void ProjectKeyIsNeverSerializedToUserSettings()
+    {
+        var settings = new AppSettings { Scrapers = new() { TvdbApiKey = "development-only-project-key", TvdbPin = "personal-pin" } };
+        var json = JsonSerializer.Serialize(settings);
+        Assert.DoesNotContain("development-only-project-key", json);
+        Assert.DoesNotContain("TvdbApiKey", json);
+        Assert.Contains("personal-pin", json);
+        Assert.Equal("development-only-project-key", ProjectApiKeys.Tvdb(settings.Scrapers.TvdbApiKey));
     }
 
     [Fact]
@@ -173,7 +186,7 @@ public sealed class ScraperProviderTests
                     var value when value.Contains("/search?") => """{"data":[{"tvdb_id":"42","name":"Example","year":"2020","translations":{"deu":"Beispiel"}}]}""",
                     "/v4/series/42/extended" => """{"data":{"id":42,"name":"Example","overview":"English","firstAired":"2020-01-01","remoteIds":[{"sourceName":"IMDB","id":"tt1234"},{"sourceName":"TheMovieDB.com","id":"123"}],"characters":[{"peopleType":"Actor","personName":"Person","name":"Role","personImgURL":"https://artworks.thetvdb.com/person.jpg"}],"artworks":[{"type":7,"seasonId":81,"image":"https://artworks.thetvdb.com/season.jpg","language":"deu"}],"seasons":[{"id":81,"number":1,"type":{"type":"official"}}]}}""",
                     "/v4/series/42/translations/deu" => """{"data":{"name":"Deutscher Titel","overview":"Deutsche Handlung"}}""",
-                    "/v4/artwork/types" => """{"data":[{"id":7,"name":"Season Poster"}]}""",
+                    "/v4/artwork/types" => """{"data":[{"id":7,"name":"Poster"},{"id":8,"name":"Background"}]}""",
                     var value when value.Contains("/episodes/official?") => value.Contains("page=1") ? """{"data":{"episodes":[{"id":502,"seasonNumber":1,"number":2,"name":"Second"}]},"links":{"next":null}}""" : """{"data":{"episodes":[{"id":501,"seasonNumber":1,"number":1,"name":"First"}]},"links":{"next":"https://api4.thetvdb.com/v4/series/42/episodes/official?page=1"}}""",
                     "/v4/episodes/501/translations/deu" => """{"data":{"name":"Deutsche Folge","overview":"Inhalt"}}""",
                     "/v4/episodes/502/translations/deu" => """{"data":{"name":"Zweite Folge"}}""",
@@ -184,6 +197,7 @@ public sealed class ScraperProviderTests
             {
                 var node = System.Text.Json.Nodes.JsonNode.Parse(json)!;
                 node["data"]!["contentRatings"] = JsonSerializer.SerializeToNode(new[] { new { country = "deu", name = "FSK 16" } });
+                node["data"]!["seasons"]!.AsArray().Add(JsonSerializer.SerializeToNode(new { id = 82, number = 2, type = new { type = "official" }, image = "https://artworks.thetvdb.com/background.jpg", imageType = 8 }));
                 json = node.ToJsonString();
             }
             return new(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") };

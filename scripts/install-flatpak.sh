@@ -38,6 +38,9 @@ fi
 if [[ -z ${FANART_TV_PROJECT_API_KEY:-} ]]; then
     echo 'Note: no Fanart.tv project key supplied to this source build.' >&2
 fi
+if [[ -z ${TVDB_PROJECT_API_KEY:-} ]]; then
+    echo 'Note: no TheTVDB project key supplied to this source build.' >&2
+fi
 dotnet publish MovieScrap2000/MovieScrap2000.csproj -c Release -r "$rid" --self-contained false \
     "${sources[@]}" -p:NuGetAudit=false -p:UseAppHost=true -p:PublishTrimmed=false \
     -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false \

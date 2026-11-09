@@ -5,7 +5,8 @@ public sealed class ScraperSettings
     public string SeriesProvider { get; set; } = "TMDB";
     public string TmdbReadToken { get; set; } = "";
     public string FanartPersonalKey { get; set; } = "";
-    public string TvdbApiKey { get; set; } = "";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string TvdbApiKey { get; set; } = ""; // In-memory override for development/tests; never saved in user settings.
     public string TvdbPin { get; set; } = "";
     public bool EnableTvdb { get; set; }
     public bool EnableTmdbArtwork { get; set; } = true;
@@ -17,7 +18,7 @@ public sealed class ScraperSettings
         TmdbReadToken = (TmdbReadToken ?? "").Trim(); FanartPersonalKey = (FanartPersonalKey ?? "").Trim();
         TvdbApiKey = (TvdbApiKey ?? "").Trim(); TvdbPin = (TvdbPin ?? "").Trim();
         if (!EnableTvdb || SeriesProvider != "TheTVDB") SeriesProvider = "TMDB";
-        if (EnableTvdb && TvdbApiKey.Length == 0) throw new InvalidOperationException("Bitte einen TheTVDB-Projekt-API-Key eingeben oder TheTVDB deaktivieren.");
+        if (EnableTvdb && string.IsNullOrWhiteSpace(ProjectApiKeys.Tvdb(TvdbApiKey))) throw new InvalidOperationException("Der TheTVDB-Projektzugang fehlt in diesem Build. Bitte eine offizielle Version verwenden.");
         if (new[] { TmdbReadToken, FanartPersonalKey, TvdbApiKey, TvdbPin }.Any(value => value.Any(char.IsControl)))
             throw new InvalidOperationException("API-Zugangsdaten dürfen keine Zeilenumbrüche enthalten.");
     }

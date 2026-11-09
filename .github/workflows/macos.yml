@@ -36,8 +36,10 @@ jobs:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
           FANART_TV_PROJECT_API_KEY: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.FANART_TV_PROJECT_API_KEY || '' }}
+          TVDB_PROJECT_API_KEY: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.TVDB_PROJECT_API_KEY || '' }}
         run: |
           test -n "$FANART_TV_PROJECT_API_KEY"
+          test -n "$TVDB_PROJECT_API_KEY"
           bash scripts/build-macos-signed.sh '${{ matrix.arch }}'
       - uses: actions/upload-artifact@v7.0.2
         with:
