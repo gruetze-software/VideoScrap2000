@@ -91,7 +91,7 @@ public partial class MainWindow : Window
     private async void ScanActiveLibrary(object? sender, RoutedEventArgs e)
     {
         var series = LibraryTabs.SelectedIndex == 1;
-        if (string.IsNullOrWhiteSpace(series ? model.SeriesPath : model.LibraryPath))
+        if ((series ? model.SeriesFolders : model.MovieFolders).Count == 0)
         {
             var message = Localization.Locale.T(series
                 ? "Wähle zuerst einen Serienordner in den Einstellungen."

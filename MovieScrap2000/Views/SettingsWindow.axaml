@@ -32,11 +32,17 @@
         </StackPanel></Border>
         <Border Classes="card" Padding="18" IsEnabled="{Binding !IsDemo}"><StackPanel>
           <TextBlock Text="{DynamicResource LDD0E6BDF21FC}" FontSize="17" FontWeight="SemiBold"/>
-          <TextBlock Text="{DynamicResource LF7913AD0BB91}" Classes="label"/>
-          <Grid ColumnDefinitions="*,Auto"><TextBox Text="{Binding LibraryPath}" AutomationProperties.Name="{DynamicResource LF7913AD0BB91}"/><Button Grid.Column="1" Content="{DynamicResource L0BF1EDDB22BF}" Click="ChooseMovies" Margin="8,0,0,0"/></Grid>
-          <TextBlock Text="{DynamicResource L5AE9A8131D9B}" Classes="label"/>
-          <Grid ColumnDefinitions="*,Auto"><TextBox Text="{Binding SeriesPath}" AutomationProperties.Name="{DynamicResource L5AE9A8131D9B}"/><Button Grid.Column="1" Content="{DynamicResource L0BF1EDDB22BF}" Click="ChooseSeries" Margin="8,0,0,0"/></Grid>
-          <TextBlock Text="{DynamicResource LAD360AF2108C}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"/>
+          <TextBlock Text="{Binding MovieSourcesTitle}" Classes="label"/>
+          <ListBox x:Name="MovieSources" ItemsSource="{Binding MovieFolders}" SelectionMode="Multiple" MinHeight="68" MaxHeight="140" KeyDown="SourcesKeyDown" AutomationProperties.Name="{Binding MovieSourcesTitle}">
+            <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" ToolTip.Tip="{Binding}" TextTrimming="CharacterEllipsis"/></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,8"><Button Content="{Binding AddFolderText}" Click="ChooseMovies"/><Button Content="{Binding RemoveFolderText}" Click="RemoveMovies"/></StackPanel>
+          <TextBlock Text="{Binding SeriesSourcesTitle}" Classes="label"/>
+          <ListBox x:Name="SeriesSources" ItemsSource="{Binding SeriesFolders}" SelectionMode="Multiple" MinHeight="68" MaxHeight="140" KeyDown="SourcesKeyDown" AutomationProperties.Name="{Binding SeriesSourcesTitle}">
+            <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" ToolTip.Tip="{Binding}" TextTrimming="CharacterEllipsis"/></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0"><Button Content="{Binding AddFolderText}" Click="ChooseSeries"/><Button Content="{Binding RemoveFolderText}" Click="RemoveSeries"/></StackPanel>
+          <TextBlock Text="{Binding SourcesInfo}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"/>
         </StackPanel></Border>
         <Border Classes="card" Padding="18"><StackPanel Spacing="8">
           <TextBlock Text="{Binding OptimizationTitle}" FontSize="17" FontWeight="SemiBold"/>

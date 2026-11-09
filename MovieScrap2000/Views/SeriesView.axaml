@@ -8,7 +8,7 @@
         <ListBox Grid.Row="1" ItemsSource="{Binding Shows}" SelectedItem="{Binding SelectedShow}" Background="Transparent" BorderThickness="0" Margin="0,8,0,0">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:SeriesShowRow">
-              <Grid ColumnDefinitions="42,10,*" Margin="4,7">
+              <Grid ColumnDefinitions="42,10,*" Margin="4,7" ToolTip.Tip="{Binding Show.FolderPath}">
                 <Border Height="63" Classes="card" ClipToBounds="True"><views:MoviePosterThumbnail DataContext="{Binding Poster}" Stretch="UniformToFill"/></Border>
                 <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
                   <TextBlock Text="{Binding Editor.Title}" FontWeight="SemiBold" TextWrapping="Wrap" Classes.missing="{Binding !Editor.HasNfo}"/>

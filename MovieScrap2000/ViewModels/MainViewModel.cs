@@ -165,6 +165,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     partial void OnQueryChanged(string value) => Filter();
     partial void OnSeriesPathChanged(string value) => Series.ResetLibrary();
+    public IReadOnlyList<string> MovieFolders => LibrarySources.Normalize(settings.MovieFolders ?? [LibraryPath]);
+    public IReadOnlyList<string> SeriesFolders => LibrarySources.Normalize(settings.SeriesFolders ?? [SeriesPath]);
     partial void OnUseFanartBackgroundChanged(bool value) => Series.RefreshAppearance();
     partial void OnThemeIndexChanged(int value)
     {
@@ -172,11 +174,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ThemeRequested?.Invoke(settings.Theme);
     }
     public void ApplySettings(string movies, string series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0)
+        => ApplySettings(new[] { movies }, new[] { series }, theme, language, metadataLanguage, artworkLanguage, useFanartBackground, artworkOptimizationProfile);
+
+    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0)
     {
+        var previousSeries = SeriesFolders;
         if (!IsDemo)
         {
-            settings.LibraryPath = movies.Trim();
-            settings.SeriesPath = series.Trim();
+            settings.MovieFolders = LibrarySources.Normalize(movies);
+            settings.SeriesFolders = LibrarySources.Normalize(series);
+            settings.LibraryPath = settings.MovieFolders.FirstOrDefault() ?? "";
+            settings.SeriesPath = settings.SeriesFolders.FirstOrDefault() ?? "";
         }
         settings.Theme = theme switch { 1 => "Light", 2 => "Dark", _ => "System" };
         settings.Language = LanguagePreferences.FromIndex(language);
@@ -193,6 +201,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         TechnicalDetails = Locale.T(TechnicalDetails);
         LibraryPath = settings.LibraryPath;
         SeriesPath = settings.SeriesPath;
+        if (!previousSeries.SequenceEqual(SeriesFolders, LibrarySources.PathComparer)) Series.ResetLibrary();
+        OnPropertyChanged(nameof(MovieFolders)); OnPropertyChanged(nameof(SeriesFolders));
+        if (!IsDemo)
+        {
+            allMovies = allMovies.Where(movie => LibrarySources.ContainsFolder(MovieFolders, movie.FolderPath)).ToList();
+            Filter(SelectedMovie?.Id);
+        }
         ThemeIndex = theme;
         Status = "Einstellungen gespeichert.";
     }
@@ -291,6 +306,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var id = SelectedMovie?.Id;
         factsLoading?.Cancel();
         var loadedMovies = await Task.Run(() => metadata.LoadMoviesAsync(), cancellationToken);
+        if (settings.MovieFolders is not null || MovieFolders.Count > 0)
+            loadedMovies = loadedMovies.Where(movie => LibrarySources.ContainsFolder(MovieFolders, movie.FolderPath)).ToList();
         cancellationToken.ThrowIfCancellationRequested();
         foreach (var movie in loadedMovies.Where(m => m.IsPlaceholder))
         {
@@ -329,7 +346,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         allMovies = loadedMovies;
         foreach (var group in loadedMovies.GroupBy(m => (m.Title.ToUpperInvariant(), m.Year)).Where(g => g.Count() > 1))
-            foreach (var movie in group) movie.VersionLabel = Path.GetFileName(movie.FolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        {
+            foreach (var movie in group)
+            {
+                var folder = Path.TrimEndingDirectorySeparator(movie.FolderPath);
+                movie.VersionLabel = Path.GetFileName(folder);
+                if (group.Count(other => LibrarySources.PathComparer.Equals(Path.GetFileName(Path.TrimEndingDirectorySeparator(other.FolderPath)), movie.VersionLabel)) > 1)
+                    movie.VersionLabel = Path.GetFileName(Path.GetDirectoryName(folder)) + " / " + Path.GetFileName(folder);
+            }
+            foreach (var duplicates in group.GroupBy(movie => movie.VersionLabel, LibrarySources.PathComparer).Where(items => items.Count() > 1))
+                foreach (var movie in duplicates) movie.VersionLabel = movie.FolderPath;
+        }
         Filter(id);
     }
 
@@ -438,11 +465,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanScan))]
     private async Task ScanAsync() => await RunAsync(async token =>
     {
-        if (!Directory.Exists(LibraryPath)) throw new DirectoryNotFoundException("Bitte wähle einen erreichbaren Filmordner aus.");
+        if (MovieFolders.Count == 0) throw new DirectoryNotFoundException("Bitte wähle einen erreichbaren Filmordner aus.");
         settings.LibraryPath = LibraryPath;
         if (!IsDemo) settings.Save();
         Status = "Filmsammlung wird eingelesen …";
-        await Task.Run(() => scanner.ScanDirectoryAsync(LibraryPath, token), token);
+        await Task.Run(() => scanner.ScanDirectoriesAsync(MovieFolders, token), token);
         Status = "Filmsammlung wird geladen …";
         ArtworkPreviewCache.Shared.RefreshFileState();
         await ReloadAsync(token, reportProgress: true);

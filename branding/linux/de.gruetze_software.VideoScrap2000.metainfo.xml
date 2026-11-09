@@ -70,8 +70,8 @@
   <releases>
     <release version="1.2.0" type="stable" date="2026-11-09">
       <description>
-        <p>Allows movie editions in separate folders to share an IMDb ID, migrates existing databases, removes portrait downloads from library scans, and displays detailed scan progress.</p>
-        <p xml:lang="de">Erlaubt dieselbe IMDb-ID für Filmfassungen in getrennten Ordnern, migriert bestehende Datenbanken, entfernt Porträt-Downloads aus dem Scan und zeigt den Einlesefortschritt detailliert an.</p>
+        <p>Adds multiple movie and TV-show sources in Settings, allows editions in separate folders to share an IMDb ID, migrates existing databases, removes portrait downloads from scans, and displays detailed progress.</p>
+        <p xml:lang="de">Ergänzt mehrere Film- und Serienquellen in den Einstellungen, erlaubt dieselbe IMDb-ID für Fassungen in getrennten Ordnern, migriert bestehende Datenbanken und verbessert Scan-Leistung und Fortschrittsanzeige.</p>
       </description>
     </release>
     <release version="1.1.0" type="stable" date="2026-11-08">

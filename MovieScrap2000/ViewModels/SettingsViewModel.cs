@@ -19,8 +19,15 @@ public partial class SettingsViewModel : ObservableObject
         MovieScrap2000.LanguagePreferences.ResolveContent(MovieScrap2000.LanguagePreferences.ContentFromIndex(MetadataLanguageIndex)));
     public string ArtworkLanguagePreview => Localization.Locale.T("Bevorzugte Bildsprache: {0}").Replace("{0}",
         MovieScrap2000.LanguagePreferences.ResolveContent(MovieScrap2000.LanguagePreferences.ContentFromIndex(ArtworkLanguageIndex)).Split('-')[0]);
-    [ObservableProperty] private string libraryPath = "";
-    [ObservableProperty] private string seriesPath = "";
+    public System.Collections.ObjectModel.ObservableCollection<string> MovieFolders { get; } = [];
+    public System.Collections.ObjectModel.ObservableCollection<string> SeriesFolders { get; } = [];
+    public string LibraryPath { get => MovieFolders.FirstOrDefault() ?? ""; set { MovieFolders.Clear(); if (!string.IsNullOrWhiteSpace(value)) MovieFolders.Add(value); } }
+    public string SeriesPath { get => SeriesFolders.FirstOrDefault() ?? ""; set { SeriesFolders.Clear(); if (!string.IsNullOrWhiteSpace(value)) SeriesFolders.Add(value); } }
+    public string AddFolderText => Localization.Locale.T("Ordner hinzufügen …");
+    public string MovieSourcesTitle => Localization.Locale.T("Filmquellen");
+    public string SeriesSourcesTitle => Localization.Locale.T("Serienquellen");
+    public string RemoveFolderText => Localization.Locale.T("Ausgewählte entfernen");
+    public string SourcesInfo => Localization.Locale.T("Jede Quelle enthält die Unterordner deiner Filme oder Serien. Das Entfernen einer Quelle löscht keine Dateien.");
     [ObservableProperty] private int themeIndex;
     [ObservableProperty] private int languageIndex;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(MetadataLanguagePreview))] private int metadataLanguageIndex;

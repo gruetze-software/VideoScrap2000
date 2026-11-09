@@ -54,7 +54,8 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     [ObservableProperty] private SeriesNfoEditor? showEditor;
     [ObservableProperty] private SeriesNfoEditor? episodeEditor;
 
-    public bool NeedsScan => !string.IsNullOrWhiteSpace(main.SeriesPath) && scannedPath != main.SeriesPath;
+    private string SourceKey => string.Join('\0', main.SeriesFolders);
+    public bool NeedsScan => main.SeriesFolders.Count > 0 && scannedPath != SourceKey;
 
     internal void ResetLibrary()
     {
@@ -65,23 +66,38 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 
     public async Task ScanAsync()
     {
-        if (string.IsNullOrWhiteSpace(main.SeriesPath))
+        if (main.SeriesFolders.Count == 0)
         {
             main.Status = "Wähle zuerst einen Serienordner in den Einstellungen.";
             return;
         }
 
-        var path = main.SeriesPath;
+        var paths = main.SeriesFolders.ToArray();
+        var sourceKey = SourceKey;
         await main.RunAsync(async token =>
         {
             main.Status = "Serien werden eingelesen …";
-            var shows = await Task.Run(() => SeriesLibrary.Scan(path, token).Select(show => new SeriesShowRow(show)).ToList(), token);
+            var errors = 0;
+            var shows = await Task.Run(() => SeriesLibrary.ScanRoots(paths, token,
+                (path, error) =>
+                {
+                    Interlocked.Increment(ref errors);
+                    System.Diagnostics.Trace.WriteLine($"Series source {path}: {error.Message}");
+                }, progress => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (!main.IsBusy) return;
+                    main.HasScanProgress = true;
+                    main.Progress = progress.Total == 0 ? 100 : 100 * progress.Completed / progress.Total;
+                    main.ScanProgressText = Locale.T($"{progress.Completed} von {progress.Total} Ordnern geprüft · {progress.Errors} Fehler");
+                    main.ScanFolder = progress.Folder.Length == 0 ? "" : Locale.T($"Zuletzt geprüft: {Path.GetFileName(progress.Folder)}");
+                })).Select(show => new SeriesShowRow(show)).ToList(), token);
             ArtworkPreviewCache.Shared.RefreshFileState();
             var previous = SelectedShow?.Show.FolderPath;
             allShows = shows;
-            scannedPath = path;
+            scannedPath = sourceKey;
             FilterShows(previous);
-            main.Status = shows.Count == 0 ? "Keine Serien gefunden." : "Seriensammlung geladen.";
+            main.Status = errors > 0 ? Locale.T($"Serienscan beendet: {shows.Count} Serien, {errors} Fehler. Prüfe die Quellen.")
+                : shows.Count == 0 ? "Keine Serien gefunden." : "Seriensammlung geladen.";
         }, reloadAfterCancellation: false);
     }
 

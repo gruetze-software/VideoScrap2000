@@ -18,10 +18,43 @@ public static partial class SeriesLibrary
     private static partial Regex LeadingEpisodeNumber();
 
     public static IReadOnlyList<SeriesShow> Scan(string root, CancellationToken token)
+        => ScanFolders(Directory.GetDirectories(root), token, 0, null, null);
+
+    public static IReadOnlyList<SeriesShow> ScanRoots(IEnumerable<string> roots, CancellationToken token,
+        Action<string, Exception> reportError, Action<ScanProgress>? progress = null)
     {
-        var results = new List<SeriesShow>();
-        foreach (var folder in Directory.EnumerateDirectories(root))
+        var errors = 0;
+        var folders = LibrarySources.GetFolders(roots, token, (path, error) => { errors++; reportError(path, error); });
+        return ScanFolders(folders, token, errors, reportError, progress);
+    }
+
+    private static IReadOnlyList<SeriesShow> ScanFolders(IReadOnlyList<string> folders, CancellationToken token,
+        int errors, Action<string, Exception>? reportError, Action<ScanProgress>? progress)
+    {
+        var results = new System.Collections.Concurrent.ConcurrentBag<SeriesShow>();
+        var completed = 0;
+        var sync = new object();
+        progress?.Invoke(new(0, folders.Count, "", errors));
+        Parallel.ForEach(folders, new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = 4 }, folder =>
         {
+            try
+            {
+                var show = ReadShow(folder, token);
+                if (show is not null) results.Add(show);
+            }
+            catch (Exception ex) when (reportError is not null && (ex is IOException or UnauthorizedAccessException))
+            {
+                lock (sync) { errors++; reportError(folder, ex); }
+            }
+            finally { lock (sync) progress?.Invoke(new(++completed, folders.Count, folder, errors)); }
+        });
+        token.ThrowIfCancellationRequested();
+        return results.OrderBy(show => (string?)show.Metadata.Element("title"), StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(show => show.FolderPath, LibrarySources.PathComparer).ToArray();
+    }
+
+    private static SeriesShow? ReadShow(string folder, CancellationToken token)
+    {
             token.ThrowIfCancellationRequested();
             var nfo = Path.Combine(folder, "tvshow.nfo");
             var hasNfo = File.Exists(nfo);
@@ -36,12 +69,10 @@ public static partial class SeriesLibrary
                 token.ThrowIfCancellationRequested();
                 if (MovieManager.VideoExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())) episodes.Add(ReadEpisode(file));
             }
-            if (episodes.Count == 0 && !hasNfo) continue;
+            if (episodes.Count == 0 && !hasNfo) return null;
             var metadata = ReadMetadata(nfo, "tvshow");
             metadata.SetElementValue("title", (string?)metadata.Element("title") ?? Path.GetFileName(folder));
-            results.Add(new(folder, nfo, metadata, episodes, hasNfo));
-        }
-        return results.OrderBy(show => (string?)show.Metadata.Element("title"), StringComparer.CurrentCultureIgnoreCase).ToArray();
+            return new(folder, nfo, metadata, episodes, hasNfo);
     }
 
     public static SeriesEpisode ReadEpisode(string video)

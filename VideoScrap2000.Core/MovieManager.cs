@@ -82,21 +82,28 @@ namespace MovieScrap2000
 		/// <param name="rootPath">Der Pfad zum Haupt-Filmordner.</param>
         public async Task ScanDirectoryAsync(string rootPath, CancellationToken cancellationToken)
         {
-            scanErrors = 0;
             if (!Directory.Exists(rootPath)) throw new DirectoryNotFoundException(rootPath);
-            RootPath = rootPath;
-            var folders = Directory.GetDirectories(rootPath);
+            await ScanDirectoriesAsync([rootPath], cancellationToken);
+        }
+
+        public async Task ScanDirectoriesAsync(IEnumerable<string> rootPaths, CancellationToken cancellationToken)
+        {
+            scanErrors = 0;
+            var roots = LibrarySources.Normalize(rootPaths);
+            RootPath = roots.FirstOrDefault();
+            var folders = LibrarySources.GetFolders(roots, cancellationToken,
+                (path, error) => OnLogMessage($"Filmquelle '{path}': {error.Message}", LogLevel.Error));
             int completed = 0;
             var progressLock = new object();
-            DetailedProgress?.Invoke(this, new(0, folders.Length, "", ScanErrors));
+            DetailedProgress?.Invoke(this, new(0, folders.Count, "", ScanErrors));
             await Parallel.ForEachAsync(folders, new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = 4 }, async (folder, token) =>
             {
                 await AnalyzeAndSaveMovieFolderAsync(folder, token);
                 lock (progressLock)
                 {
                     completed++;
-                    OnProgressReport((int)(100d * completed / Math.Max(1, folders.Length)));
-                    DetailedProgress?.Invoke(this, new(completed, folders.Length, folder, ScanErrors));
+                    OnProgressReport((int)(100d * completed / Math.Max(1, folders.Count)));
+                    DetailedProgress?.Invoke(this, new(completed, folders.Count, folder, ScanErrors));
                 }
             });
             cancellationToken.ThrowIfCancellationRequested();
