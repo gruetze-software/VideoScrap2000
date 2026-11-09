@@ -51,6 +51,7 @@
           <Button Content="{Binding OptimizationAction}" Click="OptimizeExisting" IsEnabled="{Binding !IsDemo}"/>
         </StackPanel></Border>
         <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Classes="secondary"/>
+        <Button Content="{Binding ScrapersTitle}" Click="ConfigureScrapers" HorizontalAlignment="Stretch"/>
       </StackPanel>
     </ScrollViewer>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,18,0,0"><Button Content="{DynamicResource LF7FF1178AF20}" IsCancel="True" Click="Cancel"/><Button Content="{DynamicResource LF6B2FF39F540}" Classes="primary" IsDefault="True" Click="Save"/></StackPanel>

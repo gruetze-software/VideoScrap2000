@@ -16,6 +16,8 @@ public sealed class AppSettings
     public string ArtworkLanguage { get; set; } = "System";
     public bool UseFanartBackground { get; set; }
     public int ArtworkOptimizationProfile { get; set; }
+    private ScraperSettings scrapers = new();
+    public ScraperSettings Scrapers { get => scrapers; set => scrapers = value ?? new(); }
     private static string FilePath => Path.Combine(Utils.GetOptionsPath(), "settings.json");
     public static AppSettings Load()
     {
@@ -29,6 +31,7 @@ public sealed class AppSettings
         SeriesPath = SeriesFolders.FirstOrDefault() ?? "";
         var temporary = FilePath + ".tmp";
         File.WriteAllText(temporary, JsonSerializer.Serialize(this));
+        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(temporary, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         File.Move(temporary, FilePath, true);
     }
 }

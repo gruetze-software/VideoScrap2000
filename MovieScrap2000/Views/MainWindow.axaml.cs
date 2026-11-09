@@ -315,7 +315,7 @@ public partial class MainWindow : Window
         if (selectedMovie?.FullMovieNFO is not { } nfo) return;
         var firstLookup = (!int.TryParse(nfo.TmdbId, out var existingId) || existingId <= 0)
             && nfo.TmdbIdFromUnique.GetValueOrDefault() <= 0;
-        var dialog = new ScrapeWindow(model.Title, model.Imdb, model.Year, model.MetadataLanguage);
+        var dialog = new ScrapeWindow(model.Title, model.Imdb, model.Year, model.MetadataLanguage, model.Scrapers);
         await dialog.ShowDialog(this);
         if (dialog.Result is not { } movie || !ReferenceEquals(selectedMovie, model.SelectedMovie)) return;
         model.ApplyScrapedDetails(movie);

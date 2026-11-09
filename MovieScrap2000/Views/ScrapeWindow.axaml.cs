@@ -9,7 +9,7 @@ using MovieScrap2000.TMDbScraper;
 namespace VideoScrap2000.Views;
 public partial class ScrapeWindow : Window
 {
-    private readonly TMDbScraperManager scraper = new();
+    private readonly TMDbScraperManager scraper;
     private readonly CancellationTokenSource lifetime = new();
     private CancellationTokenSource? posterLoading;
     private bool busy;
@@ -17,10 +17,12 @@ public partial class ScrapeWindow : Window
     private readonly Func<string, CancellationToken, Task<IReadOnlyList<SearchTv>>>? seriesSearch;
     public TMDbMovie? Result { get; private set; }
     public SearchTv? SeriesResult { get; private set; }
+    public string SelectedProvider => SourcePicker.SelectedItem as string ?? "TMDB";
     public ScrapeWindow() : this("", "") { }
-    public ScrapeWindow(string title, string imdb, string year = "", string language = "de-DE")
+    public ScrapeWindow(string title, string imdb, string year = "", string language = "de-DE", ScraperSettings? settings = null)
     {
         InitializeComponent();
+        scraper = new(settings: settings);
         this.language = language;
         var parsed = MovieNameParser.ParseSearchTitle(title);
         SearchText.Text = string.IsNullOrWhiteSpace(imdb) ? parsed.Title : imdb;
@@ -28,23 +30,26 @@ public partial class ScrapeWindow : Window
         Opened += async (_, _) => await SearchAsync();
         Closed += (_, _) => { lifetime.Cancel(); ClearResults(); scraper.Dispose(); };
     }
-    internal ScrapeWindow(string title, Func<string, CancellationToken, Task<IReadOnlyList<SearchTv>>> search)
-        : this(title, "")
+    internal ScrapeWindow(string title, Func<string, CancellationToken, Task<IReadOnlyList<SearchTv>>> search, ScraperSettings? settings = null)
+        : this(title, "", settings: settings)
     {
         seriesSearch = search;
         SearchText.PlaceholderText = T("Serientitel");
         YearText.Text = "";
         YearText.IsVisible = false;
         SearchForm.ColumnDefinitions[1].Width = new Avalonia.Controls.GridLength(0);
+        SourcePicker.ItemsSource = settings?.EnableTvdb == true ? new[] { "TMDB", "TheTVDB" } : new[] { "TMDB" };
+        SourcePicker.SelectedItem = settings?.EnableTvdb == true ? settings.SeriesProvider : "TMDB";
+        SourcePicker.IsVisible = true;
     }
     private async void Search(object? sender, RoutedEventArgs e) => await SearchAsync();
 
     private async Task SearchAsync()
     {
         if (busy || string.IsNullOrWhiteSpace(SearchText.Text)) return;
-        busy = true; SearchButton.IsEnabled = false; AcceptButton.IsEnabled = false;
+        busy = true; SearchButton.IsEnabled = false; AcceptButton.IsEnabled = false; SourcePicker.IsEnabled = false;
         ClearResults();
-        StatusText.Text = T("TMDb wird durchsucht …");
+        StatusText.Text = SelectedProvider + " · " + T("Suche läuft …");
         try
         {
             var parsedTitle = MovieNameParser.ParseSearchTitle(SearchText.Text);
@@ -81,14 +86,16 @@ public partial class ScrapeWindow : Window
         catch (HttpRequestException ex)
         {
             System.Diagnostics.Trace.WriteLine(ex);
-            StatusText.Text = T("Suche derzeit nicht möglich. Bitte die Verbindung prüfen und erneut versuchen.");
+            StatusText.Text = T(SelectedProvider == "TheTVDB" && ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden
+                ? "TheTVDB-Zugang abgelehnt. Bitte Projekt-API-Key und gegebenenfalls Abo-PIN prüfen."
+                : "Suche derzeit nicht möglich. Bitte die Verbindung prüfen und erneut versuchen.");
         }
         catch (Exception ex)
         {
             System.Diagnostics.Trace.WriteLine(ex);
             StatusText.Text = T("Die Suche konnte nicht abgeschlossen werden. Bitte erneut versuchen.");
         }
-        finally { busy = false; SearchButton.IsEnabled = true; AcceptButton.IsEnabled = Results.SelectedItem is MovieSearchResult; }
+        finally { busy = false; SearchButton.IsEnabled = true; SourcePicker.IsEnabled = true; AcceptButton.IsEnabled = Results.SelectedItem is MovieSearchResult; }
     }
     private void ClearResults()
     {
@@ -106,12 +113,15 @@ public partial class ScrapeWindow : Window
         if (withPosters.Length == 0) return;
         try
         {
-            await scraper.SetConfigAsync().WaitAsync(token);
+            if (rows.Any(row => row.Movie.PosterPath is { } path && !Uri.IsWellFormedUriString(path, UriKind.Absolute)))
+                await scraper.SetConfigAsync().WaitAsync(token);
             await Parallel.ForEachAsync(withPosters, new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = token }, async (row, ct) =>
             {
                 try
                 {
-                    var bytes = await scraper.GetImageFromTMDbByteArrayAsync(row.Movie.PosterPath, ImageSize.Small, ImageType.Poster, ct);
+                    var bytes = Uri.IsWellFormedUriString(row.Movie.PosterPath, UriKind.Absolute)
+                        ? await scraper.GetImageFromFanArtTvByteArrayAsync(row.Movie.PosterPath, ct)
+                        : await scraper.GetImageFromTMDbByteArrayAsync(row.Movie.PosterPath, ImageSize.Small, ImageType.Poster, ct);
                     if (bytes is not { Length: > 0 }) return;
                     ct.ThrowIfCancellationRequested();
                     var preview = await ArtworkPreviewCache.Shared.AcquireAsync(row.Movie.PosterPath!, 88, bytes, ct, retainOriginal: false);
@@ -129,6 +139,10 @@ public partial class ScrapeWindow : Window
         catch (Exception ex) { System.Diagnostics.Trace.WriteLine(ex); }
     }
     private void SelectionChanged(object? sender, SelectionChangedEventArgs e) => AcceptButton.IsEnabled = !busy && Results.SelectedItem is MovieSearchResult;
+    private async void SourceChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (IsVisible && seriesSearch is not null) await SearchAsync();
+    }
     private async void Accept(object? sender, RoutedEventArgs e)
     {
         if (busy || Results.SelectedItem is not MovieSearchResult row) return;

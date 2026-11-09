@@ -26,24 +26,28 @@ namespace MovieScrap2000.FanArtTvScraper
       .FirstOrDefault(attribute => attribute.Key == "FanartTvProjectApiKey")?.Value;
     public HttpClient Client { get; private set; }
 
-    public FanArtTvScraper(HttpClient? client = null)
+    private readonly ScraperSettings settings;
+    public FanArtTvScraper(HttpClient? client = null, ScraperSettings? settings = null)
     {
+      this.settings = settings ?? (client is null ? AppSettings.Load().Scrapers : new());
       Client = client ?? new HttpClient();
     }
 
-    private static HttpRequestMessage CreateRequest(string url)
+    private HttpRequestMessage CreateRequest(string url)
     {
       var request = new HttpRequestMessage(HttpMethod.Get, url);
       var projectKey = Environment.GetEnvironmentVariable("FANART_TV_PROJECT_API_KEY")?.Trim();
       if (string.IsNullOrWhiteSpace(projectKey)) projectKey = BundledProjectKey;
       if (!string.IsNullOrWhiteSpace(projectKey)) request.Headers.Add("api-key", projectKey);
-      var personalKey = Environment.GetEnvironmentVariable("FANART_TV_API_KEY")?.Trim();
+      var personalKey = settings.FanartPersonalKey?.Trim() ?? "";
+      if (personalKey.Length == 0) personalKey = Environment.GetEnvironmentVariable("FANART_TV_API_KEY")?.Trim();
       if (!string.IsNullOrWhiteSpace(personalKey)) request.Headers.Add("client-key", personalKey);
       return request;
     }
 
     public async Task<JsonElement> GetSeriesArtworkAsync(int tmdbId, int tvdbId, CancellationToken token)
     {
+      if (!settings.EnableFanart) return default;
       if (tvdbId > 0)
       {
         var byTvdb = await ReadSeriesArtworkAsync($"{_baseurl}tv/{tvdbId}", token);
@@ -71,6 +75,7 @@ namespace MovieScrap2000.FanArtTvScraper
         int tmdbId,
         CancellationToken cancellationToken = default)
     {
+      if (!settings.EnableFanart) return null;
       // 1. URL zusammenbauen
       // Endpunkt: /movies/{tmdb_id}?api_key={api_key}
       string url = $"{_baseurl}movies/{tmdbId}";

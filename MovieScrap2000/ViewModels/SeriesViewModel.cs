@@ -16,7 +16,10 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 {
     private List<SeriesShowRow> allShows = [];
     private string? scannedPath;
-    private TMDbScraperManager CreateScraper() => createScraper?.Invoke() ?? new TMDbScraperManager();
+    private TMDbScraperManager CreateScraper() => createScraper?.Invoke() ?? new TMDbScraperManager(settings: main.Scrapers);
+    public ScraperSettings Scrapers => main.Scrapers;
+    public bool IsTvdbSource => ShowEditor?.MetadataProvider == "TheTVDB";
+    public string EpisodeSearchLabel => Locale.T(IsTvdbSource ? "Episode bei TheTVDB suchen" : "Episode bei TMDB suchen");
     private HttpClient EpisodeImageClient => tvmazeClient ?? TvmazeClient;
     private bool UseDemoData()
     {
@@ -136,6 +139,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         ArtworkSourceWarning = "";
         SelectedActor = null;
         ShowEditor = value?.Editor;
+        OnPropertyChanged(nameof(IsTvdbSource)); OnPropertyChanged(nameof(EpisodeSearchLabel));
         RefreshSeasons();
         RefreshArtworkPreviews(refreshTiles: true);
         SelectFirstDetailEntry();
@@ -294,16 +298,21 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         return results;
     }
 
-    internal async Task<IReadOnlyList<SearchTv>> SearchShowTitlesAsync(string title, CancellationToken token)
+    internal async Task<IReadOnlyList<SearchTv>> SearchShowTitlesAsync(string title, CancellationToken token, string? provider = null)
     {
         if (UseDemoData()) return [];
         var query = MovieNameParser.ParseSearchTitle(title).Title;
         if (query.Length == 0) return [];
+        if ((provider ?? main.Scrapers.SeriesProvider) == "TheTVDB")
+        {
+            using var tvdb = new TvdbScraper(main.Scrapers);
+            return await tvdb.SearchAsync(query, main.MetadataLanguage, token);
+        }
         using var scraper = CreateScraper();
         return await scraper.SearchSeriesAsync(query, main.MetadataLanguage, token);
     }
 
-    public async Task ApplyShowMatchAsync(int id)
+    public async Task ApplyShowMatchAsync(int id, string provider = "TMDB")
     {
         if (UseDemoData()) return;
         if (SelectedShow is not { } show) return;
@@ -311,12 +320,16 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         {
             main.Status = "Seriendetails werden geladen …";
             using var scraper = CreateScraper();
-            var result = await scraper.GetSeriesDetailsAsync(id, main.MetadataLanguage, token);
+            using var tvdb = new TvdbScraper(main.Scrapers);
+            var result = provider == "TheTVDB" ? await tvdb.GetShowAsync(id, main.MetadataLanguage, token)
+                : await scraper.GetSeriesDetailsAsync(id, main.MetadataLanguage, token);
             token.ThrowIfCancellationRequested();
             SelectedActor = null;
             show.Editor.ApplyShow(result, id, main.MetadataLanguage);
+            OnPropertyChanged(nameof(IsTvdbSource)); OnPropertyChanged(nameof(EpisodeSearchLabel));
             if (DetailTabIndex == 1) SelectFirstDetailEntry();
-            var count = await DownloadArtworkAsync(show, id, result, scraper, token);
+            var count = provider == "TheTVDB" ? await DownloadTvdbArtworkAsync(show, result, scraper, token)
+                : await DownloadArtworkAsync(show, id, result, scraper, token);
             main.Status = count > 0 ? "Seriendaten und Bilder übernommen. Speichere, um sie abzulegen."
                 : "Seriendaten übernommen. Speichere, um die NFO zu schreiben.";
             if (ArtworkSourceWarning.Length > 0) main.Status += " " + ArtworkSourceWarning;
@@ -328,9 +341,10 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         if (UseDemoData()) return;
         if (SelectedEpisode is not { } row || SelectedShow is not { } show) return;
         var episode = row.Editor;
-        if (!int.TryParse(ShowEditor?.TmdbId, out var id) || id <= 0)
+        var useTvdb = show.Editor.MetadataProvider == "TheTVDB";
+        if (!int.TryParse(useTvdb ? ShowEditor?.TvdbId : ShowEditor?.TmdbId, out var id) || id <= 0)
         {
-            main.Status = "Ordne die Serie zuerst einem TMDB-Treffer zu.";
+            main.Status = "Ordne die Serie zuerst einem Metadaten-Treffer zu.";
             return;
         }
         if (episode.SeasonNumber is not { } season || episode.EpisodeNumber is not { } number)
@@ -342,9 +356,11 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         {
             main.Status = "Episodendetails werden geladen …";
             using var scraper = CreateScraper();
+            using var tvdb = new TvdbScraper(main.Scrapers);
             try
             {
-                var result = await scraper.GetEpisodeDetailsAsync(id, season, number, main.MetadataLanguage, token);
+                var result = useTvdb ? await tvdb.GetEpisodeAsync(id, season, number, main.MetadataLanguage, token)
+                    : await scraper.GetEpisodeDetailsAsync(id, season, number, main.MetadataLanguage, token);
                 token.ThrowIfCancellationRequested();
                 episode.ApplyEpisode(result);
                 await DownloadEpisodePictureAsync(row, result, scraper, CreateTvmazeLookup(show, token), token);
@@ -364,9 +380,10 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     {
         if (UseDemoData()) return;
         if (SelectedShow is not { } show) return;
-        if (!int.TryParse(show.Editor.TmdbId, out var id) || id <= 0)
+        var useTvdb = show.Editor.MetadataProvider == "TheTVDB";
+        if (!int.TryParse(useTvdb ? show.Editor.TvdbId : show.Editor.TmdbId, out var id) || id <= 0)
         {
-            main.Status = "Ordne die Serie zuerst einem TMDB-Treffer zu.";
+            main.Status = "Ordne die Serie zuerst einem Metadaten-Treffer zu.";
             return;
         }
         var groups = show.Episodes.Where(row => row.Editor.SeasonNumber.HasValue && row.Editor.EpisodeNumber.HasValue)
@@ -377,6 +394,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         {
             main.Status = "Episodendetails werden geladen …";
             using var scraper = CreateScraper();
+            using var tvdb = new TvdbScraper(main.Scrapers);
             var tvmaze = CreateTvmazeLookup(show, token);
             var loaded = 0;
             try
@@ -386,7 +404,8 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
                     token.ThrowIfCancellationRequested();
                     var group = groups[index];
                     JsonElement season;
-                    try { season = await scraper.GetSeasonDetailsAsync(id, group.Key, main.MetadataLanguage, token); }
+                    try { season = useTvdb ? await tvdb.GetSeasonAsync(id, group.Key, main.MetadataLanguage, token)
+                        : await scraper.GetSeasonDetailsAsync(id, group.Key, main.MetadataLanguage, token); }
                     catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                     {
                         main.Progress = (index + 1) * 100 / groups.Length;
@@ -508,7 +527,7 @@ public sealed class SeriesEpisodeRow(SeriesEpisode episode)
 
 public partial class SeriesNfoEditor : ObservableObject
 {
-    internal static readonly string[] ShowFields = ["title", "originaltitle", "plot", "premiered", "status", "genre", "studio", "country", "tag", "mpaa", "uniqueid", "actor"];
+    internal static readonly string[] ShowFields = ["title", "originaltitle", "plot", "premiered", "status", "genre", "studio", "country", "tag", "mpaa", "uniqueid", "actor", "videoscrap2000-provider"];
     internal static readonly string[] EpisodeFields = ["title", "plot", "season", "episode", "aired", "runtime", "director", "credits", "uniqueid"];
 
     [ObservableProperty] private string title;
@@ -531,6 +550,7 @@ public partial class SeriesNfoEditor : ObservableObject
     [ObservableProperty] private string writers;
     [ObservableProperty] private bool hasNfo;
     public ObservableCollection<ActorEditor> Actors { get; } = [];
+    public string MetadataProvider { get; private set; } = "TMDB";
     private readonly Dictionary<ActorEditor, XElement> originalActors = [];
 
     public int? SeasonNumber => ReadNumber(Season);
@@ -547,6 +567,7 @@ public partial class SeriesNfoEditor : ObservableObject
         string ReadId(string type) => metadata.Elements("uniqueid").FirstOrDefault(element =>
             string.Equals((string?)element.Attribute("type"), type, StringComparison.OrdinalIgnoreCase))?.Value ?? "";
         title = Read("title"); originalTitle = Read("originaltitle"); plot = Read("plot");
+        MetadataProvider = Read("videoscrap2000-provider") == "TheTVDB" ? "TheTVDB" : "TMDB";
         date = Read(metadata.Name == "tvshow" ? "premiered" : "aired"); status = Read("status");
         genres = ReadList("genre"); studios = ReadList("studio"); certification = Read("mpaa");
         countries = ReadList("country"); tags = ReadList("tag");
@@ -581,11 +602,14 @@ public partial class SeriesNfoEditor : ObservableObject
         if (Text(data, "overview") is { Length: > 0 } plot) Plot = plot;
         Date = Text(data, "first_air_date") ?? Date;
         Status = Text(data, "status") ?? Status;
-        TmdbId = id.ToString(CultureInfo.InvariantCulture);
+        MetadataProvider = Text(data, "_provider") == "TheTVDB" ? "TheTVDB" : "TMDB";
+        if (MetadataProvider == "TheTVDB") { TvdbId = id.ToString(CultureInfo.InvariantCulture); TmdbId = ""; ImdbId = ""; }
+        else { TmdbId = id.ToString(CultureInfo.InvariantCulture); TvdbId = ""; ImdbId = ""; }
         if (data.TryGetProperty("external_ids", out var ids))
         {
             ImdbId = Text(ids, "imdb_id") ?? ImdbId;
             TvdbId = Text(ids, "tvdb_id") ?? TvdbId;
+            if (MetadataProvider == "TheTVDB") TmdbId = Text(ids, "tmdb_id") ?? "";
         }
         var genres = Array(data, "genres").Select(item => Text(item, "name")).OfType<string>().ToArray();
         if (genres.Length > 0) Genres = string.Join("; ", genres);
@@ -617,7 +641,7 @@ public partial class SeriesNfoEditor : ObservableObject
             Role = Text(actor, "character") ?? string.Join(" / ", Array(actor, "roles")
                 .Select(role => Text(role, "character")).Where(role => !string.IsNullOrWhiteSpace(role)).Distinct()),
             TmdbId = ReadNumber(Text(actor, "id") ?? ""), Order = index,
-            Thumb = Text(actor, "profile_path") is { Length: > 0 } profile ? "https://image.tmdb.org/t/p/w185" + profile : ""
+            Thumb = Text(actor, "profile_url") ?? (Text(actor, "profile_path") is { Length: > 0 } profile ? "https://image.tmdb.org/t/p/w185" + profile : "")
         }).ToArray();
 
     public void ApplyEpisode(JsonElement data)
@@ -626,7 +650,8 @@ public partial class SeriesNfoEditor : ObservableObject
         if (Text(data, "overview") is { Length: > 0 } plot) Plot = plot;
         Date = Text(data, "air_date") ?? Date;
         Runtime = Text(data, "runtime") ?? Runtime;
-        TmdbId = Text(data, "id") ?? TmdbId;
+        if (Text(data, "_provider") == "TheTVDB") { TvdbId = Text(data, "tvdb_id") ?? ""; TmdbId = ""; }
+        else { TmdbId = Text(data, "id") ?? TmdbId; TvdbId = ""; }
         var crew = Array(data, "crew").ToArray();
         var directors = crew.Where(person => Text(person, "job") == "Director").Select(person => Text(person, "name")).OfType<string>().ToArray();
         var writers = crew.Where(person => Text(person, "department") == "Writing").Select(person => Text(person, "name")).OfType<string>().Distinct().ToArray();
@@ -645,6 +670,7 @@ public partial class SeriesNfoEditor : ObservableObject
             foreach (var item in value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) Add(name, item);
         }
         Add("plot", Plot);
+        if (!isEpisode) Add("videoscrap2000-provider", MetadataProvider);
         if (isEpisode)
         {
             Add("season", Season); Add("episode", Episode); Add("aired", Date); Add("runtime", Runtime);

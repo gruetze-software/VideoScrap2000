@@ -18,6 +18,7 @@ public partial class SettingsWindow : Window
             LanguageIndex = main?.LanguageIndex ?? 0, MetadataLanguageIndex = main?.MetadataLanguageIndex ?? 0, ArtworkLanguageIndex = main?.ArtworkLanguageIndex ?? 0,
             UseFanartBackground = main?.UseFanartBackground ?? false, ArtworkOptimizationProfile = main?.ArtworkOptimizationProfile ?? 0 };
         DataContext = draft;
+        draft.Scrapers = main?.Scrapers.Copy() ?? new();
         if (main is not null)
         {
             draft.MovieFolders.Clear(); foreach (var path in main.MovieFolders) draft.MovieFolders.Add(path);
@@ -71,8 +72,13 @@ public partial class SettingsWindow : Window
     }
     private void Save(object? sender, RoutedEventArgs e)
     {
-        try { main?.ApplySettings(draft.MovieFolders, draft.SeriesFolders, draft.ThemeIndex, draft.LanguageIndex, draft.MetadataLanguageIndex, draft.ArtworkLanguageIndex, draft.UseFanartBackground, draft.ArtworkOptimizationProfile); Close(); }
+        try { main?.ApplySettings(draft.MovieFolders, draft.SeriesFolders, draft.ThemeIndex, draft.LanguageIndex, draft.MetadataLanguageIndex, draft.ArtworkLanguageIndex, draft.UseFanartBackground, draft.ArtworkOptimizationProfile, draft.Scrapers); Close(); }
         catch (Exception ex) { draft.Status = $"Einstellungen konnten nicht gespeichert werden: {ex.Message}"; }
+    }
+    private async void ConfigureScrapers(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new ScraperSettingsWindow(draft.Scrapers);
+        if (await dialog.ShowDialog<MovieScrap2000.ScraperSettings?>(this) is { } result) draft.Scrapers = result;
     }
     private void Cancel(object? sender, RoutedEventArgs e) => Close();
     private async void OptimizeExisting(object? sender, RoutedEventArgs e)

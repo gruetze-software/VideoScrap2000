@@ -11,6 +11,12 @@ namespace VideoScrap2000.Views;
 public partial class SeriesView : UserControl
 {
     public SeriesView() => InitializeComponent();
+    private async void OpenMetadataSource(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is not { } owner) return;
+        try { await owner.Launcher.LaunchUriAsync(new Uri("https://www.thetvdb.com/")); }
+        catch (Exception ex) { System.Diagnostics.Trace.WriteLine(ex); }
+    }
 
     private async void SearchArtwork(object? sender, RoutedEventArgs e)
     {
@@ -41,10 +47,11 @@ public partial class SeriesView : UserControl
     private async void SearchShow(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not SeriesViewModel { ShowEditor: { } editor } model || TopLevel.GetTopLevel(this) is not Window owner) return;
-        var dialog = new ScrapeWindow(editor.Title, model.SearchShowTitlesAsync);
+        ScrapeWindow? dialog = null;
+        dialog = new ScrapeWindow(editor.Title, (title, token) => model.SearchShowTitlesAsync(title, token, dialog?.SelectedProvider), model.Scrapers);
         await dialog.ShowDialog(owner);
         if (dialog.SeriesResult is { Id: > 0 } selected && ReferenceEquals(editor, model.ShowEditor))
-            await model.ApplyShowMatchAsync(selected.Id);
+            await model.ApplyShowMatchAsync(selected.Id, dialog.SelectedProvider);
     }
     private async void SearchEpisode(object? sender, RoutedEventArgs e)
     {

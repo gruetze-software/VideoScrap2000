@@ -10,6 +10,7 @@ namespace VideoScrap2000.Views;
 public partial class ArtworkWindow
 {
     private JsonElement seriesFanart;
+    private List<TvdbArtwork>? tvdbImages;
 
     private async Task<List<ArtworkSource>> FindSeriesSourcesAsync(string type, CancellationToken token)
     {
@@ -52,6 +53,24 @@ public partial class ArtworkWindow
         var sources = paths?.Select(image => new ArtworkSource(image.FilePath, null, kind,
             $"TMDB · {image.Iso6391 ?? "neutral"} · {image.Width} × {image.Height}",
             LanguagePriority(image.Iso6391))).ToList() ?? [];
+        if (scraper.Providers.EnableTvdb && tvdbId > 0)
+        {
+            if (tvdbImages is null)
+            {
+                tvdbImages = [];
+                try
+                {
+                    using var tvdb = new TvdbScraper(scraper.Providers);
+                    var details = await tvdb.GetShowAsync(tvdbId.Value, language, token);
+                    tvdbImages = details.GetProperty("tvdb_artworks").Deserialize<List<TvdbArtwork>>() ?? [];
+                }
+                catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidOperationException)
+                { providerError = T("TheTVDB-Bilder konnten nicht geladen werden. Bitte den Zugang in den Einstellungen prüfen."); }
+            }
+            sources.AddRange(tvdbImages.Where(image => image.Type == type && image.Season == season)
+                .Select(image => new ArtworkSource(null, image.Url, kind, $"TheTVDB · {image.Language ?? "neutral"}",
+                    LanguagePriority(SeriesViewModel.TvdbArtworkLanguage(image.Language)))));
+        }
         var keys = SeriesArtworkCatalog.FanartFields(type, season);
         foreach (var key in keys)
         {

@@ -48,6 +48,7 @@ public partial class SeriesViewModel
 
     private async Task<JsonElement> LookupTvmazeEpisodesAsync(string? imdbId, string? tvdbId, CancellationToken token)
     {
+        if (!main.Scrapers.EnableTvmaze) return default;
         foreach (var (key, id) in new[] { ("imdb", imdbId), ("thetvdb", tvdbId) })
         {
             if (string.IsNullOrWhiteSpace(id) || id == "0" || id == "-1") continue;
@@ -69,7 +70,16 @@ public partial class SeriesViewModel
         if (row.PendingPicture is not null || await Task.Run(() => FindEpisodePicture(row), token) is not null) return;
 
         byte[]? bytes = null;
-        if (SeriesNfoEditor.Text(episode, "still_path") is { Length: > 0 } stillPath)
+        if (SeriesNfoEditor.Text(episode, "still_url") is { Length: > 0 } stillUrl)
+        {
+            try
+            {
+                var data = await scraper.GetImageFromFanArtTvByteArrayAsync(stillUrl, token);
+                if (await IsUsableImageAsync(data, token)) bytes = data;
+            }
+            catch (Exception ex) when (IsOptionalImageFailure(ex, token)) { System.Diagnostics.Trace.WriteLine(ex); }
+        }
+        if (scraper.ArtworkEnabled && SeriesNfoEditor.Text(episode, "still_path") is { Length: > 0 } stillPath)
         {
             try
             {

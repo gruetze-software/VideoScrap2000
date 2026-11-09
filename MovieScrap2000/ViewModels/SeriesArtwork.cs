@@ -218,7 +218,7 @@ public partial class SeriesViewModel
                     var sources = fanartImages.Select(image => (Path: SeriesNfoEditor.Text(image, "url"), Remote: true,
                         Priority: LanguagePreferences.ImagePriority(SeriesNfoEditor.Text(image, "lang"), language)))
                         .Where(source => source.Priority != 0).ToList();
-                    if (target.Type is ImageTypes.Poster or ImageTypes.Fanart or ImageTypes.ClearLogo)
+                    if (scraper.ArtworkEnabled && target.Type is (ImageTypes.Poster or ImageTypes.Fanart or ImageTypes.ClearLogo))
                     {
                         var key = target.Season ?? -1;
                         if (!tmdbImages.TryGetValue(key, out var images))
@@ -246,7 +246,7 @@ public partial class SeriesViewModel
                         catch (Exception ex) when (ex is not OperationCanceledException || !token.IsCancellationRequested) { System.Diagnostics.Trace.WriteLine(ex); }
                     }
                 }
-                if (data is null && target.TmdbPath is { Length: > 0 } path)
+                if (data is null && scraper.ArtworkEnabled && target.TmdbPath is { Length: > 0 } path)
                 {
                     try
                     {

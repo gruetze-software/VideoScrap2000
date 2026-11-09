@@ -34,13 +34,17 @@ namespace MovieScrap2000.TMDbScraper
         private readonly bool cacheImageDownloads;
 		private TMDbConfig? _config;
 		private readonly FanArtTvScraper.FanArtTvScraper _fanartScraper;
-		public TMDbScraperManager(HttpClient? client = null, FanArtTvScraper.FanArtTvScraper? fanart = null)
+		private readonly ScraperSettings settings;
+        public bool ArtworkEnabled => settings.EnableTmdbArtwork;
+        public ScraperSettings Providers => settings.Copy();
+		public TMDbScraperManager(HttpClient? client = null, FanArtTvScraper.FanArtTvScraper? fanart = null, ScraperSettings? settings = null)
 		{
+            this.settings = settings ?? (client is null ? AppSettings.Load().Scrapers : new());
             cacheImageDownloads = client is null && fanart is null;
             _httpClient = client ?? new HttpClient();
-            _fanartScraper = fanart ?? new();
+            _fanartScraper = fanart ?? new(settings: this.settings);
 			_httpClient.DefaultRequestHeaders.Authorization =
-						new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apitoken);
+						new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", string.IsNullOrWhiteSpace(this.settings.TmdbReadToken) ? _apitoken : this.settings.TmdbReadToken.Trim());
 			_httpClient.BaseAddress = new Uri("https://api.themoviedb.org/3/");
 
 		}
@@ -115,6 +119,7 @@ namespace MovieScrap2000.TMDbScraper
 
         public async Task<MovieScrap2000.TMDbScraper.TMDbScraper.TMDbImages> GetSeriesImagesAsync(int id, int? season, CancellationToken token)
         {
+            if (!settings.EnableTmdbArtwork || id <= 0) return new();
             var path = season.HasValue ? $"tv/{id}/season/{season.Value}/images" : $"tv/{id}/images";
             var json = await GetSeriesJsonAsync(path, token);
             return json.Deserialize<MovieScrap2000.TMDbScraper.TMDbScraper.TMDbImages>() ?? new();
@@ -129,6 +134,7 @@ namespace MovieScrap2000.TMDbScraper
 
         public async Task<MovieScrap2000.TMDbScraper.TMDbScraper.TMDbImages> GetMovieImagesAsync(int tmdbId, CancellationToken token = default)
         {
+            if (!settings.EnableTmdbArtwork) return new();
             // This endpoint must have no language filter: language only controls ranking in the UI.
             using var response = await _httpClient.GetAsync($"movie/{tmdbId}/images", token);
             response.EnsureSuccessStatusCode();

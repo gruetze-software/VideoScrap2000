@@ -45,6 +45,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public int ArtworkOptimizationProfile => Math.Clamp(settings.ArtworkOptimizationProfile, 0, 2);
     public string MetadataLanguage => LanguagePreferences.ResolveContent(settings.MetadataLanguage);
     public string ArtworkLanguage => LanguagePreferences.ResolveContent(settings.ArtworkLanguage);
+    public ScraperSettings Scrapers => settings.Scrapers;
     partial void OnStatusChanged(string value)
     {
         var translated = Locale.T(value);
@@ -176,8 +177,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void ApplySettings(string movies, string series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0)
         => ApplySettings(new[] { movies }, new[] { series }, theme, language, metadataLanguage, artworkLanguage, useFanartBackground, artworkOptimizationProfile);
 
-    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0)
+    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0, ScraperSettings? scrapers = null)
     {
+        var scraperDraft = (scrapers ?? settings.Scrapers).Copy();
+        scraperDraft.Normalize();
+        settings.Scrapers = scraperDraft;
         var previousSeries = SeriesFolders;
         if (!IsDemo)
         {
