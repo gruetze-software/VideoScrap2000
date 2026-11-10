@@ -10,7 +10,7 @@ using static VideoScrap2000.Localization.Locale;
 
 namespace VideoScrap2000.Views;
 
-public sealed record MediaBadge(string Label, string Description);
+public sealed record MediaBadge(string Label, string Description, string Icon = "chip");
 public static class MediaPresentation
 {
     public static IReadOnlyList<MediaBadge> Badges(MovieFileInfo? info)
@@ -21,13 +21,13 @@ public static class MediaPresentation
         if (video is { Width: > 0, Height: > 0 })
         {
             var resolution = video.Width >= 7000 || video.Height >= 4000 ? "8K" : video.Width >= 3800 || video.Height >= 2100 ? "4K" : video.Width >= 1900 || video.Height >= 1000 ? "1080" : video.Width >= 1200 || video.Height >= 700 ? "720" : "SD";
-            badges.Add(new(resolution, $"{T("Auflösung")}: {video.Width} × {video.Height}"));
+            badges.Add(new(resolution, $"{T("Auflösung")}: {video.Width} × {video.Height}", resolution == "4K" ? "video-4k-box" : resolution == "SD" ? "standard-definition" : resolution == "8K" ? "filmstrip" : "high-definition"));
         }
-        if (video?.Aspect > 0) badges.Add(new(video.Aspect.ToString("0.##", CultureInfo.InvariantCulture) + ":1", T("Bildformat")));
-        if (!string.IsNullOrWhiteSpace(video?.Codec)) badges.Add(new(Codec(video.Codec), T("Video-Codec")));
+        if (video?.Aspect > 0) badges.Add(new(video.Aspect.ToString("0.##", CultureInfo.InvariantCulture) + ":1", T("Bildformat"), "aspect-ratio"));
+        if (!string.IsNullOrWhiteSpace(video?.Codec)) badges.Add(new(Codec(video.Codec), T("Video-Codec"), "chip"));
         var audio = streams.AudioStreams.FirstOrDefault(stream => !string.IsNullOrWhiteSpace(stream.Codec));
-        if (audio is not null) badges.Add(new(Codec(audio.Codec!), T("Audio-Codec")));
-        if (audio?.Channels > 0) badges.Add(new(audio.Channels switch { 1 => "1.0", 2 => "2.0", 6 => "5.1", 8 => "7.1", _ => audio.Channels.ToString(CultureInfo.InvariantCulture) + "ch" }, $"{T("Kanäle")}: {audio.Channels}"));
+        if (audio is not null) badges.Add(new(Codec(audio.Codec!), T("Audio-Codec"), audio.Codec?.ToLowerInvariant() is "ac3" or "eac3" or "truehd" ? "dolby" : "surround-sound"));
+        if (audio?.Channels > 0) badges.Add(new(audio.Channels switch { 1 => "1.0", 2 => "2.0", 6 => "5.1", 8 => "7.1", _ => audio.Channels.ToString(CultureInfo.InvariantCulture) + "ch" }, $"{T("Kanäle")}: {audio.Channels}", audio.Channels switch { 2 => "surround-sound-2-0", 6 => "surround-sound-5-1", 8 => "surround-sound-7-1", _ => "surround-sound" }));
         return badges;
     }
     public static string Codec(string value) => value.ToLowerInvariant() switch { "h264" or "avc" => "H.264", "hevc" or "h265" => "H.265", "ac3" => "AC-3", "eac3" => "E-AC-3", "truehd" => "TrueHD", _ => value.ToUpperInvariant() };
@@ -50,9 +50,20 @@ public sealed class MediaBadgesView : UserControl
         var panel = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
         foreach (var badge in MediaPresentation.Badges(Info))
         {
-            var border = new Border { CornerRadius = new CornerRadius(3), BorderThickness = new Thickness(1), BorderBrush = Brushes.Teal, Padding = new Thickness(5, 3), Margin = new Thickness(0, 0, 5, 4), Child = new TextBlock { Text = badge.Label, FontWeight = FontWeight.Bold, FontSize = 11 } };
-            ToolTip.SetTip(border, badge.Description); panel.Children.Add(border);
+            var icon = MediaIconAssets.Icon(badge.Icon, this);
+            icon.Margin = new Thickness(0, 0, 7, 4);
+            ToolTip.SetTip(icon, badge.Description + ": " + badge.Label);
+            Avalonia.Automation.AutomationProperties.SetName(icon, badge.Description + ": " + badge.Label);
+            panel.Children.Add(icon);
         }
+        if (Info?.StreamDetails is { } streams)
+            foreach (var (audio, index) in streams.AudioStreams.Select((audio, index) => (audio, index)))
+            {
+                var flag = MediaIconAssets.Flag(MediaIconAssets.Country(audio.Language) ?? MediaIconAssets.Country(audio.LongLanguage), this);
+                flag.Margin = new Thickness(0, 3, 6, 4);
+                var description = $"{T("Spur")} {index + 1}: {audio.LongLanguage ?? audio.Language ?? T("Unbekannt")} · {MediaPresentation.Codec(audio.Codec ?? "")} · {audio.Channels} {T("Kanäle")}";
+                ToolTip.SetTip(flag, description); Avalonia.Automation.AutomationProperties.SetName(flag, description); panel.Children.Add(flag);
+            }
         AddAction(panel, "M3,1 L13,7 L3,13 Z", "Abspielen", false);
         AddAction(panel, "M1,3 L6,3 L8,5 L15,5 L15,13 L1,13 Z", "Ordner öffnen", true);
         Content = panel;

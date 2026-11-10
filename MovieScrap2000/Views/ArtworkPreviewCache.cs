@@ -70,7 +70,7 @@ internal sealed class ArtworkPreviewCache(long capacity = 96 * 1024 * 1024)
                     var bitmap = ArtworkDecoder.DecodePreview(bytes, width);
                     if (bitmap is null) return null;
                     if (token.IsCancellationRequested) { bitmap.Dispose(); token.ThrowIfCancellationRequested(); }
-                    var entry = new Entry(key, path, bitmap, local || !retainOriginal ? null : bytes, stamp);
+                    var entry = new Entry(key, path, bitmap, local || !retainOriginal ? null : bytes, stamp, ArtworkDecoder.SourceSize(bytes));
                     lock (sync)
                     {
                         var lease = Acquire(entry);
@@ -185,14 +185,16 @@ internal sealed class ArtworkPreviewCache(long capacity = 96 * 1024 * 1024)
         internal Bitmap Image => entry!.Bitmap;
         internal string Path => entry!.Path;
         internal byte[]? OriginalData => entry!.Data;
+        internal string Resolution => entry is { } image && image.SourceSize.Width > 0 ? $"{image.SourceSize.Width} × {image.SourceSize.Height}" : "";
         public void Dispose()
         {
             if (Interlocked.Exchange(ref entry, null) is { } previous) owner.Release(previous);
         }
     }
 
-    internal sealed class Entry(string key, string path, Bitmap bitmap, byte[]? data, FileStamp stamp)
+    internal sealed class Entry(string key, string path, Bitmap bitmap, byte[]? data, FileStamp stamp, Avalonia.PixelSize sourceSize)
     {
+        internal Avalonia.PixelSize SourceSize { get; } = sourceSize;
         internal string Key { get; } = key;
         internal string Path { get; } = path;
         internal Bitmap Bitmap { get; } = bitmap;

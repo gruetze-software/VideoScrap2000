@@ -33,6 +33,7 @@ public partial class MainViewModel
     private int actorVersion;
     private Task actorPhotoTask = Task.CompletedTask;
     private ArtworkPreviewCache.Lease? actorPhotoLease;
+    [ObservableProperty] private string actorPhotoResolution = "";
 
     public bool HasSelectedActor => SelectedActor is not null;
     partial void OnSelectedActorChanged(ActorEditor? value)
@@ -141,7 +142,7 @@ public partial class MainViewModel
     private async Task LoadActorPhotoAsync(ActorEditor? actor)
     {
         actorLoading?.Cancel(); var version = ++actorVersion;
-        actorPhotoLease?.Dispose(); actorPhotoLease = null; ActorPhoto = null; IsActorPhotoLoading = actor is not null;
+        actorPhotoLease?.Dispose(); actorPhotoLease = null; ActorPhoto = null; ActorPhotoResolution = ""; IsActorPhotoLoading = actor is not null;
         if (actor is null) { actorLoading = null; return; }
         using var cts = new CancellationTokenSource(); actorLoading = cts;
         var folder = SelectedMovie?.FolderPath;
@@ -169,6 +170,7 @@ public partial class MainViewModel
             else
             {
                 actor.ThumbData = bytes; actorPhotoLease = preview; ActorPhoto = preview?.Image;
+                ActorPhotoResolution = preview?.Resolution ?? "";
                 if (cacheLoadedPortrait && preview is not null && actor.Id > 0)
                     await metadata.UpdateActorThumbExternalAsync(actor.Id, bytes, cts.Token);
             }

@@ -8,6 +8,42 @@ namespace VideoScrap2000.Tests;
 
 public sealed class MediaDetailsTests
 {
+    [Theory]
+    [InlineData("deu", "de")]
+    [InlineData("ger", "de")]
+    [InlineData("de-CH", "ch")]
+    [InlineData("eng", "gb")]
+    [InlineData("en-US", "us")]
+    [InlineData("fre", "fr")]
+    [InlineData("und", null)]
+    [InlineData("not-a-language", null)]
+    public void TrackFlagsHandleIsoCodesAliasesAndUnknownLanguages(string language, string? country) =>
+        Assert.Equal(country, MediaIconAssets.Country(language));
+
+    [AvaloniaFact]
+    public void MediaHeaderUsesVectorIconsAndOneFlagPerAudioTrack()
+    {
+        var control = new MediaBadgesView { Info = new() { StreamDetails = new() { VideoStream = new() { Width = 1920, Height = 1080, Codec = "h264", Aspect = 1.78m }, AudioStreams = [new() { Language = "ger", Codec = "eac3", Channels = 6 }, new() { Language = "eng", Codec = "aac", Channels = 2 }] } } };
+        var panel = Assert.IsType<Avalonia.Controls.WrapPanel>(control.Content);
+        Assert.Equal(5, panel.Children.OfType<Avalonia.Controls.Shapes.Path>().Count());
+        Assert.Equal(2, panel.Children.OfType<Avalonia.Controls.Image>().Count());
+        Assert.Empty(panel.Children.OfType<Avalonia.Controls.TextBlock>());
+        Assert.Equal(2, panel.Children.OfType<Avalonia.Controls.Button>().Count());
+    }
+
+    [AvaloniaFact]
+    public async Task ImageResolutionComesFromSourceRatherThanDecodedPreview()
+    {
+        using var bitmap = new SkiaSharp.SKBitmap(1200, 800);
+        bitmap.Erase(SkiaSharp.SKColors.Blue);
+        using var image = SkiaSharp.SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SkiaSharp.SKEncodedImageFormat.Jpeg, 90);
+        using var preview = await ArtworkPreviewCache.Shared.AcquireAsync("resolution-test", 88, encoded.ToArray(), TestContext.Current.CancellationToken);
+        Assert.NotNull(preview);
+        Assert.Equal(88, preview.Image.PixelSize.Width);
+        Assert.Equal("1200 × 800", preview.Resolution);
+    }
+
     [Fact]
     public void BadgesDescribeRealValuesAndHideUnknownValues()
     {

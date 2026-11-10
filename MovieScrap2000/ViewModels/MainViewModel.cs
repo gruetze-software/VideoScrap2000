@@ -638,6 +638,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
 public sealed record ArtworkViewModel(string Type, string Path, Bitmap Image, byte[]? PendingData = null) : IDisposable
 {
+    public string Resolution
+    {
+        get
+        {
+            if (CachedPreview is not null) return CachedPreview.Resolution;
+            if (PendingData is null) return "";
+            var size = ArtworkDecoder.SourceSize(PendingData);
+            return size.Width > 0 ? $"{size.Width} × {size.Height}" : "";
+        }
+    }
     internal ArtworkPreviewCache.Lease? CachedPreview { get; init; }
     public async Task<string> GetOpenPathAsync()
     {

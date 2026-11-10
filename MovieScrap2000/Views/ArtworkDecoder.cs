@@ -5,6 +5,13 @@ namespace VideoScrap2000.Views;
 
 internal static class ArtworkDecoder
 {
+    public static Avalonia.PixelSize SourceSize(byte[] bytes)
+    {
+        using var input = new MemoryStream(bytes, writable: false);
+        using var codec = SKCodec.Create(input);
+        if (codec is null) return default;
+        return (int)codec.EncodedOrigin >= 5 ? new(codec.Info.Height, codec.Info.Width) : new(codec.Info.Width, codec.Info.Height);
+    }
     public static Bitmap? DecodePreview(byte[] bytes, int width)
     {
         // An unsupported response has no codec. Check before calling SKBitmap.Decode.

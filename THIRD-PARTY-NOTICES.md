@@ -5,6 +5,8 @@ notices apply to the respective components, independently of the application.
 
 | Component | License / notices |
 | --- | --- |
+| Material Design Icons by Pictogrammers | Apache 2.0; selected SVGs from Templarian/MaterialDesign-SVG commit 9e04201d4557e729822fb57f62a316c3dea1d4a8. License included in licenses/MaterialDesignIcons.txt. |
+| Flagpedia / FlagCDN country flags | Public domain, based on Wikimedia Commons flags. Downloaded as 40-pixel PNGs from https://flagcdn.com/ on 2026-11-10. See https://flagpedia.net/download. |
 | Avalonia | [MIT license](https://github.com/AvaloniaUI/Avalonia/blob/master/licence.md) |
 | CommunityToolkit.Mvvm | [MIT license](https://github.com/CommunityToolkit/dotnet/blob/main/License.md) |
 | Microsoft.Data.Sqlite | [MIT license](https://github.com/dotnet/efcore/blob/main/LICENSE.txt) |

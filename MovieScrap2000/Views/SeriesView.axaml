@@ -116,8 +116,10 @@
                   </Grid>
                 </Border>
                 <Border Grid.Column="2" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Height="180" ClipToBounds="True" VerticalAlignment="Top">
-                  <views:MoviePosterThumbnail x:Name="SeriesActorPhoto" DataContext="{Binding ActorPreview}" DecodeWidth="240"
+                  <Grid><views:MoviePosterThumbnail x:Name="SeriesActorPhoto" DataContext="{Binding ActorPreview}" DecodeWidth="240"
                                               Stretch="Uniform" DoubleTapped="OpenPicture" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#99000000" Padding="3,1"><TextBlock Text="{Binding #SeriesActorPhoto.Resolution}" Foreground="White" FontSize="10"/></Border>
+                  </Grid>
                 </Border>
               </Grid>
               <Button Grid.Row="2" Content="{DynamicResource L6C86B99088D0}" Command="{Binding SaveShowCommand}"
@@ -216,8 +218,9 @@
                     <DataTemplate x:DataType="vm:SeriesArtworkTile">
                       <Border Classes="card" Width="200" Padding="8">
                         <Grid><StackPanel Spacing="6">
-                          <views:MoviePosterThumbnail DataContext="{Binding Picture}" DecodeWidth="400" Height="112"
+                          <views:MoviePosterThumbnail x:Name="ArtworkThumbnail" DataContext="{Binding Picture}" DecodeWidth="400" Height="112"
                                                       Stretch="Uniform" DoubleTapped="OpenPicture" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
+                          <TextBlock Text="{Binding #ArtworkThumbnail.Resolution}" FontSize="10" Classes="secondary" HorizontalAlignment="Right"/>
                           <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                         </StackPanel><Button Content="×" Click="RemoveArtwork" DoubleTapped="StopArtworkDoubleTap" Width="24" Height="24" MinWidth="24" MinHeight="24" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip.Tip="{DynamicResource L47C05BA64670}" AutomationProperties.Name="{DynamicResource L47C05BA64670}"/></Grid>
                       </Border>

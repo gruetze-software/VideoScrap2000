@@ -10,6 +10,9 @@ namespace VideoScrap2000.Views;
 
 public sealed class MoviePosterThumbnail : Image
 {
+    public static readonly DirectProperty<MoviePosterThumbnail, string> ResolutionProperty = AvaloniaProperty.RegisterDirect<MoviePosterThumbnail, string>(nameof(Resolution), control => control.Resolution);
+    private string resolution = "";
+    public string Resolution => resolution;
     private CancellationTokenSource? loading;
     private Bitmap? thumbnail;
     private ArtworkPreviewCache.Lease? preview;
@@ -73,6 +76,7 @@ public sealed class MoviePosterThumbnail : Image
                 Source = thumbnail = result?.Image;
                 loadedPath = result?.Path;
                 downloaded = result?.OriginalData;
+                SetAndRaise(ResolutionProperty, ref resolution, result?.Resolution ?? "");
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
@@ -84,6 +88,7 @@ public sealed class MoviePosterThumbnail : Image
     {
         loading?.Cancel();
         Source = null;
+        SetAndRaise(ResolutionProperty, ref resolution, "");
         preview?.Dispose();
         preview = null;
         thumbnail = null;

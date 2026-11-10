@@ -143,7 +143,7 @@
                           </ListBox>
                         </Grid>
                       </Border>
-                      <Border x:Name="ActorPortrait" Grid.Column="2" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Height="180" VerticalAlignment="Top" DoubleTapped="OpenSelectedActorPhoto" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"><Grid><Image Source="{Binding ActorPhoto}" Stretch="Uniform"/><ProgressBar IsIndeterminate="True" IsVisible="{Binding IsActorPhotoLoading}" Height="4" VerticalAlignment="Bottom"/></Grid></Border>
+                      <Border x:Name="ActorPortrait" Grid.Column="2" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Height="180" VerticalAlignment="Top" DoubleTapped="OpenSelectedActorPhoto" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"><Grid><Image Source="{Binding ActorPhoto}" Stretch="Uniform"/><Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#99000000" Padding="3,1"><TextBlock Text="{Binding ActorPhotoResolution}" Foreground="White" FontSize="10"/></Border><ProgressBar IsIndeterminate="True" IsVisible="{Binding IsActorPhotoLoading}" Height="4" VerticalAlignment="Bottom"/></Grid></Border>
                     </Grid>
                   </StackPanel>
                 </TabItem>
@@ -197,7 +197,7 @@
                       <Style Selector="ListBoxItem:selected Border.card"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="BorderThickness" Value="3"/></Style>
                     </ListBox.Styles>
                     <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:ArtworkViewModel"><Border DoubleTapped="OpenArtwork" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}" Classes="card" Width="220" Padding="10"><Grid><StackPanel Spacing="8"><Image Source="{Binding Image}" Height="140" Stretch="Uniform"/><TextBlock Text="{Binding Type}" FontWeight="SemiBold"/><TextBlock Text="{Binding Path}" Classes="secondary" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></StackPanel><Button Content="×" Click="RemoveArtwork" DoubleTapped="StopArtworkDoubleTap" Width="24" Height="24" MinWidth="24" MinHeight="24" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip.Tip="{DynamicResource L47C05BA64670}" AutomationProperties.Name="{DynamicResource L47C05BA64670}"/></Grid></Border></DataTemplate></ListBox.ItemTemplate>
+                    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:ArtworkViewModel"><Border DoubleTapped="OpenArtwork" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}" Classes="card" Width="220" Padding="10"><Grid><StackPanel Spacing="8"><Image Source="{Binding Image}" Height="140" Stretch="Uniform"/><TextBlock Text="{Binding Resolution}" FontSize="10" Classes="secondary" HorizontalAlignment="Right"/><TextBlock Text="{Binding Type}" FontWeight="SemiBold"/><TextBlock Text="{Binding Path}" Classes="secondary" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></StackPanel><Button Content="×" Click="RemoveArtwork" DoubleTapped="StopArtworkDoubleTap" Width="24" Height="24" MinWidth="24" MinHeight="24" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip.Tip="{DynamicResource L47C05BA64670}" AutomationProperties.Name="{DynamicResource L47C05BA64670}"/></Grid></Border></DataTemplate></ListBox.ItemTemplate>
                   </ListBox>
                   </StackPanel>
                 </TabItem>
