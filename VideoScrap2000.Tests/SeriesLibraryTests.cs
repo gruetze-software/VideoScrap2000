@@ -14,6 +14,18 @@ namespace VideoScrap2000.Tests;
 
 public sealed class SeriesLibraryTests
 {
+    [Fact]
+    public void DuplicateNetworkEntriesAreReadOnceWhileDifferentEpisodeEditionsRemain()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var first = Path.Combine(folder, "Example S01E01.mkv");
+        var edition = Path.Combine(folder, "Example S01E01 extended.mkv");
+        var second = Path.Combine(folder, "Example S01E02.mkv");
+        var episodes = SeriesLibrary.ReadEpisodes([first, edition, second, first, second, edition], TestContext.Current.CancellationToken);
+        Assert.Equal(new[] { first, edition, second }, episodes.Select(episode => episode.VideoPath));
+        Assert.Equal(new[] { "1", "1", "2" }, episodes.Select(episode => episode.Metadata.Element("episode")!.Value));
+    }
+
     [AvaloniaTheory]
     [InlineData(false, false)]
     [InlineData(true, false)]

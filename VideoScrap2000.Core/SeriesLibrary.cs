@@ -10,6 +10,7 @@ public sealed record SeriesShow(string FolderPath, string NfoPath, XElement Meta
 
 public static partial class SeriesLibrary
 {
+    private static readonly object DirectoryEnumerationLock = new();
     [GeneratedRegex(@"(?<!\d)(?:S(?<season>\d{1,3})[ ._-]*E|(?<season>\d{1,3})x)(?<episode>\d{1,4})(?!\d)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex EpisodeNumber();
     [GeneratedRegex(@"^(?:season|staffel)[ ._-]*(\d{1,3})$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
@@ -58,21 +59,39 @@ public static partial class SeriesLibrary
             token.ThrowIfCancellationRequested();
             var nfo = Path.Combine(folder, "tvshow.nfo");
             var hasNfo = File.Exists(nfo);
-            var episodes = new List<SeriesEpisode>();
-            foreach (var file in Directory.EnumerateFiles(folder, "*", new EnumerationOptions
-            {
-                RecurseSubdirectories = true,
-                IgnoreInaccessible = true,
-                AttributesToSkip = FileAttributes.ReparsePoint
-            }))
+            string[] files;
+            // Some SMB servers mix directory results when several recursive enumerators
+            // run concurrently. Snapshot one directory tree at a time, then read NFOs in parallel.
+            lock (DirectoryEnumerationLock)
             {
                 token.ThrowIfCancellationRequested();
-                if (MovieManager.VideoExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())) episodes.Add(ReadEpisode(file));
+                files = Directory.EnumerateFiles(folder, "*", new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    IgnoreInaccessible = true,
+                    AttributesToSkip = FileAttributes.ReparsePoint
+                }).Select(file => { token.ThrowIfCancellationRequested(); return file; }).ToArray();
             }
+            var episodes = ReadEpisodes(files, token);
             if (episodes.Count == 0 && !hasNfo) return null;
             var metadata = ReadMetadata(nfo, "tvshow");
             metadata.SetElementValue("title", (string?)metadata.Element("title") ?? Path.GetFileName(folder));
             return new(folder, nfo, metadata, episodes, hasNfo);
+    }
+
+    internal static List<SeriesEpisode> ReadEpisodes(IEnumerable<string> files, CancellationToken token)
+    {
+        var episodes = new List<SeriesEpisode>();
+        // Network directory enumeration can return the same entry more than once.
+        // Deduplicate by file path, never by season/episode: distinct editions remain editable.
+        var seen = new HashSet<string>(LibrarySources.PathComparer);
+        foreach (var file in files)
+        {
+            token.ThrowIfCancellationRequested();
+            if (MovieManager.VideoExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())
+                && seen.Add(Path.GetFullPath(file))) episodes.Add(ReadEpisode(file));
+        }
+        return episodes;
     }
 
     public static SeriesEpisode ReadEpisode(string video)
