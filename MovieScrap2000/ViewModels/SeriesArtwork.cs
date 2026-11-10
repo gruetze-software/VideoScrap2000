@@ -38,8 +38,14 @@ public partial class SeriesViewModel
     private bool refreshingArtworkTiles;
     [ObservableProperty] private SeriesPicture? fanartPreview;
     [ObservableProperty] private SeriesPicture? backgroundPreview;
-    [ObservableProperty] private SeriesPicture? seasonBannerPreview;
-    [ObservableProperty] private SeriesPicture? seasonPosterPreview;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSeasonBannerPreview))]
+    private SeriesPicture? seasonBannerPreview;
+    public bool HasSeasonBannerPreview => SeasonBannerPreview is not null;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSeasonPosterPreview))]
+    private SeriesPicture? seasonPosterPreview;
+    public bool HasSeasonPosterPreview => SeasonPosterPreview is not null;
     [ObservableProperty] private IReadOnlyList<SeriesArtworkTile> artworkTiles = [];
     [ObservableProperty] private SeriesArtworkTile? selectedSeriesArtwork;
     [ObservableProperty] private ActorEditor? selectedActor;

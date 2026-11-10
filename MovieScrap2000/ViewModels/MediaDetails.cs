@@ -28,6 +28,15 @@ public partial class MainViewModel
 
 public partial class SeriesViewModel
 {
+    private static async Task<bool> ReadEpisodeMediaAsync(SeriesEpisodeRow episode, CancellationToken token)
+    {
+        var info = await TechnicalMediaReader.ReadAsync(episode.Episode.VideoPath, token);
+        token.ThrowIfCancellationRequested();
+        if (info is null) return false;
+        episode.Editor.MediaInfo = info;
+        return true;
+    }
+
     [RelayCommand]
     private async Task RefreshEpisodeMediaAsync()
     {

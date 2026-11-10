@@ -13,7 +13,10 @@ public partial class SeriesViewModel
     private static readonly HttpClient TvmazeClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private static readonly string[] EpisodePictureExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
-    [ObservableProperty] private SeriesPicture? episodePicture;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEpisodePicture))]
+    private SeriesPicture? episodePicture;
+    public bool HasEpisodePicture => EpisodePicture is not null;
 
     private static string EpisodePictureStem(SeriesEpisodeRow row) =>
         Path.Combine(Path.GetDirectoryName(row.Episode.VideoPath)!,

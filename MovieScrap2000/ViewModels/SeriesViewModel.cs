@@ -44,7 +44,10 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
             case 3: SelectedSeriesArtwork = null; SelectedSeriesArtwork = ArtworkTiles.FirstOrDefault(); break;
         }
     }
-    [ObservableProperty] private SeriesShowRow? selectedShow;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedShow))]
+    private SeriesShowRow? selectedShow;
+    public bool HasSelectedShow => SelectedShow is not null;
     [ObservableProperty] private SeriesSeason? selectedSeason;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedEpisode))]
@@ -372,6 +375,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
             using var tvdb = new TvdbScraper(main.Scrapers);
             try
             {
+                await ReadEpisodeMediaAsync(row, token);
                 var result = useTvdb ? await tvdb.GetEpisodeAsync(id, season, number, main.MetadataLanguage, token)
                     : await scraper.GetEpisodeDetailsAsync(id, season, number, main.MetadataLanguage, token);
                 token.ThrowIfCancellationRequested();
@@ -416,6 +420,11 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
                 {
                     token.ThrowIfCancellationRequested();
                     var group = groups[index];
+                    foreach (var row in group)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        if (await ReadEpisodeMediaAsync(row, token)) show.PendingEpisodeUpdates.Add(row);
+                    }
                     JsonElement season;
                     try { season = useTvdb ? await tvdb.GetSeasonAsync(id, group.Key, main.MetadataLanguage, token)
                         : await scraper.GetSeasonDetailsAsync(id, group.Key, main.MetadataLanguage, token); }

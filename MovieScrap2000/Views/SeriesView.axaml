@@ -21,10 +21,10 @@
         </ListBox>
       </Grid>
     </Border>
-    <Border Grid.Column="2" Classes="card" Padding="20" IsVisible="{Binding !SelectedShow}">
+    <Border Grid.Column="2" Classes="card" Padding="20" IsVisible="{Binding !HasSelectedShow}">
       <TextBlock Text="{DynamicResource L9290FD1CF9E4}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
     </Border>
-    <Border Grid.Column="2" Classes="card" Padding="16" IsVisible="{Binding !!SelectedShow}" ClipToBounds="True">
+    <Border Grid.Column="2" Classes="card" Padding="16" IsVisible="{Binding HasSelectedShow}" ClipToBounds="True">
       <Grid RowDefinitions="Auto,Auto,*">
         <Border Grid.RowSpan="3" Margin="-16" IsVisible="{Binding UseFanartBackground}" IsHitTestVisible="False">
           <views:MoviePosterThumbnail DataContext="{Binding BackgroundPreview}" DecodeWidth="960"
@@ -35,7 +35,7 @@
           <Button Grid.Column="1" Content="TheTVDB ↗" IsVisible="{Binding IsTvdbSource}" Click="OpenMetadataSource" Margin="8,0,0,0"/>
           <views:MediaBadgesView Grid.Column="2" Info="{Binding EpisodeEditor.MediaInfo}" FilePath="{Binding SelectedEpisode.Episode.VideoPath}" MaxWidth="350" Margin="12,0,0,0"/>
         </Grid>
-        <Border Grid.Row="1" IsVisible="{Binding !!SeasonBannerPreview}" CornerRadius="6"
+        <Border Grid.Row="1" IsVisible="{Binding HasSeasonBannerPreview}" CornerRadius="6"
                 ClipToBounds="True" Margin="4,0,4,12" MaxHeight="160">
           <views:MoviePosterThumbnail x:Name="SeasonBanner" DataContext="{Binding SeasonBannerPreview}"
                                       DecodeWidth="1800" AspectRatio="5.4" MaxHeight="160" Stretch="Uniform"
@@ -154,13 +154,13 @@
                 <ScrollViewer>
                   <StackPanel Margin="0,0,8,12" Spacing="2">
                     <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,8">
-                      <Border IsVisible="{Binding !!SeasonPosterPreview}" Width="120" Height="180"
+                      <Border IsVisible="{Binding HasSeasonPosterPreview}" Width="120" Height="180"
                               CornerRadius="6" ClipToBounds="True" Margin="0,0,12,0" VerticalAlignment="Top">
                         <views:MoviePosterThumbnail x:Name="EpisodeSeasonPoster" DataContext="{Binding SeasonPosterPreview}"
                                                     DecodeWidth="360" Stretch="Uniform" DoubleTapped="OpenPicture"
                                                     ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
                       </Border>
-                      <Border Grid.Column="1" IsVisible="{Binding !!EpisodePicture}" Height="180"
+                      <Border Grid.Column="1" IsVisible="{Binding HasEpisodePicture}" Height="180"
                               CornerRadius="6" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Top">
                         <views:MoviePosterThumbnail x:Name="EpisodeStill" DataContext="{Binding EpisodePicture}"
                                                     DecodeWidth="720" Height="180" HorizontalAlignment="Left"

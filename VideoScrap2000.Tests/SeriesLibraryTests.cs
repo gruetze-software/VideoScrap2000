@@ -15,6 +15,45 @@ namespace VideoScrap2000.Tests;
 public sealed class SeriesLibraryTests
 {
     [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task EpisodeSearchRefreshesExistingStreamDetailsEvenWithoutOnlineMatch(bool all, bool missing)
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var folder = Path.Combine(root, "Example");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "technical.mp4"), Path.Combine(folder, "Example S01E01.mp4"));
+            using var main = new MainViewModel(settings: new AppSettings { SeriesPath = root });
+            using var handler = new StreamLookupHandler(missing);
+            var series = new SeriesViewModel(main, () => new TMDbScraperManager(new HttpClient(handler, false)));
+            await series.ScanAsync();
+            series.ShowEditor!.TmdbId = "123";
+            series.EpisodeEditor!.MediaInfo = new() { StreamDetails = new() { VideoStream = new() { Width = 9999 } } };
+            if (all) await series.FindAllEpisodesCommand.ExecuteAsync(null);
+            else await series.FindEpisodeAsync();
+            Assert.Equal(160, series.EpisodeEditor.MediaInfo!.StreamDetails.VideoStream.Width);
+            if (all) Assert.True(series.HasPendingEpisodeUpdates);
+            await series.SaveEpisodeCommand.ExecuteAsync(null);
+            var saved = XDocument.Load(Path.Combine(folder, "Example S01E01.nfo"));
+            Assert.Equal("160", saved.Root!.Element("fileinfo")!.Element("streamdetails")!.Element("video")!.Element("width")!.Value);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    private sealed class StreamLookupHandler(bool missing) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(missing ? HttpStatusCode.NotFound : HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"id\":123,\"name\":\"Pilot\",\"episodes\":[{\"id\":123,\"episode_number\":1,\"name\":\"Pilot\"}]}")
+            });
+    }
+
+    [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task EitherSaveButtonPersistsShowAndArtworkAlongsideSelectedEpisode(bool useShowButton)
@@ -113,6 +152,12 @@ public sealed class SeriesLibraryTests
                 var buttonPosition = episodeButton.TranslatePoint(default, seriesView)!.Value;
                 Assert.True(bannerPosition.Y + banner.Bounds.Height <= buttonPosition.Y);
                 var bannerFrame = (Control)banner.Parent!;
+                Assert.True(bannerFrame.IsVisible);
+                var picture = main.Series.SeasonBannerPreview;
+                main.Series.SeasonBannerPreview = null;
+                Assert.False(bannerFrame.IsVisible);
+                main.Series.SeasonBannerPreview = picture;
+                Assert.True(bannerFrame.IsVisible);
                 var previousWidth = bannerFrame.Bounds.Width;
                 window.Width += 180;
                 await Task.Delay(30, TestContext.Current.CancellationToken);
