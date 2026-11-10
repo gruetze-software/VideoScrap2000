@@ -1,4 +1,4 @@
-<Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:loc="using:VideoScrap2000.Localization" x:Class="VideoScrap2000.App" RequestedThemeVariant="Default">
+<Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:loc="using:VideoScrap2000.Localization" x:Class="VideoScrap2000.App" Name="VideoScrap 2000" RequestedThemeVariant="Default">
   <Application.Resources>
     <ResourceDictionary>
       <loc:TranslateConverter x:Key="Translate"/>
