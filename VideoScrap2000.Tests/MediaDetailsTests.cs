@@ -24,7 +24,10 @@ public sealed class MediaDetailsTests
     public void MediaHeaderUsesVectorIconsAndOneFlagPerAudioTrack()
     {
         var control = new MediaBadgesView { Info = new() { StreamDetails = new() { VideoStream = new() { Width = 1920, Height = 1080, Codec = "h264", Aspect = 1.78m }, AudioStreams = [new() { Language = "ger", Codec = "eac3", Channels = 6 }, new() { Language = "eng", Codec = "aac", Channels = 2 }] } } };
-        var panel = Assert.IsType<Avalonia.Controls.WrapPanel>(control.Content);
+        var viewbox = Assert.IsType<Avalonia.Controls.Viewbox>(control.Content);
+        var panel = Assert.IsType<Avalonia.Controls.StackPanel>(viewbox.Child);
+        Assert.Equal(Avalonia.Layout.Orientation.Horizontal, panel.Orientation);
+        Assert.Equal(22, panel.Height);
         Assert.Equal(5, panel.Children.OfType<Avalonia.Controls.Shapes.Path>().Count());
         Assert.Equal(2, panel.Children.OfType<Avalonia.Controls.Image>().Count());
         Assert.Empty(panel.Children.OfType<Avalonia.Controls.TextBlock>());

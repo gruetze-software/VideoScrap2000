@@ -47,11 +47,11 @@ public sealed class MediaBadgesView : UserControl
     }
     private void Refresh()
     {
-        var panel = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Height = 22, VerticalAlignment = VerticalAlignment.Center };
         foreach (var badge in MediaPresentation.Badges(Info))
         {
             var icon = MediaIconAssets.Icon(badge.Icon, this);
-            icon.Margin = new Thickness(0, 0, 7, 4);
+            icon.Width = 24; icon.Height = 18; icon.VerticalAlignment = VerticalAlignment.Center; icon.Opacity = .65;
             ToolTip.SetTip(icon, badge.Description + ": " + badge.Label);
             Avalonia.Automation.AutomationProperties.SetName(icon, badge.Description + ": " + badge.Label);
             panel.Children.Add(icon);
@@ -60,17 +60,17 @@ public sealed class MediaBadgesView : UserControl
             foreach (var (audio, index) in streams.AudioStreams.Select((audio, index) => (audio, index)))
             {
                 var flag = MediaIconAssets.Flag(MediaIconAssets.Country(audio.Language) ?? MediaIconAssets.Country(audio.LongLanguage), this);
-                flag.Margin = new Thickness(0, 3, 6, 4);
+                flag.Width = 20; flag.Height = 14; flag.VerticalAlignment = VerticalAlignment.Center; flag.Opacity = .8;
                 var description = $"{T("Spur")} {index + 1}: {audio.LongLanguage ?? audio.Language ?? T("Unbekannt")} · {MediaPresentation.Codec(audio.Codec ?? "")} · {audio.Channels} {T("Kanäle")}";
                 ToolTip.SetTip(flag, description); Avalonia.Automation.AutomationProperties.SetName(flag, description); panel.Children.Add(flag);
             }
         AddAction(panel, "M3,1 L13,7 L3,13 Z", "Abspielen", false);
         AddAction(panel, "M1,3 L6,3 L8,5 L15,5 L15,13 L1,13 Z", "Ordner öffnen", true);
-        Content = panel;
+        Content = new Viewbox { Child = panel, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, MaxHeight = 22, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
     }
     private void AddAction(Panel panel, string geometry, string label, bool folder)
     {
-        var button = new Button { Content = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(geometry), Width = 15, Height = 15, Stretch = Stretch.Uniform, Fill = Brushes.Teal }, Padding = new Thickness(6), Margin = new Thickness(0, 0, 5, 4), IsEnabled = !string.IsNullOrWhiteSpace(FilePath) };
+        var button = new Button { Content = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(geometry), Width = 13, Height = 13, Stretch = Stretch.Uniform, Fill = Brushes.Teal }, Padding = new Thickness(3), Width = 22, Height = 22, MinWidth = 22, MinHeight = 22, Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center, Opacity = .8, IsEnabled = !string.IsNullOrWhiteSpace(FilePath) };
         Avalonia.Automation.AutomationProperties.SetName(button, T(label)); ToolTip.SetTip(button, T(label));
         button.Click += async (_, _) =>
         {
