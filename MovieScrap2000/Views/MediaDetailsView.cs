@@ -70,7 +70,7 @@ public sealed class MediaBadgesView : UserControl
     }
     private void AddAction(Panel panel, string geometry, string label, bool folder)
     {
-        var button = new Button { Content = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(geometry), Width = 13, Height = 13, Stretch = Stretch.Uniform, Fill = Brushes.Teal }, Padding = new Thickness(3), Width = 22, Height = 22, MinWidth = 22, MinHeight = 22, Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center, Opacity = .8, IsEnabled = !string.IsNullOrWhiteSpace(FilePath) };
+        var button = new Button { Content = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(geometry), Width = 12, Height = 12, Stretch = Stretch.Uniform, Fill = Brushes.Teal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center, Width = 22, Height = 22, MinWidth = 22, MinHeight = 22, Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center, Opacity = .8, IsEnabled = !string.IsNullOrWhiteSpace(FilePath) };
         Avalonia.Automation.AutomationProperties.SetName(button, T(label)); ToolTip.SetTip(button, T(label));
         button.Click += async (_, _) =>
         {
