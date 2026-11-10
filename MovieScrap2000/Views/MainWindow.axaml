@@ -77,7 +77,10 @@
                   </Grid>
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="6">
-                  <TextBlock Text="{Binding Title}" FontSize="25" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding Title}" FontSize="25" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                    <views:MediaBadgesView Grid.Column="1" Info="{Binding MediaInfo}" FilePath="{Binding SelectedMovie.VideoFilePath}" MaxWidth="350"/>
+                  </Grid>
                   <TextBlock Text="{Binding Tagline}" Classes="secondary" FontStyle="Italic" TextWrapping="Wrap"/>
                   <TextBlock Text="{DynamicResource LD92244697AF0}" Classes="label"/><TextBox Text="{Binding OriginalTitle}" IsEnabled="{Binding CanEdit}"/>
                   <Grid ColumnDefinitions="100,12,*,12,*">
@@ -172,8 +175,7 @@
                     </Grid>
                     <TextBlock Text="{DynamicResource L9564EAD4C35A}" Classes="label"/><TextBox Text="{Binding Studios}"/>
                     <TextBlock Text="{DynamicResource LBE2382585699}" Classes="label"/><TextBox Text="{Binding Tags}"/>
-                    <TextBlock Text="{DynamicResource LF798EA1FD3E6}" FontWeight="SemiBold" FontSize="16" Margin="0,22,0,8"/>
-                    <TextBlock Text="{Binding TechnicalDetails}" TextWrapping="Wrap" Classes="secondary"/>
+                    <views:MediaDetailsView Info="{Binding MediaInfo}" ReadCommand="{Binding RefreshMediaInfoCommand}"/>
                     <TextBlock Text="{DynamicResource L410C089D3C78}" Classes="label"/>
                     <Button Click="OpenVideoFile" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Background="Transparent" Padding="0" IsEnabled="{Binding HasSelection}">

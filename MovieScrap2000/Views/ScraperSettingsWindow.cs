@@ -10,18 +10,10 @@ public sealed class ScraperSettingsWindow : Window
 {
     public ScraperSettingsWindow(ScraperSettings current)
     {
-        Title = T("Scraper und API-Zugänge"); Width = 660; Height = 650; MinWidth = 500; MinHeight = 420;
+        Title = T("Scraper"); Width = 560; Height = 510; MinWidth = 450; MinHeight = 400;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var panel = new StackPanel { Spacing = 10 };
         void Label(string text) => panel.Children.Add(new TextBlock { Text = T(text), TextWrapping = Avalonia.Media.TextWrapping.Wrap });
-        TextBox Secret(string text, string value)
-        {
-            Label(text);
-            var input = new TextBox { Text = value, PasswordChar = '●', PlaceholderText = T("Optional") };
-            input.Classes.Add("apiCredential");
-            Avalonia.Automation.AutomationProperties.SetName(input, T(text));
-            panel.Children.Add(input); return input;
-        }
         CheckBox Toggle(string text, bool value)
         {
             var check = new CheckBox { Content = T(text), IsChecked = value }; panel.Children.Add(check); return check;
@@ -32,19 +24,15 @@ public sealed class ScraperSettingsWindow : Window
             button.Click += async (_, _) => { try { await Launcher.LaunchUriAsync(new Uri(url)); } catch { status.Text = T("Der Link konnte nicht geöffnet werden."); } };
             panel.Children.Add(button);
         }
-        Label("In offiziellen Builds brauchst du keine eigenen API-Keys. TMDB, Fanart.tv und TheTVDB verwenden die enthaltenen Projektzugänge; TVmaze benötigt keinen Key. Eigene Zugangsdaten sind optional. Sie werden nur lokal und ohne Verschlüsselung gespeichert. Teile deine Einstellungsdatei nicht.");
-        var tmdb = Secret("TMDB · API Read Access Token (v4)", current.TmdbReadToken);
-        Link("TMDB-Zugang beantragen ↗", "https://www.themoviedb.org/settings/api");
+        Label("Die Projektzugänge sind enthalten. Eigene API-Keys sind nicht nötig.");
         var tmdbImages = Toggle("Bilder von TMDB", current.EnableTmdbArtwork);
+        Link("TMDB ↗", "https://www.themoviedb.org/");
         var fanart = Toggle("Bilder von Fanart.tv", current.EnableFanart);
-        var personal = Secret("Fanart.tv · persönlicher API-Key", current.FanartPersonalKey);
-        Link("Fanart.tv · persönlichen Key erstellen ↗", "https://fanart.tv/get-an-api-key/");
+        Link("Fanart.tv ↗", "https://fanart.tv/");
         var maze = Toggle("TVmaze · zusätzliche Episodenbilder (ohne API-Key)", current.EnableTvmaze);
         Link("TVmaze ↗", "https://www.tvmaze.com/api");
         var tvdb = Toggle("TheTVDB für Serien aktivieren", current.EnableTvdb);
-        Label("Der TheTVDB-Projektzugang ist in offiziellen Builds enthalten. Ein eigener API-Key ist nicht erforderlich. Eine persönliche PIN wird nur benötigt, wenn der Anbieter sie für den Projektzugang verlangt.");
-        var pin = Secret("TheTVDB · persönliche PIN", current.TvdbPin);
-        Link("TheTVDB · Zugang und Kosten ↗", "https://www.thetvdb.com/api-information");
+        Link("TheTVDB ↗", "https://www.thetvdb.com/");
         Label("Standardquelle für Serien");
         var source = new ComboBox { ItemsSource = new[] { "TMDB", "TheTVDB" }, SelectedIndex = current.SeriesProvider == "TheTVDB" ? 1 : 0 };
         source.IsEnabled = tvdb.IsChecked == true;
@@ -62,7 +50,10 @@ public sealed class ScraperSettingsWindow : Window
         var save = new Button { Content = T("Übernehmen") };
         save.Click += (_, _) =>
         {
-            var result = new ScraperSettings { TmdbReadToken = tmdb.Text ?? "", FanartPersonalKey = personal.Text ?? "", TvdbApiKey = current.TvdbApiKey, TvdbPin = pin.Text ?? "", EnableTmdbArtwork = tmdbImages.IsChecked == true, EnableFanart = fanart.IsChecked == true, EnableTvmaze = maze.IsChecked == true, EnableTvdb = tvdb.IsChecked == true, SeriesProvider = source.SelectedIndex == 1 ? "TheTVDB" : "TMDB" };
+            var result = current.Copy();
+            result.EnableTmdbArtwork = tmdbImages.IsChecked == true; result.EnableFanart = fanart.IsChecked == true;
+            result.EnableTvmaze = maze.IsChecked == true; result.EnableTvdb = tvdb.IsChecked == true;
+            result.SeriesProvider = source.SelectedIndex == 1 ? "TheTVDB" : "TMDB";
             try { result.Normalize(); Close(result); } catch (InvalidOperationException ex) { status.Text = T(ex.Message); }
         };
         buttons.Children.Add(cancel); buttons.Children.Add(save);

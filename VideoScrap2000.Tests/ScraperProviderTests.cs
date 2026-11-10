@@ -19,7 +19,7 @@ public sealed class ScraperProviderTests
     [AvaloniaTheory]
     [InlineData("de")]
     [InlineData("en")]
-    public void ScraperDialogMasksCredentialsAndCancelDoesNotChangeSettings(string language)
+    public void ScraperDialogNeedsNoCredentialsAndCancelDoesNotChangeSettings(string language)
     {
         var previous = VideoScrap2000.Localization.Locale.IsEnglish ? "en" : "de";
         VideoScrap2000.Localization.Locale.Apply(language);
@@ -29,12 +29,14 @@ public sealed class ScraperProviderTests
         try
         {
             var inputs = dialog.GetVisualDescendants().OfType<TextBox>().Where(input => input.Classes.Contains("apiCredential")).ToArray();
-            Assert.Equal(3, inputs.Length);
-            Assert.All(inputs, input => Assert.Equal('●', input.PasswordChar));
-            inputs[0].Text = "changed";
+            Assert.Empty(inputs);
+            var toggles = dialog.GetVisualDescendants().OfType<CheckBox>().ToArray();
+            Assert.Equal(4, toggles.Length);
+            toggles[0].IsChecked = false;
             var cancel = dialog.GetVisualDescendants().OfType<Button>().Single(button => button.IsCancel);
             cancel.RaiseEvent(new(Button.ClickEvent));
             Assert.Equal("secret", settings.TmdbReadToken);
+            Assert.True(settings.EnableTmdbArtwork);
         }
         finally { dialog.Close(); VideoScrap2000.Localization.Locale.Apply(previous); }
     }

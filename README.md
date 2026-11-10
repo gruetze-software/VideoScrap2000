@@ -53,7 +53,7 @@ Metadata and artwork are saved locally as movie NFOs, `tvshow.nfo`, episode NFOs
 
 Metadata and images follow your client language by default, with separate overrides in Settings. Availability varies by title. [Language details](docs/languages.md).
 
-Version 1.3 development adds optional TheTVDB support for TV shows and personal API credentials. [Scraper setup and access requirements](docs/scrapers.md).
+Version 1.4 development adds optional TheTVDB support for TV shows, simple source switches and refreshed media details. No personal API keys are required. [Scraper setup](docs/scrapers.md).
 
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 

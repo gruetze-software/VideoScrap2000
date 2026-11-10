@@ -266,6 +266,13 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
 
     private async Task SaveShowFilesAsync(SeriesShowRow show, CancellationToken token)
     {
+        var actors = show.Editor.Actors.Select(actor => actor.ToActor()).ToArray();
+        await Task.Run(() => ArtworkOptimizer.OptimizeActorPortraitsAsync(show.Show.FolderPath, actors, (ArtworkProfile)main.ArtworkOptimizationProfile, token), token);
+        for (var index = 0; index < actors.Length; index++)
+        {
+            show.Editor.Actors[index].Thumb = actors[index].Thumb ?? "";
+            show.Editor.Actors[index].ThumbData = actors[index].ThumbData;
+        }
         var data = show.Editor.ToXml(isEpisode: false);
         await Task.Run(() => SeriesLibrary.SaveAsync(show.Show.NfoPath, data, SeriesNfoEditor.ShowFields, token), token);
         show.Editor.HasNfo = true;
@@ -535,7 +542,9 @@ public sealed class SeriesEpisodeRow(SeriesEpisode episode)
 public partial class SeriesNfoEditor : ObservableObject
 {
     internal static readonly string[] ShowFields = ["title", "originaltitle", "plot", "premiered", "status", "genre", "studio", "country", "tag", "mpaa", "uniqueid", "actor", "videoscrap2000-provider"];
-    internal static readonly string[] EpisodeFields = ["title", "plot", "season", "episode", "aired", "runtime", "director", "credits", "uniqueid"];
+    internal static readonly string[] EpisodeFields = ["title", "plot", "season", "episode", "aired", "runtime", "director", "credits", "uniqueid", "fileinfo"];
+    [ObservableProperty] private MovieFileInfo? mediaInfo;
+    private readonly XElement? originalFileInfo;
 
     [ObservableProperty] private string title;
     [ObservableProperty] private string originalTitle;
@@ -574,6 +583,16 @@ public partial class SeriesNfoEditor : ObservableObject
         string ReadId(string type) => metadata.Elements("uniqueid").FirstOrDefault(element =>
             string.Equals((string?)element.Attribute("type"), type, StringComparison.OrdinalIgnoreCase))?.Value ?? "";
         title = Read("title"); originalTitle = Read("originaltitle"); plot = Read("plot");
+        originalFileInfo = metadata.Element("fileinfo") is { } fileInfo ? new XElement(fileInfo) : null;
+        if (originalFileInfo is not null)
+        {
+            try
+            {
+                using var reader = originalFileInfo.CreateReader();
+                mediaInfo = new System.Xml.Serialization.XmlSerializer(typeof(MovieFileInfo), new System.Xml.Serialization.XmlRootAttribute("fileinfo")).Deserialize(reader) as MovieFileInfo;
+            }
+            catch (InvalidOperationException) { }
+        }
         MetadataProvider = Read("videoscrap2000-provider") == "TheTVDB" ? "TheTVDB" : "TMDB";
         date = Read(metadata.Name == "tvshow" ? "premiered" : "aired"); status = Read("status");
         genres = ReadList("genre"); studios = ReadList("studio"); certification = Read("mpaa");
@@ -677,6 +696,17 @@ public partial class SeriesNfoEditor : ObservableObject
             foreach (var item in value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) Add(name, item);
         }
         Add("plot", Plot);
+        if (isEpisode)
+        {
+            if (MediaInfo is not null)
+            {
+                var document = new XDocument();
+                using (var writer = document.CreateWriter())
+                    new System.Xml.Serialization.XmlSerializer(typeof(MovieFileInfo), new System.Xml.Serialization.XmlRootAttribute("fileinfo")).Serialize(writer, MediaInfo);
+                root.Add(document.Root!);
+            }
+            else if (originalFileInfo is not null) root.Add(new XElement(originalFileInfo));
+        }
         if (!isEpisode) Add("videoscrap2000-provider", MetadataProvider);
         if (isEpisode)
         {

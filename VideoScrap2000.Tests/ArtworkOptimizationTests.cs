@@ -26,6 +26,8 @@ public sealed class ArtworkOptimizationTests : IDisposable
     [InlineData(ArtworkProfile.Balanced, "fanart", 2560, 1440, 1920, 1080)]
     [InlineData(ArtworkProfile.Compact, "banner", 2000, 400, 1280, 256)]
     [InlineData(ArtworkProfile.Compact, "thumb", 320, 180, 320, 180)]
+    [InlineData(ArtworkProfile.Compact, "actor", 1200, 1800, 300, 450)]
+    [InlineData(ArtworkProfile.Balanced, "actor", 1200, 1800, 500, 750)]
     public void ProfilesKeepAspectAndNeverUpscale(ArtworkProfile profile, string kind, int width, int height, int expectedWidth, int expectedHeight)
     {
         var output = ArtworkOptimizer.Optimize(Picture(width, height), kind, profile);
@@ -35,6 +37,28 @@ public sealed class ArtworkOptimizationTests : IDisposable
         Assert.Equal(SKEncodedImageFormat.Jpeg, codec.EncodedFormat);
         Assert.True(HasJpegMarker(output.Bytes, 0xc0));
         Assert.False(HasJpegMarker(output.Bytes, 0xc2));
+    }
+
+    [Fact]
+    public async Task ActorPortraitsUseProfileLimitsPreserveOriginalsAndIncludeActorsInBatch()
+    {
+        var actorFolder = Path.Combine(folder, ".actors"); Directory.CreateDirectory(actorFolder);
+        var local = Path.Combine(actorFolder, "Local.png");
+        await File.WriteAllBytesAsync(local, Picture(1200, 1800), TestContext.Current.CancellationToken);
+        var plans = await ArtworkOptimizer.AnalyzeAsync(folder, ArtworkProfile.Compact, _ => { }, TestContext.Current.CancellationToken);
+        Assert.Equal("actor", Assert.Single(plans).Kind);
+        await File.WriteAllBytesAsync(Path.Combine(actorFolder, "Broken.jpg"), [0], TestContext.Current.CancellationToken);
+        var actors = new Actor[] { new() { Name = "Local", Thumb = ".actors/Local.png" }, new() { Name = "Downloaded", ThumbData = Picture(1200, 1800) } };
+        await ArtworkOptimizer.OptimizeActorPortraitsAsync(folder, actors, ArtworkProfile.Compact, TestContext.Current.CancellationToken);
+        foreach (var actor in actors)
+        {
+            using var image = SKBitmap.Decode(Path.Combine(folder, actor.Thumb!));
+            Assert.Equal(300, image.Width); Assert.Equal(450, image.Height);
+        }
+        Assert.True(Directory.Exists(Path.Combine(actorFolder, ArtworkOptimizer.OriginalFolder)));
+        Assert.Equal(new byte[] { 0 }, await File.ReadAllBytesAsync(Path.Combine(actorFolder, "Broken.jpg"), TestContext.Current.CancellationToken));
+        var small = Picture(185, 278);
+        Assert.Same(small, ArtworkOptimizer.Optimize(small, "actor", ArtworkProfile.Compact).Bytes);
     }
 
     [Fact]

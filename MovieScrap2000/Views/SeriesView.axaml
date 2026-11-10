@@ -30,9 +30,10 @@
           <views:MoviePosterThumbnail DataContext="{Binding BackgroundPreview}" DecodeWidth="960"
                                       Stretch="UniformToFill" Opacity="0.20"/>
         </Border>
-        <Grid ColumnDefinitions="*,Auto" Margin="4,0,4,10">
+        <Grid ColumnDefinitions="*,Auto,Auto" Margin="4,0,4,10">
           <TextBlock Text="{Binding ShowEditor.Title}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
           <Button Grid.Column="1" Content="TheTVDB ↗" IsVisible="{Binding IsTvdbSource}" Click="OpenMetadataSource" Margin="8,0,0,0"/>
+          <views:MediaBadgesView Grid.Column="2" Info="{Binding EpisodeEditor.MediaInfo}" FilePath="{Binding SelectedEpisode.Episode.VideoPath}" MaxWidth="350" Margin="12,0,0,0"/>
         </Grid>
         <Border Grid.Row="1" IsVisible="{Binding !!SeasonBannerPreview}" CornerRadius="6"
                 ClipToBounds="True" Margin="4,0,4,12" MaxHeight="160">
@@ -182,6 +183,7 @@
                     <TextBlock Text="{DynamicResource L5C9FECD4DF0A}" Classes="label"/>
                     <TextBox Text="{Binding EpisodeEditor.Plot}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="100"/>
                     <TextBlock Text="{Binding SelectedEpisodePath}" Classes="secondary" TextWrapping="Wrap" FontSize="11" Margin="0,8,0,0"/>
+                    <views:MediaDetailsView Info="{Binding EpisodeEditor.MediaInfo}" ReadCommand="{Binding RefreshEpisodeMediaCommand}"/>
                   </StackPanel>
                 </ScrollViewer>
                 <WrapPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,8,0,0">

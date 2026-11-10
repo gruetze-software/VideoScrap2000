@@ -1,11 +1,11 @@
-# Scrapers and API access (1.3)
+# Scrapers (1.4)
 
-Open **Settings → Scrapers and API access**. Official builds include project access for TMDB, Fanart.tv and TheTVDB. **You do not need your own API keys.** Existing installations continue to work without additional setup.
+Open **Settings → Scrapers**. Official builds include project access for TMDB, Fanart.tv and TheTVDB. **You do not need your own API keys.** Choose providers with the checkboxes and follow the links for provider information.
 
-| Provider | Use | Optional credentials |
+| Provider | Use | Access |
 | --- | --- | --- |
-| TMDB | Movie and TV-show metadata; artwork | Your **API Read Access Token (v4)**, not the v3 API key |
-| Fanart.tv | Movie, show and season artwork | Your personal API key, used alongside the bundled project key |
+| TMDB | Movie and TV-show metadata; artwork | Included project access |
+| Fanart.tv | Movie, show and season artwork | Included project access |
 | TVmaze | Fallback episode stills | No API key |
 | TheTVDB | Optional TV-show search, metadata, episodes and artwork | Included project access; no personal API key required |
 
@@ -13,9 +13,9 @@ Movies continue to use TMDB. For TV shows, choose a default metadata provider or
 
 Artwork from TMDB, Fanart.tv and TVmaze can be enabled or disabled independently. Enabling TheTVDB also makes its available series artwork searchable. The configured artwork language is ranked first; other languages remain available. Translated TVDB titles and descriptions use the configured metadata language, falling back to the original data when no translation exists.
 
-TheTVDB remains an optional source. The application's project key has been tested successfully without a subscriber PIN. A PIN field is retained only for access models that require one. You do not need to register a project or purchase a subscription for the tested project access. [TheTVDB access models](https://www.thetvdb.com/api-information).
+TheTVDB remains an optional source. The application's project key has been tested successfully without a subscriber PIN. No separate registration is needed for the tested project access. [TheTVDB](https://www.thetvdb.com/).
 
-Provider links are available next to the credential fields. Blank TMDB and Fanart.tv fields restore bundled access. Credentials are stored in your local settings file **without encryption** and displayed as password fields. Do not share the settings file or include it in bug reports. Access tokens returned by TheTVDB are kept in memory only.
+The dialog has no credential fields. Project access is provided by the build; access tokens returned by TheTVDB are kept in memory only. Existing credential overrides in older settings files remain compatible.
 
 Changes in the scraper dialog are applied to the settings draft; choose **Save** in the main Settings window to persist them. Cancel leaves the active configuration unchanged.
 

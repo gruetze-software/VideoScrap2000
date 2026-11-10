@@ -68,6 +68,9 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.4.0" type="development" date="2026-11-10">
+      <description><p>Adds optional TheTVDB support, simple scraper selection, media badges and refreshable stream details, actor portrait optimization and staged artwork removal.</p><p xml:lang="de">Ergänzt TheTVDB, eine einfache Quellenauswahl, Medien-Symbole und neu einlesbare Streamdetails, optimierte Darstellerbilder und vorgemerktes Entfernen von Artworks.</p></description>
+    </release>
     <release version="1.2.0" type="stable" date="2026-11-09">
       <description>
         <p>Adds multiple movie and TV-show sources in Settings, allows editions in separate folders to share an IMDb ID, migrates existing databases, removes portrait downloads from scans, and displays detailed progress.</p>

@@ -245,12 +245,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanEdit));
         ScanCommand.NotifyCanExecuteChanged();
         SaveCommand.NotifyCanExecuteChanged();
+        RefreshMediaInfoCommand.NotifyCanExecuteChanged();
         RemoveActorCommand.NotifyCanExecuteChanged();
     }
     partial void OnIsDetailReadyChanged(bool value)
     {
         OnPropertyChanged(nameof(CanEdit));
         SaveCommand.NotifyCanExecuteChanged();
+        RefreshMediaInfoCommand.NotifyCanExecuteChanged();
         RemoveActorCommand.NotifyCanExecuteChanged();
     }
     private bool updatingMovieList;
@@ -379,6 +381,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IsDetailReady = false;
         SelectedArtwork = null;
         Poster = null;
+        MediaInfo = null;
         FanartBackground = null;
         foreach (var image in Artwork) image.Dispose();
         Artwork.Clear();
@@ -513,6 +516,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var pendingArtworkTypes = Artwork.Where(image => image.PendingData is not null).Select(image => image.Type).ToHashSet();
         try
         {
+            await Task.Run(() => ArtworkOptimizer.OptimizeActorPortraitsAsync(movie.FolderPath, nfo.Actors, (ArtworkProfile)ArtworkOptimizationProfile, token), token);
             await Task.Run(() => metadata.SaveMovieAsync(nfo, movie.FolderPath, movie.VideoFilePath, false, token,
             saveImage: (folder, stem, image, ct) => pendingArtworkTypes.Contains(image.Type)
                 ? ArtworkOptimizer.SaveMovieImageAsync(folder, stem, image, (ArtworkProfile)ArtworkOptimizationProfile, ct)

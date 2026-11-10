@@ -85,6 +85,7 @@ public partial class MainViewModel
         SelectedActors.Clear(); SelectedActor = null; Actors.Clear();
         foreach (var actor in nfo.Actors) Actors.Add(ActorEditor.From(actor));
         if (DetailTabIndex == 1) SelectFirstDetailEntry();
+        MediaInfo = nfo.FileInfo;
         TechnicalDetails = Localization.Locale.T(DescribeStreams(nfo.FileInfo));
     }
 
@@ -188,6 +189,7 @@ public partial class MainViewModel
             if (info is not null)
             {
                 nfo.FileInfo = info;
+                MediaInfo = info;
                 if (string.IsNullOrWhiteSpace(Runtime) && info.StreamDetails.VideoStream.DurationInSeconds > 0)
                     Runtime = Math.Ceiling(info.StreamDetails.VideoStream.DurationInSeconds / 60d).ToString(CultureInfo.InvariantCulture);
                 TechnicalDetails = Localization.Locale.T(DescribeStreams(info));

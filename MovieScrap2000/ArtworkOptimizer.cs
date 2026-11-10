@@ -15,8 +15,9 @@ internal static class ArtworkOptimizer
 
     internal static string? Kind(string name)
     {
+        if (Path.GetFileName(Path.GetDirectoryName(name)) == ".actors") return "actor";
         var stem = Path.GetFileNameWithoutExtension(name);
-        return new[] { "poster", "fanart", "banner", "landscape", "keyart", "thumb" }
+        return new[] { "poster", "fanart", "banner", "landscape", "keyart", "thumb", "actor" }
             .FirstOrDefault(kind => stem.Equals(kind, StringComparison.OrdinalIgnoreCase)
                 || stem.EndsWith("-" + kind, StringComparison.OrdinalIgnoreCase));
     }
@@ -43,7 +44,14 @@ internal static class ArtworkOptimizer
         var portrait = kind.Equals("poster", StringComparison.OrdinalIgnoreCase);
         var maxWidth = portrait ? profile == ArtworkProfile.Compact ? 600 : 1000 : profile == ArtworkProfile.Compact ? 1280 : 1920;
         var maxHeight = portrait ? profile == ArtworkProfile.Compact ? 900 : 1500 : profile == ArtworkProfile.Compact ? 720 : 1080;
+        var actor = kind.Equals("actor", StringComparison.OrdinalIgnoreCase);
+        if (actor)
+        {
+            maxWidth = profile == ArtworkProfile.Compact ? 300 : 500;
+            maxHeight = profile == ArtworkProfile.Compact ? 450 : 750;
+        }
         var scale = Math.Min(1d, Math.Min((double)maxWidth / width, (double)maxHeight / height));
+        if (actor && scale == 1 && origin == 1) return new(bytes, width, height, false);
         var targetWidth = Math.Max(1, (int)Math.Floor(width * scale));
         var targetHeight = Math.Max(1, (int)Math.Floor(height * scale));
         using var target = new SKBitmap(new SKImageInfo(targetWidth, targetHeight, SKColorType.Bgra8888, SKAlphaType.Opaque, srgb));
@@ -126,7 +134,7 @@ internal static class ArtworkOptimizer
         foreach (var path in Directory.EnumerateFiles(folder, "*", options))
         {
             token.ThrowIfCancellationRequested();
-            if (Path.GetRelativePath(folder, path).Split(Path.DirectorySeparatorChar).Any(part => part.StartsWith('.'))) continue;
+            if (Path.GetRelativePath(folder, path).Split(Path.DirectorySeparatorChar).Any(part => part.StartsWith('.') && part != ".actors")) continue;
             if (Path.GetExtension(path).ToLowerInvariant() is not (".jpg" or ".jpeg" or ".png" or ".webp") || Kind(path) is not { } kind) continue;
             progress(path);
             var bytes = await File.ReadAllBytesAsync(path, token);
@@ -143,5 +151,40 @@ internal static class ArtworkOptimizer
         if (Convert.ToHexString(SHA256.HashData(bytes)) != plan.Hash)
             throw new IOException("Das Bild wurde seit der Vorschau verändert. Bitte erneut prüfen.");
         await SaveAsync(Path.GetDirectoryName(plan.Path)!, Path.GetFileNameWithoutExtension(plan.Path), bytes, plan.Kind, profile, token);
+    }
+
+    internal static async Task OptimizeActorPortraitsAsync(string folder, IReadOnlyList<Actor> actors, ArtworkProfile profile, CancellationToken token)
+    {
+        if (profile == ArtworkProfile.Original) return;
+        var actorFolder = Path.Combine(folder, ".actors");
+        bool NeedsOptimization(byte[] bytes)
+        {
+            try { return Optimize(bytes, "actor", profile).Changed; }
+            catch (InvalidDataException ex) { System.Diagnostics.Trace.WriteLine(ex); return false; }
+        }
+        var local = Directory.Exists(actorFolder) ? Directory.GetFiles(actorFolder)
+            .Where(path => Path.GetExtension(path).ToLowerInvariant() is ".jpg" or ".jpeg" or ".png" or ".webp").ToArray() : [];
+        var renamed = new Dictionary<string, string>(LibrarySources.PathComparer);
+        foreach (var path in local)
+        {
+            token.ThrowIfCancellationRequested();
+            var bytes = await File.ReadAllBytesAsync(path, token);
+            if (!NeedsOptimization(bytes)) continue;
+            renamed[path] = await SaveAsync(actorFolder, Path.GetFileNameWithoutExtension(path), bytes, "actor", profile, token);
+        }
+        foreach (var actor in actors)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!string.IsNullOrWhiteSpace(actor.Thumb) && !Uri.IsWellFormedUriString(actor.Thumb, UriKind.Absolute)
+                && renamed.TryGetValue(Path.GetFullPath(Path.Combine(folder, actor.Thumb)), out var replacement))
+                actor.Thumb = Path.GetRelativePath(folder, replacement).Replace('\\', '/');
+            if (actor.ThumbData is not { Length: > 0 } data || !NeedsOptimization(data) || string.IsNullOrWhiteSpace(actor.Name)) continue;
+            var stem = string.Concat(actor.Name.Select(character => char.IsControl(character) || "<>:\"/\\|?*".Contains(character) ? '_' : character)).Trim().TrimEnd('.').Replace(' ', '_');
+            if (stem.Length == 0) continue;
+            Directory.CreateDirectory(actorFolder);
+            var path = await SaveAsync(actorFolder, stem, data, "actor", profile, token);
+            actor.Thumb = Path.GetRelativePath(folder, path).Replace('\\', '/');
+            actor.ThumbData = await File.ReadAllBytesAsync(path, token);
+        }
     }
 }

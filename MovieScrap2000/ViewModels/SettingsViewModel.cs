@@ -36,12 +36,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private int artworkOptimizationProfile;
     public string OptimizationTitle => Localization.Locale.T("Artwork-Optimierung");
     public string OptimizationAction => Localization.Locale.T("Vorhandene Artworks optimieren …");
-    public string OptimizationInfo => Localization.Locale.T("Optional für Android und schwächere Geräte. Wird beim Speichern neuer Artworks angewendet. Seitenverhältnis bleibt erhalten; kleine Bilder werden nicht vergrößert. Originale bleiben im Unterordner .artwork-originals erhalten. Transparente Bilder und Logos werden nicht verändert.");
+    public string OptimizationInfo => Localization.Locale.T("Optional für Android und schwächere Geräte. Wird beim Speichern neuer Artworks angewendet. Seitenverhältnis bleibt erhalten; kleine Bilder werden nicht vergrößert. Originale bleiben im Unterordner .artwork-originals erhalten. Transparente Bilder und Logos werden nicht verändert.") + " " + Localization.Locale.T("Darstellerbilder: Kompakt bis 300 × 450, Ausgewogen bis 500 × 750 Pixel.");
     public IReadOnlyList<string> OptimizationProfiles => new[] { "Original (unverändert)", "Kompakt · Poster 600 × 900, Fanart 1280 × 720", "Ausgewogen · Poster 1000 × 1500, Fanart 1920 × 1080" }.Select(Localization.Locale.T).ToArray();
     [ObservableProperty] private string status = "";
     [ObservableProperty] private bool isSelectingFolder;
     public MovieScrap2000.ScraperSettings Scrapers { get; set; } = new();
-    public string ScrapersTitle => Localization.Locale.T("Scraper und API-Zugänge …");
+    public string ScrapersTitle => Localization.Locale.T("Scraper …");
     partial void OnStatusChanged(string value)
     {
         var translated = Localization.Locale.T(value);

@@ -41,6 +41,11 @@ public sealed class TechnicalMediaTests
             Assert.Contains(audio.Language, new[] { "de", "deu", "ger" });
             Assert.True(audio.Bitrate > 1000, $"Audio bitrate in bits/s: {audio.Bitrate}");
             Assert.False(File.Exists(Path.ChangeExtension(video, ".nfo")));
+            info.StreamDetails.VideoStream.Width = 9999;
+            Assert.True(model.RefreshMediaInfoCommand.CanExecute(null));
+            await model.RefreshMediaInfoCommand.ExecuteAsync(null);
+            Assert.Equal(160, model.MediaInfo!.StreamDetails.VideoStream.Width);
+            Assert.Equal("Film", model.Title);
             await model.SaveCommand.ExecuteAsync(null);
             var streamDetails = XDocument.Load(Path.ChangeExtension(video, ".nfo")).Root!.Element("fileinfo")!.Element("streamdetails")!;
             Assert.Equal("h264", (string?)streamDetails.Element("video")!.Element("codec"));
