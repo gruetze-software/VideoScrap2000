@@ -8,6 +8,27 @@ namespace VideoScrap2000.Tests;
 
 public sealed class MediaDetailsTests
 {
+    [AvaloniaFact]
+    public void ActionGlyphContoursHaveMatchingTopBottomAndHorizontalCenter()
+    {
+        foreach (var path in new[] { "M3,1 L13,7 L3,13 Z", "M1,3 L6,3 L8,5 L15,5 L15,13 L1,13 Z" })
+        {
+            var glyph = new MediaActionGlyph(path) { Width = 20, Height = 14 };
+            glyph.Measure(new Avalonia.Size(20, 14));
+            glyph.Arrange(new Avalonia.Rect(0, 0, 20, 14));
+            using var rendered = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize(20, 14), new Avalonia.Vector(96, 96));
+            rendered.Render(glyph);
+            using var png = new MemoryStream(); rendered.Save(png, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default); png.Position = 0;
+            using var pixels = SkiaSharp.SKBitmap.Decode(png);
+            var visible = Enumerable.Range(0, 14).SelectMany(y => Enumerable.Range(0, 20).Select(x => (x, y)))
+                .Where(point => pixels.GetPixel(point.x, point.y).Alpha > 32).ToArray();
+            Assert.NotEmpty(visible);
+            Assert.Equal(0, visible.Min(point => point.y));
+            Assert.Equal(13, visible.Max(point => point.y));
+            Assert.InRange((visible.Min(point => point.x) + visible.Max(point => point.x)) / 2d, 9, 10);
+        }
+    }
+
     [Theory]
     [InlineData("deu", "de")]
     [InlineData("ger", "de")]

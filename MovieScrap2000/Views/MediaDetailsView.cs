@@ -70,7 +70,7 @@ public sealed class MediaBadgesView : UserControl
     }
     private void AddAction(Panel panel, string geometry, string label, bool folder)
     {
-        var button = new Button { Content = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(geometry), Width = 12, Height = 12, Stretch = Stretch.Uniform, Fill = Brushes.Teal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center, Width = 22, Height = 22, MinWidth = 22, MinHeight = 22, Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center, Opacity = .8, IsEnabled = !string.IsNullOrWhiteSpace(FilePath) };
+        var button = new Button { Content = new MediaActionGlyph(geometry) { Width = 20, Height = 14, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center, Width = 22, Height = 22, MinWidth = 22, MinHeight = 22, Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center, Opacity = .8, IsEnabled = !string.IsNullOrWhiteSpace(FilePath) };
         Avalonia.Automation.AutomationProperties.SetName(button, T(label)); ToolTip.SetTip(button, T(label));
         button.Click += async (_, _) =>
         {
@@ -86,6 +86,25 @@ public sealed class MediaBadgesView : UserControl
             catch (Exception ex) { ToolTip.SetTip(button, T("Die Datei oder der Ordner konnte nicht geöffnet werden.")); System.Diagnostics.Trace.WriteLine(ex); }
         };
         panel.Children.Add(button);
+    }
+}
+
+internal sealed class MediaActionGlyph(string path) : Control
+{
+    private readonly Geometry geometry = Geometry.Parse(path);
+    public override void Render(DrawingContext context)
+    {
+        base.Render(context);
+        var source = geometry.Bounds;
+        if (source.Width <= 0 || source.Height <= 0) return;
+        // Normalize the actual contour, including its non-zero SVG origin.
+        // Both glyphs fill the same 14-pixel height; the wider folder is not
+        // squeezed into a square and consequently drawn shorter than Play.
+        var scale = Math.Min(Bounds.Width / source.Width, Bounds.Height / source.Height);
+        var transform = Matrix.CreateTranslation(-source.X, -source.Y)
+            * Matrix.CreateScale(scale, scale)
+            * Matrix.CreateTranslation((Bounds.Width - source.Width * scale) / 2, (Bounds.Height - source.Height * scale) / 2);
+        using (context.PushTransform(transform)) context.DrawGeometry(Brushes.Teal, null, geometry);
     }
 }
 
