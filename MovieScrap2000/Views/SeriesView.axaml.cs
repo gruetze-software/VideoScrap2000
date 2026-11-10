@@ -10,6 +10,16 @@ namespace VideoScrap2000.Views;
 
 public partial class SeriesView : UserControl
 {
+    private void RemoveArtwork(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SeriesViewModel model && (sender as Control)?.DataContext is SeriesArtworkTile tile)
+        {
+            model.RemoveArtwork(tile);
+            ListSelection.FocusSelectedItem(SeriesArtworkList);
+        }
+        e.Handled = true;
+    }
+    private void StopArtworkDoubleTap(object? sender, TappedEventArgs e) => e.Handled = true;
     public SeriesView() => InitializeComponent();
     private async void OpenMetadataSource(object? sender, RoutedEventArgs e)
     {

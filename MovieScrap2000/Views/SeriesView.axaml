@@ -213,11 +213,11 @@
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:SeriesArtworkTile">
                       <Border Classes="card" Width="200" Padding="8">
-                        <StackPanel Spacing="6">
+                        <Grid><StackPanel Spacing="6">
                           <views:MoviePosterThumbnail DataContext="{Binding Picture}" DecodeWidth="400" Height="112"
                                                       Stretch="Uniform" DoubleTapped="OpenPicture" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
                           <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                        </StackPanel>
+                        </StackPanel><Button Content="×" Click="RemoveArtwork" DoubleTapped="StopArtworkDoubleTap" Width="24" Height="24" MinWidth="24" MinHeight="24" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip.Tip="{DynamicResource L47C05BA64670}" AutomationProperties.Name="{DynamicResource L47C05BA64670}"/></Grid>
                       </Border>
                     </DataTemplate>
                   </ListBox.ItemTemplate>

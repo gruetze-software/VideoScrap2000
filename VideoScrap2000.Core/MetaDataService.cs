@@ -317,6 +317,21 @@ public class MetadataService : IDisposable
 	/// <param name="cancellationToken"></param>
 	/// <returns></returns>
 	/// <exception cref="Exception"></exception>
+    public async Task RemoveArtworkCacheAsync(int movieId, IEnumerable<string> types, CancellationToken token)
+    {
+        await _dbManager.ExecuteAsync(async connection =>
+        {
+            foreach (var type in types)
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = "DELETE FROM ImageCache WHERE MovieId = @id AND Type = @type COLLATE NOCASE;";
+                command.Parameters.AddWithValue("@id", movieId);
+                command.Parameters.AddWithValue("@type", type);
+                await command.ExecuteNonQueryAsync(token);
+            }
+        });
+    }
+
 	public async Task SaveMovieAsync(
 			Movie movieNfo,
 			string folderPath,

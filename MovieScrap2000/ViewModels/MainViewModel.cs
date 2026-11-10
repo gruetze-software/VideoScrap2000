@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public bool IsDemo { get; }
     public string DemoLabel => Locale.T("Demo-Modus");
     private List<MovieViewModel> allMovies = [];
+    private readonly Dictionary<int, HashSet<string>> removedArtwork = [];
     private CancellationTokenSource? operation;
     private int selectionVersion;
     private CancellationTokenSource? imageLoading;
@@ -404,6 +405,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             if (version != selectionVersion) return;
             foreach (var item in paths)
             {
+                if (removedArtwork.TryGetValue(movie.Id, out var removed) && removed.Contains(item.Type)) continue;
                 try
                 {
                     token.ThrowIfCancellationRequested();
@@ -493,7 +495,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
             : "Metadaten werden gespeichert …";
         var movie = SelectedMovie!;
         var nfo = movie.FullMovieNFO!;
-        await TechnicalDetailsLoadingTask.WaitAsync(token);
+        try { await TechnicalDetailsLoadingTask.WaitAsync(token); }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested) { }
         if (!TechnicalMediaReader.HasVideoDetails(nfo.FileInfo))
         {
             var info = await TechnicalMediaReader.ReadAsync(movie.VideoFilePath, token);
@@ -504,12 +507,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
         nfo.Plot = Plot; nfo.Tagline = Tagline; nfo.Id = Imdb;
         nfo.Genres = Split(Genres).Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
         nfo.Directors = Split(Directors);
-        var artworkChanged = Artwork.Any(image => image.PendingData is not null);
+        var removals = removedArtwork.GetValueOrDefault(movie.Id)?.ToArray() ?? [];
+        nfo.FanArtPics.RemoveAll(image => removals.Contains(image.ImageType));
+        var artworkChanged = removals.Length > 0 || Artwork.Any(image => image.PendingData is not null);
         var pendingArtworkTypes = Artwork.Where(image => image.PendingData is not null).Select(image => image.Type).ToHashSet();
-        try { await Task.Run(() => metadata.SaveMovieAsync(nfo, movie.FolderPath, movie.VideoFilePath, false, token,
+        try
+        {
+            await Task.Run(() => metadata.SaveMovieAsync(nfo, movie.FolderPath, movie.VideoFilePath, false, token,
             saveImage: (folder, stem, image, ct) => pendingArtworkTypes.Contains(image.Type)
                 ? ArtworkOptimizer.SaveMovieImageAsync(folder, stem, image, (ArtworkProfile)ArtworkOptimizationProfile, ct)
-                : Task.CompletedTask), token); }
+                : Task.CompletedTask), token);
+            if (removals.Length > 0)
+            {
+                await Task.Run(() => ArtworkFiles.RemoveNamed(movie.FolderPath, removals.SelectMany(type => ArtworkFiles.MovieStems(movie.VideoFilePath, type)), token), token);
+                await metadata.RemoveArtworkCacheAsync(movie.Id, removals, token);
+                removedArtwork.Remove(movie.Id);
+            }
+        }
         finally { if (artworkChanged) ArtworkPreviewCache.Shared.InvalidateFolder(movie.FolderPath); }
         await RefreshSavedMovieAsync(movie.Id);
         Status = "Metadaten gespeichert. Die vorherige NFO wurde als .bak gesichert.";
@@ -535,6 +549,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void StageArtwork(ImageCacheItem image)
     {
         if (SelectedMovie?.FullMovieNFO is not { } nfo) return;
+        removedArtwork.GetValueOrDefault(SelectedMovie.Id)?.Remove(image.Type);
         imageLoading?.Cancel(); imageLoading = null; selectionVersion++;
         IsImagesLoading = false;
         using var stream = new MemoryStream(image.Data);
@@ -559,6 +574,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
         previous?.Dispose();
         Status = "Artwork übernommen. Mit Änderungen speichern wird das Bild in den Filmordner geschrieben.";
     }
+    public void RemoveArtwork(ArtworkViewModel image)
+    {
+        if (!CanEdit || SelectedMovie is not { } movie || !Artwork.Contains(image)) return;
+        imageLoading?.Cancel(); imageLoading = null; selectionVersion++;
+        IsImagesLoading = false;
+        if (!removedArtwork.TryGetValue(movie.Id, out var removed)) removedArtwork[movie.Id] = removed = [];
+        removed.Add(image.Type);
+        movie.FullMovieNFO?.FanArtPics.RemoveAll(item => item.ImageType == image.Type);
+        var index = Artwork.IndexOf(image);
+        Artwork.Remove(image);
+        if (image.Type == ImageTypes.Poster) Poster = null;
+        if (image.Type == ImageTypes.Fanart) FanartBackground = null;
+        SelectedArtwork = Artwork.Count > 0 ? Artwork[Math.Min(index, Artwork.Count - 1)] : null;
+        image.Dispose();
+        Status = "Artwork zum Entfernen vorgemerkt. Mit Änderungen speichern wird es entfernt und als .bak gesichert.";
+    }
+
     private static int ArtworkTypeOrder(string type)
     {
         var index = ImageTypes.AllTypes.IndexOf(type);

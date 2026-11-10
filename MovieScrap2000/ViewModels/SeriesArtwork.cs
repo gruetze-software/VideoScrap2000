@@ -156,10 +156,22 @@ public partial class SeriesViewModel
         {
             var type = image.Type.ToLowerInvariant();
             var name = season.HasValue ? SeasonArtworkName(season, type) : type;
+            show.RemovedArtwork.Remove(name);
             show.Artwork[name] = new(name, image.Data);
         }
         RefreshArtworkPreviews(refreshTiles: true);
         main.Status = "Serienbilder übernommen. Speichere, um sie abzulegen.";
+    }
+
+    public void RemoveArtwork(SeriesArtworkTile tile)
+    {
+        if (main.IsBusy || SelectedShow is not { } show || !show.Artwork.TryGetValue(tile.Key, out var picture) || !ReferenceEquals(picture, tile.Picture)) return;
+        show.Artwork.Remove(tile.Key);
+        var index = ArtworkTiles.ToList().FindIndex(item => item.Key == tile.Key);
+        show.RemovedArtwork.Add(tile.Key);
+        RefreshArtworkPreviews(refreshTiles: true);
+        SelectedSeriesArtwork = ArtworkTiles.Count > 0 ? ArtworkTiles[Math.Clamp(index, 0, ArtworkTiles.Count - 1)] : null;
+        main.Status = "Artwork zum Entfernen vorgemerkt. Mit Änderungen speichern wird es entfernt und als .bak gesichert.";
     }
 
     private async Task<int> DownloadArtworkAsync(SeriesShowRow show, int id, JsonElement details, TMDbScraperManager scraper, CancellationToken token)
@@ -186,7 +198,7 @@ public partial class SeriesViewModel
             targets.Add((SeasonArtworkName(season, FanartName), ImageTypes.Fanart, season, null, ImageType.Backdrop));
             targets.Add((SeasonArtworkName(season, "landscape"), ImageTypes.Landscape, season, null, ImageType.Backdrop));
         }
-        var missing = targets.Where(target => !show.Artwork.ContainsKey(target.Name)).ToArray();
+        var missing = targets.Where(target => !show.Artwork.ContainsKey(target.Name) && !show.RemovedArtwork.Contains(target.Name)).ToArray();
         if (missing.Length == 0) return 0;
         main.Status = "Serienbilder werden gesucht …";
 

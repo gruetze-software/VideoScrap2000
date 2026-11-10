@@ -189,13 +189,13 @@
                       <Button Content="{DynamicResource L748B21D7560D}" Click="ChooseLocalArtwork" Margin="0,0,0,8"/>
                     </WrapPanel>
                   <StackPanel IsVisible="{Binding IsImagesLoading}" Spacing="6"><TextBlock Text="{DynamicResource L73BF6AC897C3}" Classes="secondary"/><ProgressBar IsIndeterminate="True" Height="4"/></StackPanel>
-                  <ListBox Classes="artwork" ItemsSource="{Binding Artwork}" SelectedItem="{Binding SelectedArtwork}" Margin="0,14,0,0" Background="Transparent" BorderThickness="0">
+                  <ListBox x:Name="MovieArtworkList" Classes="artwork" ItemsSource="{Binding Artwork}" SelectedItem="{Binding SelectedArtwork}" Margin="0,14,0,0" Background="Transparent" BorderThickness="0">
                     <ListBox.Styles>
                       <Style Selector="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,12,12"/><Setter Property="Background" Value="Transparent"/></Style>
                       <Style Selector="ListBoxItem:selected Border.card"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="BorderThickness" Value="3"/></Style>
                     </ListBox.Styles>
                     <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:ArtworkViewModel"><Border DoubleTapped="OpenArtwork" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}" Classes="card" Width="220" Padding="10"><StackPanel Spacing="8"><Image Source="{Binding Image}" Height="140" Stretch="Uniform"/><TextBlock Text="{Binding Type}" FontWeight="SemiBold"/><TextBlock Text="{Binding Path}" Classes="secondary" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></StackPanel></Border></DataTemplate></ListBox.ItemTemplate>
+                    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:ArtworkViewModel"><Border DoubleTapped="OpenArtwork" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}" Classes="card" Width="220" Padding="10"><Grid><StackPanel Spacing="8"><Image Source="{Binding Image}" Height="140" Stretch="Uniform"/><TextBlock Text="{Binding Type}" FontWeight="SemiBold"/><TextBlock Text="{Binding Path}" Classes="secondary" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></StackPanel><Button Content="×" Click="RemoveArtwork" DoubleTapped="StopArtworkDoubleTap" Width="24" Height="24" MinWidth="24" MinHeight="24" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip.Tip="{DynamicResource L47C05BA64670}" AutomationProperties.Name="{DynamicResource L47C05BA64670}"/></Grid></Border></DataTemplate></ListBox.ItemTemplate>
                   </ListBox>
                   </StackPanel>
                 </TabItem>

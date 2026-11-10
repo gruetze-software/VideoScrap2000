@@ -13,6 +13,16 @@ namespace VideoScrap2000.Views;
 
 public partial class MainWindow : Window
 {
+    private void RemoveArtwork(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is ArtworkViewModel image)
+        {
+            model.RemoveArtwork(image);
+            ListSelection.FocusSelectedItem(MovieArtworkList);
+        }
+        e.Handled = true;
+    }
+    private void StopArtworkDoubleTap(object? sender, Avalonia.Input.TappedEventArgs e) => e.Handled = true;
     private readonly MainViewModel model;
     private LibraryProgressWindow? progressWindow;
     public MainWindow() : this(new MainViewModel(), true) { }

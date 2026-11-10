@@ -270,6 +270,7 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         await Task.Run(() => SeriesLibrary.SaveAsync(show.Show.NfoPath, data, SeriesNfoEditor.ShowFields, token), token);
         show.Editor.HasNfo = true;
         var pending = show.Artwork.Where(item => item.Value.PendingData is not null).ToArray();
+        var removals = show.RemovedArtwork.ToArray();
         try
         {
             foreach (var (name, picture) in pending)
@@ -278,8 +279,13 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
                     ArtworkOptimizer.Kind(name + ".jpg") ?? "", (ArtworkProfile)main.ArtworkOptimizationProfile, token), token);
                 show.Artwork[name] = new(file);
             }
+            if (removals.Length > 0)
+            {
+                await Task.Run(() => ArtworkFiles.RemoveNamed(show.Show.FolderPath, removals.SelectMany(ArtworkFiles.SeriesStems), token), token);
+                show.RemovedArtwork.ExceptWith(removals);
+            }
         }
-        finally { if (pending.Length > 0) ArtworkPreviewCache.Shared.InvalidateFolder(show.Show.FolderPath); }
+        finally { if (pending.Length > 0 || removals.Length > 0) ArtworkPreviewCache.Shared.InvalidateFolder(show.Show.FolderPath); }
         RefreshArtworkPreviews(refreshTiles: true);
     }
 
@@ -480,6 +486,7 @@ public sealed class SeriesShowRow(SeriesShow show) : ObservableObject
     public SeriesNfoEditor Editor { get; } = new(show.Metadata, show.HasNfo);
     public ObservableCollection<SeriesEpisodeRow> Episodes { get; } = new(show.Episodes.Select(episode => new SeriesEpisodeRow(episode)));
     internal HashSet<SeriesEpisodeRow> PendingEpisodeUpdates { get; } = [];
+    internal HashSet<string> RemovedArtwork { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, SeriesPicture> Artwork { get; } = ReadArtwork(show.FolderPath);
     public string Title => Editor.Title;
     public SeriesPicture? Poster => Artwork.GetValueOrDefault("poster") ?? FirstSeasonPicture("poster");

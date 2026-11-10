@@ -14,7 +14,7 @@ public partial class SeriesViewModel
         foreach (var group in images.GroupBy(image => (image.Type, image.Season)))
         {
             var name = group.Key.Season.HasValue ? SeasonArtworkName(group.Key.Season, group.Key.Type).ToLowerInvariant() : group.Key.Type.ToLowerInvariant();
-            if (show.Artwork.ContainsKey(name)) continue;
+            if (show.Artwork.ContainsKey(name) || show.RemovedArtwork.Contains(name)) continue;
             foreach (var image in group.OrderBy(image => LanguagePreferences.ImagePriority(TvdbArtworkLanguage(image.Language), language)))
             {
                 if (!Uri.TryCreate(image.Url, UriKind.Absolute, out var url) || url.Scheme != "https") continue;
