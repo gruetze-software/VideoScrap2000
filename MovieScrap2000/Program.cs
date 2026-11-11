@@ -46,8 +46,11 @@ internal static class Program
 #elif TARGET_LINUX
         return LinuxDesktop.Configure(builder.UseX11().UseSkia());
 #elif TARGET_MACOS
-        return builder.UseAvaloniaNative().UseSkia();
+        return builder.With(new MacOSPlatformOptions { DisableDefaultApplicationMenuItems = true })
+            .UseAvaloniaNative().UseSkia();
 #else
+        if (OperatingSystem.IsMacOS())
+            builder.With(new MacOSPlatformOptions { DisableDefaultApplicationMenuItems = true });
         return LinuxDesktop.Configure(builder.UsePlatformDetect());
 #endif
     }

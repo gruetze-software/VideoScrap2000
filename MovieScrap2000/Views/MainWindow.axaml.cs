@@ -74,11 +74,13 @@ public partial class MainWindow : Window
         if (Application.Current is { } app)
             app.RequestedThemeVariant = theme switch { "Light" => ThemeVariant.Light, "Dark" => ThemeVariant.Dark, _ => ThemeVariant.Default };
     }
-    private async void ShowAbout(object? sender, RoutedEventArgs e) => await new AboutWindow().ShowDialog(this);
+    internal bool CanUseAppMenu => IsVisible && !model.IsBusy;
+    internal Task OpenAboutAsync() => new AboutWindow().ShowDialog(this);
+    private async void ShowAbout(object? sender, RoutedEventArgs e) => await OpenAboutAsync();
     private async void ShowSettings(object? sender, RoutedEventArgs e)
         => await OpenSettingsAsync();
 
-    private async Task OpenSettingsAsync()
+    internal async Task OpenSettingsAsync()
     {
         var settingsDialog = new SettingsWindow(model);
         await settingsDialog.ShowDialog(this);
@@ -98,7 +100,9 @@ public partial class MainWindow : Window
         if (LibraryTabs.SelectedIndex == 1 && model.Series.NeedsScan) await model.Series.ScanAsync();
     }
 
-    private async void ScanActiveLibrary(object? sender, RoutedEventArgs e)
+    private async void ScanActiveLibrary(object? sender, RoutedEventArgs e) => await ScanActiveLibraryAsync();
+
+    internal async Task ScanActiveLibraryAsync()
     {
         var series = LibraryTabs.SelectedIndex == 1;
         if ((series ? model.SeriesFolders : model.MovieFolders).Count == 0)
