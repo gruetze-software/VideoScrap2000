@@ -25,6 +25,8 @@ public partial class MainWindow : Window
     private void StopArtworkDoubleTap(object? sender, Avalonia.Input.TappedEventArgs e) => e.Handled = true;
     private readonly MainViewModel model;
     private LibraryProgressWindow? progressWindow;
+    private bool artworkSearchActive;
+    private bool startupScanPending;
     public MainWindow() : this(new MainViewModel(), true) { }
     public MainWindow(MainViewModel model, bool initialize, WindowPlacementStore? placementStore = null)
     {
@@ -40,9 +42,17 @@ public partial class MainWindow : Window
         model.PropertyChanged += OnModelPropertyChanged;
         if (initialize) Opened += async (_, _) =>
         {
+            startupScanPending = !model.IsDemo && model.ScanOnStartup;
+            var startupDelay = startupScanPending ? Task.Delay(TimeSpan.FromSeconds(2)) : Task.CompletedTask;
             await model.InitializeAsync();
+            if (!IsVisible) return;
             MovieList.SelectedIndex = model.Movies.Count > 0 ? 0 : -1;
             if (model.SelectedMovie is { } movie) MovieList.ScrollIntoView(movie);
+            await startupDelay;
+            if (!startupScanPending || !model.ScanOnStartup || !CanUseAppMenu) return;
+            startupScanPending = false;
+            if (model.MovieFolders.Count > 0) await model.ScanCommand.ExecuteAsync(null);
+            if (IsVisible && model.SeriesFolders.Count > 0 && model.Series.NeedsScan) await model.Series.ScanAsync();
         };
         Closing += (_, e) =>
         {
@@ -104,6 +114,7 @@ public partial class MainWindow : Window
 
     internal async Task ScanActiveLibraryAsync()
     {
+        startupScanPending = false;
         var series = LibraryTabs.SelectedIndex == 1;
         if ((series ? model.SeriesFolders : model.MovieFolders).Count == 0)
         {
@@ -266,10 +277,31 @@ public partial class MainWindow : Window
         if (id <= 0) { model.Status = "Bitte ordne den Film zuerst über Metadaten suchen einem TMDb-Treffer zu."; return; }
         await ImportOnlineArtworkAsync(id, model.ArtworkType);
     }
-    private async Task ImportOnlineArtworkAsync(int id, string requestedType, IReadOnlySet<string>? automaticTypes = null)
+    private async Task ImportOnlineArtworkAsync(int id, string requestedType, bool automatic = false, bool firstLookup = false)
     {
-        if (model.IsDemo) { model.Status = Localization.Locale.T("Die Demo verwendet ausschließlich mitgelieferte Beispieldaten."); return; }
-        var selectedMovie = model.SelectedMovie;
+        if (artworkSearchActive || !model.CanEdit || model.SelectedMovie is not { } selectedMovie) return;
+        artworkSearchActive = true;
+        try
+        {
+            IReadOnlySet<string>? automaticTypes = null;
+            if (automatic)
+            {
+                var localArtwork = await model.ArtworkDiscoveryTask;
+                if (!IsVisible || !model.CanEdit || !ReferenceEquals(selectedMovie, model.SelectedMovie)) return;
+                var existing = localArtwork.Select(image => image.Type).Concat(model.Artwork.Select(image => image.Type)).ToHashSet();
+                if (!firstLookup && existing.Count != 0) return;
+                automaticTypes = ImageTypes.AllTypes.Except(existing).ToHashSet();
+                if (automaticTypes.Count == 0) return;
+            }
+            await ShowArtworkDialogAsync(id, requestedType, selectedMovie, automaticTypes);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { model.Status = ex.Message; }
+        finally { artworkSearchActive = false; }
+    }
+
+    private async Task ShowArtworkDialogAsync(int id, string requestedType, MovieViewModel selectedMovie, IReadOnlySet<string>? automaticTypes)
+    {
         var dialog = new ArtworkWindow(id, requestedType, language: model.ArtworkLanguage, automaticTypes: automaticTypes);
         await dialog.ShowDialog(this);
         if (!dialog.IsAccepted || !ReferenceEquals(selectedMovie, model.SelectedMovie)) return;
@@ -324,6 +356,7 @@ public partial class MainWindow : Window
 
     private async void ShowScrape(object? sender, RoutedEventArgs e)
     {
+        if (artworkSearchActive) return;
         if (model.IsDemo) { model.Status = Localization.Locale.T("Die Demo verwendet ausschließlich mitgelieferte Beispieldaten."); return; }
         var selectedMovie = model.SelectedMovie;
         if (selectedMovie?.FullMovieNFO is not { } nfo) return;
@@ -335,10 +368,6 @@ public partial class MainWindow : Window
         model.ApplyScrapedDetails(movie);
         if (movie.Id <= 0) return;
 
-        await model.ArtworkLoadingTask;
-        if (!ReferenceEquals(selectedMovie, model.SelectedMovie) || model.IsBusy) return;
-        if (!firstLookup && model.Artwork.Count != 0) return;
-        var missing = ImageTypes.AllTypes.Except(model.Artwork.Select(image => image.Type)).ToHashSet();
-        if (missing.Count != 0) await ImportOnlineArtworkAsync(movie.Id, "Alle", missing);
+        await ImportOnlineArtworkAsync(movie.Id, "Alle", automatic: true, firstLookup: firstLookup);
     }
 }

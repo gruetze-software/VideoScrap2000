@@ -68,6 +68,12 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.4.1" type="stable" date="2026-11-14">
+      <description>
+        <p>Adds an optional startup scan, opens artwork search sooner and prevents duplicate dialogs, reads MKV track information after a MediaInfo timeout, and adds a native macOS application menu.</p>
+        <p xml:lang="de">Ergänzt optionales Einlesen beim Start, öffnet die Artwork-Suche früher und verhindert doppelte Dialoge, liest MKV-Spurdaten nach einem MediaInfo-Zeitlimit und ergänzt ein natives macOS-App-Menü.</p>
+      </description>
+    </release>
     <release version="1.4.0" type="stable" date="2026-11-10">
       <description><p>Adds optional TheTVDB support, simple scraper selection, media badges and refreshable stream details, actor portrait optimization and staged artwork removal.</p><p xml:lang="de">Ergänzt TheTVDB, eine einfache Quellenauswahl, Medien-Symbole und neu einlesbare Streamdetails, optimierte Darstellerbilder und vorgemerktes Entfernen von Artworks.</p></description>
     </release>

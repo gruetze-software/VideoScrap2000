@@ -33,6 +33,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty, NotifyPropertyChangedFor(nameof(MetadataLanguagePreview))] private int metadataLanguageIndex;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ArtworkLanguagePreview))] private int artworkLanguageIndex;
     [ObservableProperty] private bool useFanartBackground;
+    [ObservableProperty] private bool scanOnStartup;
+    public string ScanOnStartupLabel => Localization.Locale.T("Sammlung beim Start einlesen");
     [ObservableProperty] private int artworkOptimizationProfile;
     public string OptimizationTitle => Localization.Locale.T("Artwork-Optimierung");
     public string OptimizationAction => Localization.Locale.T("Vorhandene Artworks optimieren …");

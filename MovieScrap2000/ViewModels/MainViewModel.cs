@@ -22,6 +22,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private int selectionVersion;
     private CancellationTokenSource? imageLoading;
     internal Task ArtworkLoadingTask { get; private set; } = Task.CompletedTask;
+    internal Task<IReadOnlyList<(string Type, string Path)>> ArtworkDiscoveryTask { get; private set; } =
+        Task.FromResult<IReadOnlyList<(string Type, string Path)>>([]);
     internal Task TechnicalDetailsLoadingTask { get; private set; } = Task.CompletedTask;
     private CancellationTokenSource? factsLoading;
     public LibraryCollection<MovieViewModel> Movies { get; } = [];
@@ -168,6 +170,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     partial void OnQueryChanged(string value) => Filter();
     partial void OnSeriesPathChanged(string value) => Series.ResetLibrary();
     public IReadOnlyList<string> MovieFolders => LibrarySources.Normalize(settings.MovieFolders ?? [LibraryPath]);
+    public bool ScanOnStartup => settings.ScanOnStartup;
     public IReadOnlyList<string> SeriesFolders => LibrarySources.Normalize(settings.SeriesFolders ?? [SeriesPath]);
     partial void OnUseFanartBackgroundChanged(bool value) => Series.RefreshAppearance();
     partial void OnThemeIndexChanged(int value)
@@ -178,7 +181,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void ApplySettings(string movies, string series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0)
         => ApplySettings(new[] { movies }, new[] { series }, theme, language, metadataLanguage, artworkLanguage, useFanartBackground, artworkOptimizationProfile);
 
-    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0, ScraperSettings? scrapers = null)
+    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0, ScraperSettings? scrapers = null, bool? scanOnStartup = null)
     {
         var scraperDraft = (scrapers ?? settings.Scrapers).Copy();
         scraperDraft.Normalize();
@@ -186,6 +189,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var previousSeries = SeriesFolders;
         if (!IsDemo)
         {
+            if (scanOnStartup.HasValue) settings.ScanOnStartup = scanOnStartup.Value;
             settings.MovieFolders = LibrarySources.Normalize(movies);
             settings.SeriesFolders = LibrarySources.Normalize(series);
             settings.LibraryPath = settings.MovieFolders.FirstOrDefault() ?? "";
@@ -401,10 +405,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Imdb = nfo.Id ?? nfo.ImdbIdFromUnique ?? "";
             Directors = nfo.DisplayDirectors ?? "";
             LoadExtendedMetadata(nfo);
+            var artworkDiscovery = ArtworkPreviewCache.Shared.FindArtworkAsync(movie.FolderPath, movie.VideoFilePath, token);
+            ArtworkDiscoveryTask = artworkDiscovery;
             IsDetailReady = true;
             var technicalDetailsTask = LoadTechnicalDetailsAsync(movie, nfo, version, token);
             TechnicalDetailsLoadingTask = technicalDetailsTask;
-            var paths = await ArtworkPreviewCache.Shared.FindArtworkAsync(movie.FolderPath, movie.VideoFilePath, token);
+            var paths = await artworkDiscovery;
             if (version != selectionVersion) return;
             foreach (var item in paths)
             {

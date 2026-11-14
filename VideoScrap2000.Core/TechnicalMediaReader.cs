@@ -25,6 +25,9 @@ public static class TechnicalMediaReader
             if (!result.Success)
             {
                 System.Diagnostics.Trace.WriteLine(result.Failure?.Message);
+                if (result.Failure?.Reason == AnalysisFailureReason.Timeout &&
+                    string.Equals(Path.GetExtension(path), ".mkv", StringComparison.OrdinalIgnoreCase))
+                    return await ReadMatroskaHeaderAsync(path, token);
                 return null;
             }
             return Convert(result);
@@ -37,7 +40,23 @@ public static class TechnicalMediaReader
         }
     }
 
-    private static MovieFileInfo? Convert(MediaAnalysisResult result)
+    private static async Task<MovieFileInfo?> ReadMatroskaHeaderAsync(string path, CancellationToken token)
+    {
+        const int headerLimit = 1024 * 1024;
+        await using var file = new FileStream(path, FileMode.Open, FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete, 65536, FileOptions.Asynchronous);
+        var fileSize = file.Length;
+        if (fileSize <= headerLimit) return null;
+
+        var bytes = new byte[headerLimit];
+        var count = await file.ReadAtLeastAsync(bytes, bytes.Length, false, token);
+        using var header = new MemoryStream(bytes, 0, count, writable: false);
+        var result = await Analyzer.AnalyzeAsync(header, leaveOpen: true, cancellationToken: token);
+        token.ThrowIfCancellationRequested();
+        return result.Success ? Convert(result, fileSize) : null;
+    }
+
+    private static MovieFileInfo? Convert(MediaAnalysisResult result, long? fileSize = null)
     {
         if (result.BestVideoStream is not { Width: > 0, Height: > 0 } video) return null;
         var duration = video.Duration > TimeSpan.Zero ? video.Duration : result.General.Duration;
@@ -53,7 +72,7 @@ public static class TechnicalMediaReader
                     Aspect = Aspect(video.DisplayAspectRatio, video.Width, video.Height),
                     DurationInSeconds = (int)Math.Clamp(Math.Round(duration.TotalSeconds), 0, int.MaxValue),
                     Bitrate = (decimal)video.Bitrate,
-                    FileSize = result.General.Size,
+                    FileSize = fileSize ?? result.General.Size,
                     ScanType = video.ScanType
                 },
                 AudioStreams = result.AudioStreams.Select(audio => new AudioStream
