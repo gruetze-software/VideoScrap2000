@@ -22,6 +22,13 @@ VideoScrap 2000 is a desktop library manager for movies and TV shows on Windows,
 
 ## Get started
 
+#### Windows: Microsoft Store
+
+<a href="https://apps.microsoft.com/detail/9PN55GQL544H">
+  <img src="https://get.microsoft.com/images/en-us%20dark.svg"
+       alt="Get it from Microsoft" width="200">
+</a>
+
 #### Snap: Ubuntu and other distributions with Snap support
 
 <a href="https://snapcraft.io/videoscrap2000">
