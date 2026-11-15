@@ -76,6 +76,6 @@ dotnet run --project MovieScrap2000/MovieScrap2000.csproj
 
 Enjoy VideoScrap 2000? [Buy me a small coffee on Ko-fi](https://ko-fi.com/gruetzesoftware) to support its development. Thank you!
 
-[MIT license](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md) · [Grütze-Software](https://github.com/gruetze-software)
-
 <a href="https://ko-fi.com/gruetzesoftware"><img src="branding/ko-fi-badge.png" alt="Support VideoScrap 2000 on Ko-fi" height="36"></a>
+
+[MIT license](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md) · [Grütze-Software](https://github.com/gruetze-software)
