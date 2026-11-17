@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">
+  <Identity Name="Grtze-Software.VideoScrap2000" Publisher="CN=41F04BFB-33E0-4924-B74E-FB43D5D4DAEF" Version="0.0.0.0" ProcessorArchitecture="x64" />
+  <Properties>
+    <DisplayName>VideoScrap 2000</DisplayName>
+    <PublisherDisplayName>Grütze-Software</PublisherDisplayName>
+    <Logo>Assets\Logo50.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="de-DE" />
+    <Resource Language="en-US" />
+  </Resources>
+  <Applications>
+    <Application Id="VideoScrap2000" Executable="VideoScrap2000\VideoScrap2000.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="VideoScrap 2000" Description="Manage your movie and TV collections." BackgroundColor="transparent" Square150x150Logo="Assets\Logo150.png" Square44x44Logo="Assets\Logo44.png" />
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

@@ -101,6 +101,22 @@ jobs:
             artifacts/**/*.sha256
           if-no-files-found: error
 
+      - name: Build Microsoft Store MSIX packages
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archives = @(Get-ChildItem artifacts -File -Recurse | Where-Object Name -Match '^VideoScrap2000-.*-win-(x64|arm64)\.zip$')
+          if ($archives.Count -ne '${{ matrix.platform.rids }}'.Split(',').Count) { throw 'Missing Windows archives for Store packaging.' }
+          foreach ($archive in $archives) {
+            ./scripts/Package-StoreMsix.ps1 -Archive $archive.FullName -OutputDirectory artifacts/store-msix
+          }
+      - uses: actions/upload-artifact@v7.0.2
+        if: runner.os == 'Windows'
+        with:
+          name: Microsoft-Store-MSIX
+          path: artifacts/store-msix/*.msix
+          if-no-files-found: error
+
   macos:
     if: (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && !inputs.windows_linux_x64_only
     needs: [verify, linux-display]
