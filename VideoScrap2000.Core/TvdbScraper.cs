@@ -63,6 +63,42 @@ public sealed class TvdbScraper : IDisposable
             return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: token);
         }
     }
+    public async Task<IReadOnlyList<TvdbArtwork>> GetMovieArtworkAsync(string imdbId, CancellationToken token)
+    {
+        if (!settings.EnableTvdb || !imdbId.StartsWith("tt", StringComparison.OrdinalIgnoreCase) ||
+            imdbId.Length <= 2 || !imdbId[2..].All(char.IsAsciiDigit)) return [];
+
+        try
+        {
+            var lookup = await ReadAsync($"search/remoteid/{imdbId.ToLowerInvariant()}", token);
+            var ids = Array(lookup, "data").Select(item => Text(Property(item, "movie"), "id"))
+                .Where(id => int.TryParse(id, out var value) && value > 0).Distinct().ToArray();
+            if (ids.Length != 1) return [];
+
+            var movie = Property(await ReadAsync($"movies/{ids[0]}/extended", token), "data");
+            var types = Array(await ReadAsync("artwork/types", token), "data")
+                .ToDictionary(item => Text(item, "id") ?? "", item => Text(item, "name") ?? "");
+            var artwork = new List<TvdbArtwork>();
+            foreach (var image in Array(movie, "artworks"))
+            {
+                var type = GetArtworkType(types.GetValueOrDefault(Text(image, "type") ?? "", ""));
+                if (type is not null && Text(image, "image") is { } url &&
+                    Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+                    artwork.Add(new(type, null, url, Text(image, "language")));
+            }
+            return artwork;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound) { return []; }
+    }
+
+    private static string? GetArtworkType(string name)
+    {
+        var type = name.Replace(" ", "").ToLowerInvariant();
+        return type.Contains("poster") ? ImageTypes.Poster : type.Contains("banner") ? ImageTypes.Banner
+            : type.Contains("background") || type.Contains("fanart") ? ImageTypes.Fanart
+            : type.Contains("clearlogo") ? ImageTypes.ClearLogo : type.Contains("clearart") ? ImageTypes.ClearArt : null;
+    }
+
     public async Task<IReadOnlyList<SearchTv>> SearchAsync(string query, string language, CancellationToken token)
     {
         var root = await ReadAsync($"search?type=series&query={Uri.EscapeDataString(query)}&limit=50", token);
@@ -88,13 +124,7 @@ public sealed class TvdbScraper : IDisposable
         var types = Array(await ReadAsync("artwork/types", token), "data").ToDictionary(item => Text(item, "id") ?? "", item => Text(item, "name") ?? "");
         var seasons = Array(data, "seasons").Where(item => Text(Property(item, "type"), "type") is null or "official")
             .GroupBy(item => Text(item, "id") ?? "").ToDictionary(group => group.Key, group => Text(group.First(), "number"));
-        string? ArtworkType(JsonElement image)
-        {
-            var type = types.GetValueOrDefault(Text(image, "type") ?? "", "").Replace(" ", "").ToLowerInvariant();
-            return type.Contains("poster") ? ImageTypes.Poster : type.Contains("banner") ? ImageTypes.Banner
-                : type.Contains("background") || type.Contains("fanart") ? ImageTypes.Fanart
-                : type.Contains("clearlogo") ? ImageTypes.ClearLogo : type.Contains("clearart") ? ImageTypes.ClearArt : null;
-        }
+        string? ArtworkType(JsonElement image) => GetArtworkType(types.GetValueOrDefault(Text(image, "type") ?? "", ""));
         var pictures = Array(data, "artworks").Where(image => ArtworkType(image) is not null)
             .Where(image => Text(image, "seasonId") is null or "0" || seasons.ContainsKey(Text(image, "seasonId")!))
             .Select(image => new TvdbArtwork(ArtworkType(image)!, int.TryParse(seasons.GetValueOrDefault(Text(image, "seasonId") ?? ""), out var season) ? season : null,

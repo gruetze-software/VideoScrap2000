@@ -69,7 +69,7 @@ public partial class MainViewModel
     {
         SelectedActor = actor;
         await actorPhotoTask;
-        if (actor.ThumbData is not { Length: > 0 } bytes) return null;
+        if ((actor.PortraitPreviewData ?? actor.ThumbData) is not { Length: > 0 } bytes) return null;
         return await new ArtworkViewModel("Actor", "", null!, bytes).GetOpenPathAsync();
     }
 
@@ -148,7 +148,12 @@ public partial class MainViewModel
         var folder = SelectedMovie?.FolderPath;
         try
         {
-            byte[]? bytes = actor.ThumbData;
+            byte[]? bytes = actor.PortraitPreviewData ?? actor.ThumbData;
+            if (!actor.HasPendingPortrait && folder is not null && Actor.IsReplacementPortrait(actor.Thumb))
+            {
+                var path = Path.Combine(folder, actor.Thumb);
+                if (File.Exists(path)) bytes = await File.ReadAllBytesAsync(path, cts.Token);
+            }
             if (bytes is not { Length: > 0 } && actor.Id > 0) bytes = await metadata.GetActorPictureAsync(actor.Id, cts.Token);
             if (bytes is { Length: > 0 } && metadata.GetEmptyImageBytes() is { } empty && bytes.AsSpan().SequenceEqual(empty)) bytes = null;
             var cacheLoadedPortrait = bytes is not { Length: > 0 };
@@ -169,9 +174,10 @@ public partial class MainViewModel
             if (version != actorVersion || cts.IsCancellationRequested) preview?.Dispose();
             else
             {
-                actor.ThumbData = bytes; actorPhotoLease = preview; ActorPhoto = preview?.Image;
+                if (!actor.HasPendingPortrait) actor.ThumbData = bytes;
+                actorPhotoLease = preview; ActorPhoto = preview?.Image;
                 ActorPhotoResolution = preview?.Resolution ?? "";
-                if (cacheLoadedPortrait && preview is not null && actor.Id > 0)
+                if (cacheLoadedPortrait && preview is not null && actor.Id > 0 && !Actor.IsReplacementPortrait(actor.Thumb))
                     await metadata.UpdateActorThumbExternalAsync(actor.Id, bytes, cts.Token);
             }
         }
@@ -179,6 +185,8 @@ public partial class MainViewModel
         catch (Exception ex) { if (version == actorVersion) Status = $"Darstellerbild konnte nicht geladen werden: {ex.Message}"; }
         finally { if (version == actorVersion) { IsActorPhotoLoading = false; actorLoading = null; } }
     }
+
+    internal void RefreshActorPreview() => actorPhotoTask = LoadActorPhotoAsync(SelectedActor);
 
     private async Task LoadTechnicalDetailsAsync(MovieViewModel movie, Movie nfo, int version, CancellationToken token)
     {
@@ -223,6 +231,8 @@ public partial class MainViewModel
 public partial class ActorEditor : ObservableObject
 {
     public int Id { get; set; }
+    public bool HasPendingPortrait { get; set; }
+    internal byte[]? PortraitPreviewData { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNoPicture))]
     private byte[]? thumbData;
@@ -234,6 +244,17 @@ public partial class ActorEditor : ObservableObject
     public bool HasNoPicture => string.IsNullOrWhiteSpace(Thumb) && ThumbData is not { Length: > 0 };
     [ObservableProperty] private int order;
     [ObservableProperty] private int? tmdbId;
-    public static ActorEditor From(Actor actor) => new() { Id = actor.Id, Name = actor.Name, Role = actor.Role ?? "", Thumb = actor.Thumb ?? "", Order = actor.Order, TmdbId = actor.TmdbId, ThumbData = actor.ThumbData };
-    public Actor ToActor() => new() { Id = Id, Name = Name.Trim(), Role = Role, Thumb = Thumb, Order = Order, TmdbId = TmdbId, ThumbData = ThumbData };
+    public static ActorEditor From(Actor actor) => new() { Id = actor.Id, Name = actor.Name, Role = actor.Role ?? "", Thumb = actor.Thumb ?? "", Order = actor.Order, TmdbId = actor.TmdbId, ThumbData = actor.ThumbData, HasPendingPortrait = actor.HasPendingPortrait };
+    public Actor ToActor() => new() { Id = Id, Name = Name.Trim(), Role = Role, Thumb = Thumb, Order = Order, TmdbId = TmdbId, ThumbData = ThumbData, HasPendingPortrait = HasPendingPortrait };
+
+    internal void ApplyDraft(ActorEditor draft)
+    {
+        Name = draft.Name;
+        Role = draft.Role;
+        TmdbId = draft.TmdbId;
+        Thumb = draft.Thumb;
+        ThumbData = draft.ThumbData;
+        PortraitPreviewData = draft.PortraitPreviewData;
+        HasPendingPortrait = draft.HasPendingPortrait;
+    }
 }

@@ -70,6 +70,11 @@ public partial class SeriesView : UserControl
 
     private async void AddActor(object? sender, RoutedEventArgs e) => await EditActorAsync(null);
 
+    private async void EditSelectedActorPortrait(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SeriesViewModel { SelectedActor: { } actor }) await EditActorAsync(actor);
+    }
+
     private async void EditActor(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is ActorEditor actor) await EditActorAsync(actor);
@@ -78,7 +83,8 @@ public partial class SeriesView : UserControl
     private async Task EditActorAsync(ActorEditor? actor)
     {
         if (DataContext is not SeriesViewModel { ShowEditor: { } editor } model || TopLevel.GetTopLevel(this) is not Window owner) return;
-        var dialog = new ActorEditWindow(actor ?? new ActorEditor());
+        var dialog = new ActorEditWindow(actor ?? new ActorEditor(), model.SelectedShow?.Show.FolderPath,
+            model.CanSearchActorPortraits ? model.Scrapers : null, model.ArtworkLanguage, model.ActorPortraitProfile);
         await dialog.ShowDialog(owner);
         if (!dialog.IsAccepted || !ReferenceEquals(editor, model.ShowEditor)) return;
         if (actor is null)
@@ -88,9 +94,7 @@ public partial class SeriesView : UserControl
         }
         else
         {
-            actor.Name = dialog.Draft.Name;
-            actor.Role = dialog.Draft.Role;
-            actor.TmdbId = dialog.Draft.TmdbId;
+            actor.ApplyDraft(dialog.Draft);
         }
         model.SelectedActor = actor;
         model.RefreshActorPreview();

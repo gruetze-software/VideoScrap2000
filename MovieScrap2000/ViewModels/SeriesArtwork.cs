@@ -48,7 +48,10 @@ public partial class SeriesViewModel
     public bool HasSeasonPosterPreview => SeasonPosterPreview is not null;
     [ObservableProperty] private IReadOnlyList<SeriesArtworkTile> artworkTiles = [];
     [ObservableProperty] private SeriesArtworkTile? selectedSeriesArtwork;
-    [ObservableProperty] private ActorEditor? selectedActor;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedActor))]
+    private ActorEditor? selectedActor;
+    public bool HasSelectedActor => SelectedActor is not null;
     [ObservableProperty] private SeriesPicture? actorPreview;
     [ObservableProperty] private string artworkSearchType = ImageTypes.Poster;
     [ObservableProperty] private string artworkSourceWarning = "";
@@ -135,7 +138,7 @@ public partial class SeriesViewModel
         var path = actor.Thumb;
         if (string.IsNullOrWhiteSpace(path)) path = fallback;
         else if (!Uri.IsWellFormedUriString(path, UriKind.Absolute)) path = Path.Combine(folder, path);
-        ActorPreview = new(path, FallbackPath: fallback);
+        ActorPreview = new(path, actor.HasPendingPortrait ? actor.PortraitPreviewData ?? actor.ThumbData : null, FallbackPath: fallback);
     }
 
     public ArtworkWindow? CreateArtworkSearch()

@@ -31,7 +31,7 @@ public sealed class ScraperSettingsWindow : Window
         Link("Fanart.tv ↗", "https://fanart.tv/");
         var maze = Toggle("TVmaze · zusätzliche Episodenbilder (ohne API-Key)", current.EnableTvmaze);
         Link("TVmaze ↗", "https://www.tvmaze.com/api");
-        var tvdb = Toggle("TheTVDB für Serien aktivieren", current.EnableTvdb);
+        var tvdb = Toggle("TheTVDB für Serien und Film-Artwork aktivieren", current.EnableTvdb);
         Link("TheTVDB ↗", "https://www.thetvdb.com/");
         Label("Standardquelle für Serien");
         var source = new ComboBox { ItemsSource = new[] { "TMDB", "TheTVDB" }, SelectedIndex = current.SeriesProvider == "TheTVDB" ? 1 : 0 };

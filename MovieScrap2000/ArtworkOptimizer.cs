@@ -30,10 +30,12 @@ internal static class ArtworkOptimizer
         using var codec = SKCodec.Create(input) ?? throw new InvalidDataException("Das Bild konnte nicht gelesen werden.");
         if (codec.Info.Width <= 0 || codec.Info.Height <= 0 || (long)codec.Info.Width * codec.Info.Height > 100_000_000)
             throw new InvalidDataException("Das Bild ist zu groß.");
-        // Alpha artwork must retain transparency and its original format.
-        if (codec.Info.AlphaType != SKAlphaType.Opaque) return new(bytes, codec.Info.Width, codec.Info.Height, false);
+        var actor = kind.Equals("actor", StringComparison.OrdinalIgnoreCase);
+        var hasAlpha = codec.Info.AlphaType != SKAlphaType.Opaque;
+        if (hasAlpha && !actor) return new(bytes, codec.Info.Width, codec.Info.Height, false);
+        var alphaType = hasAlpha ? SKAlphaType.Premul : SKAlphaType.Opaque;
         using var srgb = SKColorSpace.CreateSrgb();
-        using var decoded = new SKBitmap(new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Opaque, srgb));
+        using var decoded = new SKBitmap(new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, alphaType, srgb));
         if (codec.GetPixels(decoded.Info, decoded.GetPixels()) != SKCodecResult.Success)
             throw new InvalidDataException("Das Bild ist unvollständig oder beschädigt.");
         // Apply all EXIF orientations before calculating the target bounds.
@@ -44,19 +46,16 @@ internal static class ArtworkOptimizer
         var portrait = kind.Equals("poster", StringComparison.OrdinalIgnoreCase);
         var maxWidth = portrait ? profile == ArtworkProfile.Compact ? 600 : 1000 : profile == ArtworkProfile.Compact ? 1280 : 1920;
         var maxHeight = portrait ? profile == ArtworkProfile.Compact ? 900 : 1500 : profile == ArtworkProfile.Compact ? 720 : 1080;
-        var actor = kind.Equals("actor", StringComparison.OrdinalIgnoreCase);
-        if (actor)
-        {
-            maxWidth = profile == ArtworkProfile.Compact ? 300 : 500;
-            maxHeight = profile == ArtworkProfile.Compact ? 450 : 750;
-        }
-        var scale = Math.Min(1d, Math.Min((double)maxWidth / width, (double)maxHeight / height));
+        const int actorWidth = 500;
+        var scale = actor ? Math.Min(1d, (double)actorWidth / width)
+            : Math.Min(1d, Math.Min((double)maxWidth / width, (double)maxHeight / height));
         if (actor && scale == 1 && origin == 1) return new(bytes, width, height, false);
-        var targetWidth = Math.Max(1, (int)Math.Floor(width * scale));
-        var targetHeight = Math.Max(1, (int)Math.Floor(height * scale));
-        using var target = new SKBitmap(new SKImageInfo(targetWidth, targetHeight, SKColorType.Bgra8888, SKAlphaType.Opaque, srgb));
+        var targetWidth = actor ? Math.Min(width, actorWidth) : Math.Max(1, (int)Math.Floor(width * scale));
+        var targetHeight = Math.Max(1, (int)(actor ? Math.Round(height * scale) : Math.Floor(height * scale)));
+        using var target = new SKBitmap(new SKImageInfo(targetWidth, targetHeight, SKColorType.Bgra8888, alphaType, srgb));
         using (var canvas = new SKCanvas(target))
         {
+            if (hasAlpha) canvas.Clear(SKColors.Transparent);
             canvas.Scale((float)targetWidth / width, (float)targetHeight / height);
             var matrix = origin switch
             {
@@ -76,7 +75,9 @@ internal static class ArtworkOptimizer
         // Skia's JPEG encoder writes a non-progressive JPEG from decoded sRGB
         // pixels. Original EXIF/XMP/IPTC metadata is not copied to the output.
         using var image = SKImage.FromBitmap(target);
-        using var data = image.Encode(SKEncodedImageFormat.Jpeg, profile == ArtworkProfile.Compact ? 85 : 88)
+        var outputFormat = actor && codec.EncodedFormat is SKEncodedImageFormat.Png or SKEncodedImageFormat.Webp
+            ? codec.EncodedFormat : hasAlpha ? SKEncodedImageFormat.Png : SKEncodedImageFormat.Jpeg;
+        using var data = image.Encode(outputFormat, profile == ArtworkProfile.Compact ? 85 : 88)
             ?? throw new InvalidDataException("Das Bild konnte nicht gespeichert werden.");
         return new(data.ToArray(), targetWidth, targetHeight, true);
     }
@@ -155,14 +156,13 @@ internal static class ArtworkOptimizer
 
     internal static async Task OptimizeActorPortraitsAsync(string folder, IReadOnlyList<Actor> actors, ArtworkProfile profile, CancellationToken token)
     {
-        if (profile == ArtworkProfile.Original) return;
-        var actorFolder = Path.Combine(folder, ".actors");
+        var actorFolder = Path.Combine(folder, Actor.PortraitFolder);
         bool NeedsOptimization(byte[] bytes)
         {
             try { return Optimize(bytes, "actor", profile).Changed; }
             catch (InvalidDataException ex) { System.Diagnostics.Trace.WriteLine(ex); return false; }
         }
-        var local = Directory.Exists(actorFolder) ? Directory.GetFiles(actorFolder)
+        var local = profile != ArtworkProfile.Original && Directory.Exists(actorFolder) ? Directory.GetFiles(actorFolder)
             .Where(path => Path.GetExtension(path).ToLowerInvariant() is ".jpg" or ".jpeg" or ".png" or ".webp").ToArray() : [];
         var renamed = new Dictionary<string, string>(LibrarySources.PathComparer);
         foreach (var path in local)
@@ -178,8 +178,11 @@ internal static class ArtworkOptimizer
             if (!string.IsNullOrWhiteSpace(actor.Thumb) && !Uri.IsWellFormedUriString(actor.Thumb, UriKind.Absolute)
                 && renamed.TryGetValue(Path.GetFullPath(Path.Combine(folder, actor.Thumb)), out var replacement))
                 actor.Thumb = Path.GetRelativePath(folder, replacement).Replace('\\', '/');
-            if (actor.ThumbData is not { Length: > 0 } data || !NeedsOptimization(data) || string.IsNullOrWhiteSpace(actor.Name)) continue;
-            var stem = string.Concat(actor.Name.Select(character => char.IsControl(character) || "<>:\"/\\|?*".Contains(character) ? '_' : character)).Trim().TrimEnd('.').Replace(' ', '_');
+            if (actor.ThumbData is not { Length: > 0 } data || string.IsNullOrWhiteSpace(actor.Name)) continue;
+            if (!actor.HasPendingPortrait && (Actor.IsReplacementPortrait(actor.Thumb) || !NeedsOptimization(data))) continue;
+            var stem = actor.HasPendingPortrait
+                ? Actor.ReplacementPrefix + Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant() + "-" + (int)profile
+                : string.Concat(actor.Name.Select(character => char.IsControl(character) || "<>:\"/\\|?*".Contains(character) ? '_' : character)).Trim().TrimEnd('.').Replace(' ', '_');
             if (stem.Length == 0) continue;
             Directory.CreateDirectory(actorFolder);
             var path = await SaveAsync(actorFolder, stem, data, "actor", profile, token);

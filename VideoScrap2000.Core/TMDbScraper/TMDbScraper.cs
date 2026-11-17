@@ -105,6 +105,28 @@ namespace MovieScrap2000.TMDbScraper
             return JsonSerializer.Deserialize<SearchContainer<SearchTv>>(await response.Content.ReadAsStringAsync(token))?.Results ?? [];
         }
 
+        public async Task<IReadOnlyList<(int Id, string Name, string KnownFor)>> SearchPeopleAsync(string query, string language, CancellationToken token)
+        {
+            if (!ArtworkEnabled) return [];
+            var json = await GetSeriesJsonAsync($"search/person?query={Uri.EscapeDataString(query)}&language={Uri.EscapeDataString(language)}&include_adult=false", token);
+            return json.GetProperty("results").EnumerateArray().Select(person =>
+            {
+                var titles = person.TryGetProperty("known_for", out var credits)
+                    ? credits.EnumerateArray().Select(credit => credit.TryGetProperty("title", out var title) ||
+                        credit.TryGetProperty("name", out title) ? title.GetString() : null)
+                    : [];
+                return (person.GetProperty("id").GetInt32(), person.GetProperty("name").GetString() ?? "",
+                    string.Join(", ", titles.Where(title => !string.IsNullOrWhiteSpace(title))));
+            }).ToArray();
+        }
+
+        public async Task<IReadOnlyList<TMDbScraper.TMDbImageData>> GetPersonImagesAsync(int id, CancellationToken token)
+        {
+            if (!ArtworkEnabled || id <= 0) return [];
+            var json = await GetSeriesJsonAsync($"person/{id}/images", token);
+            return json.GetProperty("profiles").Deserialize<List<TMDbScraper.TMDbImageData>>() ?? [];
+        }
+
         public Task<JsonElement> GetSeriesDetailsAsync(int id, string language, CancellationToken token) =>
             GetSeriesJsonAsync($"tv/{id}?language={Uri.EscapeDataString(language)}&append_to_response=external_ids,aggregate_credits,content_ratings", token);
 

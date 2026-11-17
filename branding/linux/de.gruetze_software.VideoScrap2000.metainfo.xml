@@ -68,6 +68,12 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.4.2" type="stable" date="2026-11-17">
+      <description>
+        <p>Adds a manual update check, Fanart.tv 4K backgrounds, and optional TheTVDB artwork for movies.</p>
+        <p xml:lang="de">Ergänzt die manuelle Update-Prüfung, 4K-Hintergründe von Fanart.tv und optionales Film-Artwork von TheTVDB.</p>
+      </description>
+    </release>
     <release version="1.4.1" type="stable" date="2026-11-14">
       <description>
         <p>Adds an optional startup scan, opens artwork search sooner and prevents duplicate dialogs, reads MKV track information after a MediaInfo timeout, and adds a native macOS application menu.</p>

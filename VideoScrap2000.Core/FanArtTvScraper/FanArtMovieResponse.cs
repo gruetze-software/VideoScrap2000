@@ -44,6 +44,9 @@ namespace MovieScrap2000.FanArtTvScraper
     [JsonPropertyName("moviebackground")]
     public List<FanArtBase> Background { get; set; } = new List<FanArtBase>();
 
+    [JsonPropertyName("movie4kbackground")]
+    public List<FanArtBase> Background4K { get; set; } = [];
+
     public override string ToString()
     {
       return $"{Name} Images: {ImageCount}";

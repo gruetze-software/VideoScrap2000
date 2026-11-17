@@ -119,6 +119,23 @@ public class ArtworkWorkflowTests
         finally { window.Close(); }
     }
     [AvaloniaFact]
+    public async Task AutomaticFanartImportAcceptsA4KOnlyBackground()
+    {
+        using var handler = new ArtworkHandler { Only4KBackground = true };
+        var window = new ArtworkWindow(550, "Alle", CreateManager(handler),
+            automaticTypes: new HashSet<string> { ImageTypes.Fanart });
+        window.Show();
+        try
+        {
+            await window.LoadingTask;
+            Assert.True(window.IsAccepted);
+            Assert.Equal(ImageTypes.Fanart, Assert.Single(window.Results).Type);
+            Assert.Equal("/background4k.png", Assert.Single(handler.Downloads));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void SelectingArtworkChangesSearchType()
     {
         using var model = new MainViewModel(settings: new AppSettings());
@@ -235,6 +252,7 @@ public class ArtworkWorkflowTests
     {
         public byte[] ImageBytes { get; set; } = ReadTestImage();
         public bool OtherLanguages { get; set; }
+        public bool Only4KBackground { get; init; }
         public bool Series { get; set; }
         public bool RejectFanartKey { get; set; }
         public string? SeriesImagePath { get; private set; }
@@ -281,6 +299,8 @@ public class ArtworkWorkflowTests
             }
             if (!OtherLanguages && path.Contains("/movies/"))
                 json = "{\"hdmovieclearart\":[{\"url\":\"https://art.test/first.png\",\"lang\":\"de\"}],\"moviebanner\":[{\"url\":\"https://art.test/banner.png\",\"lang\":\"de\"}]}";
+            if (Only4KBackground && path.Contains("/movies/"))
+                json = """{"movie4kbackground":[{"url":"https://art.test/background4k.png","lang":"00"}]}""";
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         }
     }

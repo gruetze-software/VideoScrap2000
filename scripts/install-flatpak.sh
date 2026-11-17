@@ -76,6 +76,7 @@ cat > "$prefix/bin/videoscrap2000" <<'EOF'
 bin=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 prefix=$(dirname -- "$bin")
 export LD_LIBRARY_PATH="$prefix/lib/videoscrap2000:$prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export VIDEOSCRAP2000_GITHUB_BUNDLE=1
 exec "$prefix/lib/videoscrap2000/VideoScrap2000" "$@"
 EOF
 chmod 755 "$prefix/bin/videoscrap2000"

@@ -21,6 +21,10 @@ foreach ($package in $packages) {
         $package.archive -ne "VideoScrap2000-$Version-$($package.runtime)$flavor$extension") { throw 'Invalid package manifest.' }
 }
 $baseUrl = "https://github.com/$Repository/releases/download/v$Version"
+$snaps = @(Get-ChildItem -LiteralPath $PackageRoot -Filter "videoscrap2000_${Version}_amd64.snap" -File -Recurse |
+    ForEach-Object {
+        [pscustomobject]@{ archive = $_.Name; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+    })
 $installers = @(Get-ChildItem -LiteralPath $PackageRoot -Filter '*.deb-info.json' -File -Recurse |
     ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json } | Sort-Object architecture)
 if ($installers.Count -gt 0) {
@@ -97,6 +101,10 @@ $downloads = @(
     ''
     '</details>'
     ''
+    $(foreach ($snap in $snaps) {
+        "**Linux Snap:** [Download the AMD64 Snap]($baseUrl/$($snap.archive))."
+        ''
+    })
     "Optional: [SHA-256 checksums]($baseUrl/SHA256SUMS.txt). GitHub's **Source code** files are for developers, not for running the app."
     ''
 ) -join "`n"
@@ -112,5 +120,5 @@ foreach ($package in $packages) {
 }
 $body += "`n</details>`n"
 [IO.File]::WriteAllText([IO.Path]::GetFullPath($NotesPath), $body)
-[IO.File]::WriteAllText([IO.Path]::GetFullPath($ChecksumPath), ((@($packages) + @($installers) + @($diskImages) | ForEach-Object { "$($_.sha256)  $($_.archive)" }) -join "`n") + "`n")
-Write-Host "Prepared download tables and one checksum file for $($packages.Count + $installers.Count + $diskImages.Count) packages."
+[IO.File]::WriteAllText([IO.Path]::GetFullPath($ChecksumPath), ((@($packages) + @($installers) + @($diskImages) + @($snaps) | ForEach-Object { "$($_.sha256)  $($_.archive)" }) -join "`n") + "`n")
+Write-Host "Prepared download tables and one checksum file for $($packages.Count + $installers.Count + $diskImages.Count + $snaps.Count) packages."

@@ -26,7 +26,8 @@ public sealed class ArtworkOptimizationTests : IDisposable
     [InlineData(ArtworkProfile.Balanced, "fanart", 2560, 1440, 1920, 1080)]
     [InlineData(ArtworkProfile.Compact, "banner", 2000, 400, 1280, 256)]
     [InlineData(ArtworkProfile.Compact, "thumb", 320, 180, 320, 180)]
-    [InlineData(ArtworkProfile.Compact, "actor", 1200, 1800, 300, 450)]
+    [InlineData(ArtworkProfile.Compact, "actor", 1200, 1800, 500, 750)]
+    [InlineData(ArtworkProfile.Compact, "actor", 1000, 1800, 500, 900)]
     [InlineData(ArtworkProfile.Balanced, "actor", 1200, 1800, 500, 750)]
     public void ProfilesKeepAspectAndNeverUpscale(ArtworkProfile profile, string kind, int width, int height, int expectedWidth, int expectedHeight)
     {
@@ -53,7 +54,7 @@ public sealed class ArtworkOptimizationTests : IDisposable
         foreach (var actor in actors)
         {
             using var image = SKBitmap.Decode(Path.Combine(folder, actor.Thumb!));
-            Assert.Equal(300, image.Width); Assert.Equal(450, image.Height);
+            Assert.Equal(500, image.Width); Assert.Equal(750, image.Height);
         }
         Assert.True(Directory.Exists(Path.Combine(actorFolder, ArtworkOptimizer.OriginalFolder)));
         Assert.Equal(new byte[] { 0 }, await File.ReadAllBytesAsync(Path.Combine(actorFolder, "Broken.jpg"), TestContext.Current.CancellationToken));
@@ -69,6 +70,30 @@ public sealed class ArtworkOptimizationTests : IDisposable
         var png = Picture(120, 180, transparent: true);
         Assert.Same(png, ArtworkOptimizer.Optimize(png, "poster", ArtworkProfile.Compact).Bytes);
         Assert.Same(png, ArtworkOptimizer.Optimize(png, "clearart", ArtworkProfile.Compact).Bytes);
+    }
+
+    [Theory]
+    [InlineData(ArtworkProfile.Original, 1200, 1800, 1200, 1800)]
+    [InlineData(ArtworkProfile.Compact, 185, 278, 185, 278)]
+    [InlineData(ArtworkProfile.Compact, 1200, 1800, 500, 750)]
+    [InlineData(ArtworkProfile.Balanced, 1200, 1800, 500, 750)]
+    public async Task SelectedPortraitIsSavedEvenWhenNoResizeIsNeeded(ArtworkProfile profile, int width, int height,
+        int expectedWidth, int expectedHeight)
+    {
+        var bytes = Picture(width, height, transparent: true);
+        var actor = new Actor { Name = "Example", Thumb = "https://example.net/previous.jpg", ThumbData = bytes, HasPendingPortrait = true };
+        var token = TestContext.Current.CancellationToken;
+
+        await ArtworkOptimizer.OptimizeActorPortraitsAsync(folder, [actor], profile, token);
+
+        Assert.StartsWith(".actors/", actor.Thumb);
+        var saved = await File.ReadAllBytesAsync(Path.Combine(folder, actor.Thumb!), token);
+        Assert.Equal(saved, actor.ThumbData);
+        if (width == expectedWidth) Assert.Equal(bytes, saved);
+        using var portrait = SKBitmap.Decode(saved);
+        Assert.Equal(expectedWidth, portrait.Width);
+        Assert.Equal(expectedHeight, portrait.Height);
+        Assert.Equal(100, portrait.GetPixel(0, 0).Alpha);
     }
 
     [Fact]

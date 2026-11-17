@@ -754,7 +754,8 @@ public class MetadataService : IDisposable
 				// 1. Upsert des Actors in die Actor-Tabelle (Name, TMDbId, Thumb)
 				// Annahme: Diese Methode ist spezialisiert auf Actor-Daten und gibt die ID zurück.
 				int actorId = await UpsertActorWithThumbAsync(
-						connection, transaction, actor.Name, actor.TmdbId, actor.Thumb, actor.ThumbData, cancellationToken);
+						connection, transaction, actor.Name, actor.TmdbId, actor.Thumb,
+						Actor.IsReplacementPortrait(actor.Thumb) ? null : actor.ThumbData, cancellationToken);
 
 				// 2. Einfügen des Links in die MovieActor-Tabelle (inkl. Role und Order)
 				var insertActorQuery = "INSERT OR IGNORE INTO MovieActor (MovieId, ActorId, Role, SortOrder) VALUES (@MovieId, @ActorId, @Role, @Order);";

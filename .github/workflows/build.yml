@@ -115,9 +115,15 @@ jobs:
       only_x64: ${{ inputs.windows_linux_x64_only || false }}
     secrets: inherit
 
+  snap:
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && (inputs.create_release_draft || inputs.replace_published_release) && !inputs.windows_linux_x64_only)
+    needs: [verify, linux-display]
+    uses: ./.github/workflows/snap.yml
+    secrets: inherit
+
   release:
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && (inputs.create_release_draft || inputs.replace_published_release))
-    needs: [package, deb, macos]
+    needs: [package, deb, macos, snap]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -148,6 +154,8 @@ jobs:
           if ($installers.Count -ne 2) { throw 'Expected AMD64 and ARM64 DEB installers.' }
           $diskImages = @(Get-ChildItem packages -Filter '*.dmg' -File -Recurse)
           if ($diskImages.Count -ne 2) { throw 'Expected signed Intel and Apple Silicon DMG installers.' }
+          $snap = @(Get-ChildItem packages -Filter "videoscrap2000_${version}_amd64.snap" -File -Recurse)
+          if ($snap.Count -ne 1) { throw 'Expected one AMD64 Snap for the release version.' }
           $dmgManifests = @(Get-ChildItem packages -Filter '*.dmg-info.json' -File -Recurse)
           if ($dmgManifests.Count -ne 2) { throw 'Expected two signed DMG manifests.' }
           $macManifests = @(Get-ChildItem packages -Filter '*.manifest.json' -File -Recurse |
@@ -161,7 +169,7 @@ jobs:
           }
           $releaseNotes = 'release-notes.md'
           ./scripts/New-ReleaseSummary.ps1 -PackageRoot packages -Version $version -Repository $env:GH_REPO -NotesPath $releaseNotes -ChecksumPath SHA256SUMS.txt
-          $assets = @($archives.FullName) + @($installers.FullName) + @($diskImages.FullName) + @((Get-Item SHA256SUMS.txt).FullName)
+          $assets = @($archives.FullName) + @($installers.FullName) + @($diskImages.FullName) + @($snap.FullName) + @((Get-Item SHA256SUMS.txt).FullName)
           $existing = gh release view $releaseTag --json isDraft 2>$null
           if ($LASTEXITCODE -eq 0) {
             if (!(($existing | ConvertFrom-Json).isDraft)) {
@@ -188,7 +196,7 @@ jobs:
               [IO.File]::WriteAllText((Join-Path $PWD 'SHA256SUMS.txt'), ($checksumLines -join "`n") + "`n")
               gh release upload $releaseTag SHA256SUMS.txt --clobber
               if ($LASTEXITCODE -ne 0) { throw 'Cannot update the complete checksum file.' }
-              foreach ($storeAsset in $uploaded.assets | Where-Object name -Match '\.(snap|flatpak)$') {
+              foreach ($storeAsset in $uploaded.assets | Where-Object name -Match '\.flatpak$') {
                 [IO.File]::AppendAllText((Join-Path $PWD $releaseNotes), "`nLinux alternative: [$($storeAsset.name)]($($storeAsset.browser_download_url)).`n")
               }
               $oldRef = gh api "repos/$env:GH_REPO/git/ref/tags/$releaseTag" | ConvertFrom-Json

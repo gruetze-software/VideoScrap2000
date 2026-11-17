@@ -114,6 +114,8 @@ namespace MovieScrap2000.FanArtTvScraper
             foreach (var item in fanArtResponse.ClearArt) item.ImageType = ImageTypes.ClearArt;
           if (fanArtResponse.Background != null)
             foreach (var item in fanArtResponse.Background) item.ImageType = ImageTypes.Fanart;
+          if (fanArtResponse.Background4K != null)
+            foreach (var item in fanArtResponse.Background4K) item.ImageType = ImageTypes.Fanart;
           if (fanArtResponse.Banner != null)
             foreach (var item in fanArtResponse.Banner) item.ImageType = ImageTypes.Banner;
           if (fanArtResponse.Disc != null)

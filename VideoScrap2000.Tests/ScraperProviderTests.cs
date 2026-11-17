@@ -129,6 +129,18 @@ public sealed class ScraperProviderTests
         Assert.Contains("Abo-PIN", error.Message);
     }
 
+    [Fact]
+    public async Task TvdbMovieArtworkResolvesTheMovieByImdbIdAndMapsSupportedImages()
+    {
+        var handler = new TvdbHandler();
+        using var scraper = new TvdbScraper(new() { EnableTvdb = true, TvdbApiKey = "project", TvdbPin = "personal" }, new(handler));
+        var images = await scraper.GetMovieArtworkAsync("tt32261958", TestContext.Current.CancellationToken);
+        var image = Assert.Single(images);
+        Assert.Equal(ImageTypes.Fanart, image.Type);
+        Assert.Equal("https://artworks.thetvdb.com/background.jpg", image.Url);
+        Assert.Contains("/v4/movies/356434/extended", handler.Urls);
+    }
+
     [AvaloniaFact]
     public void SettingsAreOptionalCopiedAndSeriesSourceCanBeChangedInSearch()
     {
@@ -188,6 +200,8 @@ public sealed class ScraperProviderTests
                     var value when value.Contains("/search?") => """{"data":[{"tvdb_id":"42","name":"Example","year":"2020","translations":{"deu":"Beispiel"}}]}""",
                     "/v4/series/42/extended" => """{"data":{"id":42,"name":"Example","overview":"English","firstAired":"2020-01-01","remoteIds":[{"sourceName":"IMDB","id":"tt1234"},{"sourceName":"TheMovieDB.com","id":"123"}],"characters":[{"peopleType":"Actor","personName":"Person","name":"Role","personImgURL":"https://artworks.thetvdb.com/person.jpg"}],"artworks":[{"type":7,"seasonId":81,"image":"https://artworks.thetvdb.com/season.jpg","language":"deu"}],"seasons":[{"id":81,"number":1,"type":{"type":"official"}}]}}""",
                     "/v4/series/42/translations/deu" => """{"data":{"name":"Deutscher Titel","overview":"Deutsche Handlung"}}""",
+                    "/v4/search/remoteid/tt32261958" => """{"data":[{"series":{"id":42}},{"movie":{"id":356434}}]}""",
+                    "/v4/movies/356434/extended" => """{"data":{"artworks":[{"type":8,"image":"https://artworks.thetvdb.com/background.jpg"},{"type":13,"image":"https://artworks.thetvdb.com/photo.jpg"}]}}""",
                     "/v4/artwork/types" => """{"data":[{"id":7,"name":"Poster"},{"id":8,"name":"Background"}]}""",
                     var value when value.Contains("/episodes/official?") => value.Contains("page=1") ? """{"data":{"episodes":[{"id":502,"seasonNumber":1,"number":2,"name":"Second"}]},"links":{"next":null}}""" : """{"data":{"episodes":[{"id":501,"seasonNumber":1,"number":1,"name":"First"}]},"links":{"next":"https://api4.thetvdb.com/v4/series/42/episodes/official?page=1"}}""",
                     "/v4/episodes/501/translations/deu" => """{"data":{"name":"Deutsche Folge","overview":"Inhalt"}}""",

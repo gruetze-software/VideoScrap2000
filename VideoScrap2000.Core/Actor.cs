@@ -27,6 +27,14 @@ namespace MovieScrap2000
 		[XmlIgnore]
 		public byte[]? ThumbData { get; set; }
 
+		[XmlIgnore, System.Text.Json.Serialization.JsonIgnore]
+		public bool HasPendingPortrait { get; set; }
+
+		public const string PortraitFolder = ".actors";
+		public const string ReplacementPrefix = "portrait-";
+		public static bool IsReplacementPortrait(string? path) =>
+			path?.Replace('\\', '/').StartsWith(PortraitFolder + "/" + ReplacementPrefix, StringComparison.Ordinal) == true;
+
 		[XmlElement("tmdbid")]
 		public int? TmdbId { get; set; } = 0;
 
@@ -46,6 +54,7 @@ namespace MovieScrap2000
 				Order = this.Order,
 				Thumb = this.Thumb,
 				TmdbId = this.TmdbId,
+				HasPendingPortrait = this.HasPendingPortrait,
 				ThumbData = this.ThumbData != null ? (byte[])this.ThumbData.Clone() : null
 			};
 			return ac;

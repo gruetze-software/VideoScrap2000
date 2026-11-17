@@ -115,12 +115,15 @@
                     </ListBox>
                   </Grid>
                 </Border>
-                <Border Grid.Column="2" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Height="180" ClipToBounds="True" VerticalAlignment="Top">
+                <StackPanel Grid.Column="2" Spacing="6">
+                <Border Background="{DynamicResource SubtleBrush}" CornerRadius="8" Height="180" ClipToBounds="True" VerticalAlignment="Top">
                   <Grid><views:MoviePosterThumbnail x:Name="SeriesActorPhoto" DataContext="{Binding ActorPreview}" DecodeWidth="240"
                                               Stretch="Uniform" DoubleTapped="OpenPicture" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"/>
                     <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#99000000" Padding="3,1"><TextBlock Text="{Binding #SeriesActorPhoto.Resolution}" Foreground="White" FontSize="10"/></Border>
                   </Grid>
                 </Border>
+                  <Button Content="{DynamicResource L6FC3FBBC4795}" Click="EditSelectedActorPortrait" IsEnabled="{Binding HasSelectedActor}" HorizontalAlignment="Center" Padding="8,5"/>
+                </StackPanel>
               </Grid>
               <Button Grid.Row="2" Content="{DynamicResource L6C86B99088D0}" Command="{Binding SaveShowCommand}"
                       Classes="primary" HorizontalAlignment="Right" Margin="0,8,0,0"/>

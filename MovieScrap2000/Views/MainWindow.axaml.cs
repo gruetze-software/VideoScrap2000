@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using System.ComponentModel;
 using VideoScrap2000.ViewModels;
 using MovieScrap2000;
+using MovieScrap2000.TMDbScraper;
 
 namespace VideoScrap2000.Views;
 
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
     public MainWindow(MainViewModel model, bool initialize, WindowPlacementStore? placementStore = null)
     {
         InitializeComponent();
+        ToolTip.SetTip(VersionButton, Localization.Locale.T(ReleaseUpdateCheck.IsAvailable ? "Nach Updates suchen" : "Über VideoScrap 2000"));
         // macOS uses the dedicated ICNS in the signed app bundle.
         if (!OperatingSystem.IsMacOS())
             Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://VideoScrap2000/Assets/videoscrap-2000.png")));
@@ -86,6 +88,12 @@ public partial class MainWindow : Window
     }
     internal bool CanUseAppMenu => IsVisible && !model.IsBusy;
     internal Task OpenAboutAsync() => new AboutWindow().ShowDialog(this);
+    private async void CheckUpdatesFromVersion(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new AboutWindow();
+        if (ReleaseUpdateCheck.IsAvailable) dialog.Opened += async (_, _) => await dialog.CheckUpdatesAsync();
+        await dialog.ShowDialog(this);
+    }
     private async void ShowAbout(object? sender, RoutedEventArgs e) => await OpenAboutAsync();
     private async void ShowSettings(object? sender, RoutedEventArgs e)
         => await OpenSettingsAsync();
@@ -195,7 +203,8 @@ public partial class MainWindow : Window
     private async void AddActorEntry(object? sender, RoutedEventArgs e)
     {
         if (!model.CanEdit) return;
-        var dialog = new ActorEditWindow(new ActorEditor { Order = model.Actors.Count });
+        var dialog = new ActorEditWindow(new ActorEditor { Order = model.Actors.Count }, model.SelectedMovie?.FolderPath,
+            model.IsDemo ? null : model.Scrapers, model.ArtworkLanguage, (ArtworkProfile)model.ArtworkOptimizationProfile);
         await dialog.ShowDialog(this);
         if (!dialog.IsAccepted) return;
         model.Actors.Add(dialog.Draft); model.SelectedActors.Clear(); model.SelectedActors.Add(dialog.Draft);
@@ -203,14 +212,21 @@ public partial class MainWindow : Window
     private async Task EditActorAsync(ActorEditor actor)
     {
         if (!model.CanEdit) return;
-        var dialog = new ActorEditWindow(actor);
+        var dialog = new ActorEditWindow(actor, model.SelectedMovie?.FolderPath,
+            model.IsDemo ? null : model.Scrapers, model.ArtworkLanguage, (ArtworkProfile)model.ArtworkOptimizationProfile);
         await dialog.ShowDialog(this);
         if (!dialog.IsAccepted) return;
-        actor.Name = dialog.Draft.Name; actor.Role = dialog.Draft.Role; actor.TmdbId = dialog.Draft.TmdbId;
+        actor.ApplyDraft(dialog.Draft);
+        if (ReferenceEquals(actor, model.SelectedActor)) model.RefreshActorPreview();
     }
     private async void EditActorEntry(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is ActorEditor actor) await EditActorAsync(actor);
+    }
+
+    private async void EditSelectedActorPortrait(object? sender, RoutedEventArgs e)
+    {
+        if (model.SelectedActor is { } actor) await EditActorAsync(actor);
     }
     private async Task OpenActorAsync(ActorEditor? actor)
     {
@@ -302,7 +318,8 @@ public partial class MainWindow : Window
 
     private async Task ShowArtworkDialogAsync(int id, string requestedType, MovieViewModel selectedMovie, IReadOnlySet<string>? automaticTypes)
     {
-        var dialog = new ArtworkWindow(id, requestedType, language: model.ArtworkLanguage, automaticTypes: automaticTypes);
+        var dialog = new ArtworkWindow(id, requestedType, scraper: new TMDbScraperManager(settings: model.Scrapers),
+            language: model.ArtworkLanguage, automaticTypes: automaticTypes, imdbId: model.Imdb.Trim());
         await dialog.ShowDialog(this);
         if (!dialog.IsAccepted || !ReferenceEquals(selectedMovie, model.SelectedMovie)) return;
         var imported = 0;

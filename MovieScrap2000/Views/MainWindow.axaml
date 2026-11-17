@@ -5,6 +5,7 @@
         Title="VideoScrap 2000" Width="1280" Height="860" MinWidth="920" MinHeight="640" WindowStartupLocation="CenterScreen">
   <Window.Resources>
     <views:RatingStarsConverter x:Key="RatingStars"/>
+    <views:MovieRatingLabelConverter x:Key="MovieRatingLabel"/>
     <ItemsPanelTemplate x:Key="RatingStarsPanel"><StackPanel Orientation="Horizontal" Spacing="3"/></ItemsPanelTemplate>
     <DataTemplate x:Key="RatingStar" x:DataType="media:Geometry">
       <Path Width="16" Height="16" Data="{Binding .}" Fill="{DynamicResource AccentBrush}" Stretch="None"/>
@@ -17,7 +18,8 @@
         <StackPanel VerticalAlignment="Center" Spacing="3">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <TextBlock Text="VideoScrap 2000" FontSize="27" FontWeight="SemiBold"/>
-            <Border Background="{DynamicResource SubtleBrush}" CornerRadius="5" Padding="8,3" VerticalAlignment="Center"><TextBlock Text="{Binding Version}" FontSize="12"/></Border>
+            <Button x:Name="VersionButton" Content="{Binding Version}" Click="CheckUpdatesFromVersion" IsEnabled="{Binding !IsBusy}"
+                    Background="{DynamicResource SubtleBrush}" CornerRadius="5" Padding="8,3" VerticalAlignment="Center" FontSize="12"/>
             <Border IsVisible="{Binding IsDemo}" Background="{DynamicResource SubtleBrush}" CornerRadius="5" Padding="8,3" VerticalAlignment="Center"><TextBlock Text="{Binding DemoLabel}" FontSize="12"/></Border>
           </StackPanel>
           <TextBlock Text="{DynamicResource LFC451D627D21}" Classes="secondary" FontSize="13"/>
@@ -49,7 +51,20 @@
                   <TextBlock Text="{Binding VersionLabel}" IsVisible="{Binding HasVersionLabel}" ToolTip.Tip="{Binding VideoFilePath}" Classes="secondary" FontSize="11" TextTrimming="CharacterEllipsis"/>
                   <Grid ColumnDefinitions="Auto,*"><TextBlock Text="{Binding Year}" Classes="secondary" FontSize="12"/><TextBlock Grid.Column="1" Text="{Binding MetadataCapturedDateText}" Classes="secondary" FontSize="12" HorizontalAlignment="Right" ToolTip.Tip="{DynamicResource LB5BC23B377E2}"/></Grid>
                   <TextBlock Text="{Binding MetadataStatus, Converter={StaticResource Translate}}" IsVisible="{Binding HasMetadataStatus}" Classes="secondary" Classes.missing="{Binding MissingMetadata}" Classes.unavailable="{Binding IsFolderUnavailable}" FontSize="11"/>
-                  <ItemsControl ItemsSource="{Binding Rating, Converter={StaticResource RatingStars}}" ItemsPanel="{StaticResource RatingStarsPanel}" ItemTemplate="{StaticResource RatingStar}"/>
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Grid.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                        <Binding ElementName="MovieRating" Path="IsVisible"/>
+                        <Binding ElementName="MovieRuntime" Path="IsVisible"/>
+                      </MultiBinding>
+                    </Grid.IsVisible>
+                  <TextBlock x:Name="MovieRating" Text="{Binding Rating, Converter={StaticResource MovieRatingLabel}}"
+                             IsVisible="{Binding #MovieRating.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                             Foreground="{DynamicResource AccentBrush}" FontSize="12"/>
+                  <TextBlock x:Name="MovieRuntime" Grid.Column="1" HorizontalAlignment="Right" Classes="secondary" FontSize="12"
+                             Text="{Binding Runtime, StringFormat='{}{0} min'}"
+                             IsVisible="{Binding Runtime, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  </Grid>
                 </StackPanel>
                 </Grid>
               </DataTemplate>
@@ -143,7 +158,10 @@
                           </ListBox>
                         </Grid>
                       </Border>
-                      <Border x:Name="ActorPortrait" Grid.Column="2" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Height="180" VerticalAlignment="Top" DoubleTapped="OpenSelectedActorPhoto" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"><Grid><Image Source="{Binding ActorPhoto}" Stretch="Uniform"/><Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#99000000" Padding="3,1"><TextBlock Text="{Binding ActorPhotoResolution}" Foreground="White" FontSize="10"/></Border><ProgressBar IsIndeterminate="True" IsVisible="{Binding IsActorPhotoLoading}" Height="4" VerticalAlignment="Bottom"/></Grid></Border>
+                      <StackPanel Grid.Column="2" Spacing="6">
+                        <Border x:Name="ActorPortrait" Background="{DynamicResource SubtleBrush}" CornerRadius="8" Height="180" VerticalAlignment="Top" DoubleTapped="OpenSelectedActorPhoto" ToolTip.Tip="{DynamicResource LF9C2CE9BEE55}"><Grid><Image Source="{Binding ActorPhoto}" Stretch="Uniform"/><Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#99000000" Padding="3,1"><TextBlock Text="{Binding ActorPhotoResolution}" Foreground="White" FontSize="10"/></Border><ProgressBar IsIndeterminate="True" IsVisible="{Binding IsActorPhotoLoading}" Height="4" VerticalAlignment="Bottom"/></Grid></Border>
+                        <Button Content="{DynamicResource L6FC3FBBC4795}" Click="EditSelectedActorPortrait" IsEnabled="{Binding HasSelectedActor}" HorizontalAlignment="Center" Padding="8,5"/>
+                      </StackPanel>
                     </Grid>
                   </StackPanel>
                 </TabItem>

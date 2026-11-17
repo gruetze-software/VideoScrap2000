@@ -29,7 +29,7 @@ public class MetadataEditorTests
                 Set = new MovieSetInfo { Name = "Old set", Overview = "Keep this overview" }, Genres = ["Drama"],
                 FileInfo = new() { StreamDetails = new() { VideoStream = new() { Width = 1920, Height = 1080, Codec = "h264" }, AudioStreams = [new() { Channels = 6, Codec = "ac3", Language = "deu" }] } }
             }, root, video, false, TestContext.Current.CancellationToken, writeFiles: false);
-            using var model = new MainViewModel(database, new AppSettings { Language = language });
+            using var model = new MainViewModel(database, new AppSettings { Language = language, ArtworkOptimizationProfile = (int)ArtworkProfile.Compact });
             await model.InitializeAsync();
             for (var i = 0; !model.IsDetailReady && i < 200; i++) await Task.Delay(10, TestContext.Current.CancellationToken);
             Assert.True(model.IsDetailReady);
@@ -85,6 +85,29 @@ public class MetadataEditorTests
                 var table = window.FindControl<Border>("ActorTable")!;
                 var portrait = window.FindControl<Border>("ActorPortrait")!;
                 Assert.True(portrait.TranslatePoint(default, window)!.Value.X >= table.TranslatePoint(default, window)!.Value.X + table.Bounds.Width);
+                var actor = model.Actors[0];
+                var editor = new ActorEditWindow(actor, scrapers: new ScraperSettings(), profile: ArtworkProfile.Compact);
+                editor.Show();
+                try
+                {
+                    editor.UpdateLayout();
+                    var id = editor.GetVisualDescendants().OfType<NumericUpDown>().Single();
+                    var choose = editor.FindControl<Button>("ChoosePhotoButton")!;
+                    var search = editor.FindControl<Button>("SearchPhotoButton")!;
+                    Assert.True(choose.TranslatePoint(default, editor)!.Value.X >= id.TranslatePoint(default, editor)!.Value.X + id.Bounds.Width);
+                    Assert.True(search.TranslatePoint(default, editor)!.Value.Y >= choose.TranslatePoint(default, editor)!.Value.Y + choose.Bounds.Height);
+                    using var image = new SkiaSharp.SKBitmap(1200, 1800);
+                    using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Jpeg, 85);
+                    var original = data.ToArray();
+                    await editor.StagePortraitAsync(original, TestContext.Current.CancellationToken);
+                    actor.ApplyDraft(editor.Draft);
+                    model.RefreshActorPreview();
+                    for (var i = 0; model.IsActorPhotoLoading && i < 200; i++)
+                        await Task.Delay(10, TestContext.Current.CancellationToken);
+                    Assert.Equal("500 × 750", model.ActorPhotoResolution);
+                    Assert.Same(original, actor.ThumbData);
+                }
+                finally { editor.Close(); }
                 Assert.Equal(language == "de" ? new[] { "Metadaten", "Darsteller", "Details", "Artwork" } : new[] { "Metadata", "Cast", "Details", "Artwork" }, tabs.Items.OfType<TabItem>().Select(t => t.Header?.ToString()));
                 var screenshots = Path.Combine(AppContext.BaseDirectory, "screenshots"); Directory.CreateDirectory(screenshots);
                 foreach (var index in new[] { 0, 1, 2, 3 })
@@ -111,6 +134,8 @@ public class MetadataEditorTests
             Assert.Equal(new[] { "Drama", "Science Fiction" }, xml.Root.Elements("genre").Select(element => element.Value));
             Assert.Equal("Lead", xml.Root.Element("actor")!.Element("role")!.Value);
             Assert.Equal("123", xml.Root.Element("actor")!.Element("tmdbid")!.Value);
+            var photoPath = Path.Combine(root, xml.Root.Element("actor")!.Element("thumb")!.Value);
+            Assert.Equal(new PixelSize(500, 750), ArtworkDecoder.SourceSize(File.ReadAllBytes(photoPath)));
             Assert.Equal("7.5", xml.Root.Element("rating")!.Value);
             Assert.Null(xml.Root.Element("trailer"));
             Assert.Equal("1920", xml.Root.Element("fileinfo")!.Element("streamdetails")!.Element("video")!.Element("width")!.Value);

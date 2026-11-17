@@ -18,6 +18,9 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     private string? scannedPath;
     private TMDbScraperManager CreateScraper() => createScraper?.Invoke() ?? new TMDbScraperManager(settings: main.Scrapers);
     public ScraperSettings Scrapers => main.Scrapers;
+    internal bool CanSearchActorPortraits => !main.IsDemo && Scrapers.EnableTmdbArtwork;
+    internal string ArtworkLanguage => main.ArtworkLanguage;
+    internal ArtworkProfile ActorPortraitProfile => (ArtworkProfile)main.ArtworkOptimizationProfile;
     public bool IsTvdbSource => ShowEditor?.MetadataProvider == "TheTVDB";
     public string EpisodeSearchLabel => Locale.T(IsTvdbSource ? "Episode bei TheTVDB suchen" : "Episode bei TMDB suchen");
     private HttpClient EpisodeImageClient => tvmazeClient ?? TvmazeClient;
@@ -274,10 +277,16 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
         for (var index = 0; index < actors.Length; index++)
         {
             show.Editor.Actors[index].Thumb = actors[index].Thumb ?? "";
-            show.Editor.Actors[index].ThumbData = actors[index].ThumbData;
         }
         var data = show.Editor.ToXml(isEpisode: false);
         await Task.Run(() => SeriesLibrary.SaveAsync(show.Show.NfoPath, data, SeriesNfoEditor.ShowFields, token), token);
+        for (var index = 0; index < actors.Length; index++)
+        {
+            show.Editor.Actors[index].ThumbData = actors[index].ThumbData;
+            show.Editor.Actors[index].HasPendingPortrait = false;
+            show.Editor.Actors[index].PortraitPreviewData = null;
+        }
+        if (ReferenceEquals(show, SelectedShow)) RefreshActorPreview();
         show.Editor.HasNfo = true;
         var pending = show.Artwork.Where(item => item.Value.PendingData is not null).ToArray();
         var removals = show.RemovedArtwork.ToArray();
