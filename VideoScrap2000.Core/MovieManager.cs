@@ -46,7 +46,7 @@ namespace MovieScrap2000
         { ImageTypes.Poster, "-poster.jpg" },
         { ImageTypes.Fanart, "-fanart.jpg" },
         { ImageTypes.ClearArt, "-clearart.png" },
-        { ImageTypes.ClearLogo, "-logo.png" },
+        { ImageTypes.ClearLogo, "-clearlogo.png" },
         { ImageTypes.Landscape, "-landscape.jpg" },
         { ImageTypes.Banner, "-banner.jpg" },
 				{ ImageTypes.DiskArt, "-discart.jpg" },

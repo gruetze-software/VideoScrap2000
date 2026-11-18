@@ -455,8 +455,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         foreach (var type in ImageTypes.AllTypes)
         {
             if (requestedType is not null && type != requestedType) continue;
-            var suffix = type switch { ImageTypes.ClearLogo => "logo", ImageTypes.DiskArt => "discart", _ => type.ToLowerInvariant() };
-            var stems = new[] { $"{basename}-{suffix}", suffix, type == ImageTypes.ClearLogo ? "clearlogo" : suffix };
+            var stems = ArtworkFiles.MovieStems(video, type);
             var path = stems.SelectMany(stem => new[] { ".jpg", ".png", ".jpeg", ".webp" }.Select(ext => stem + ext)).Select(name => files.GetValueOrDefault(name)).FirstOrDefault(path => path is not null);
             if (path is not null) yield return (type, path);
         }
@@ -522,6 +521,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var pendingArtworkTypes = Artwork.Where(image => image.PendingData is not null).Select(image => image.Type).ToHashSet();
         try
         {
+            if (!removals.Contains(ImageTypes.ClearLogo))
+                await ArtworkFiles.EnsureKodiMovieArtworkAsync(movie.FolderPath, movie.VideoFilePath, token);
             await Task.Run(() => ArtworkOptimizer.OptimizeActorPortraitsAsync(movie.FolderPath, nfo.Actors, (ArtworkProfile)ArtworkOptimizationProfile, token), token);
             await Task.Run(() => metadata.SaveMovieAsync(nfo, movie.FolderPath, movie.VideoFilePath, false, token,
             saveImage: (folder, stem, image, ct) => pendingArtworkTypes.Contains(image.Type)

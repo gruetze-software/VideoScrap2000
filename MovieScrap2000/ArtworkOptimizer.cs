@@ -189,5 +189,40 @@ internal static class ArtworkOptimizer
             actor.Thumb = Path.GetRelativePath(folder, path).Replace('\\', '/');
             actor.ThumbData = await File.ReadAllBytesAsync(path, token);
         }
+        // Kodi resolves local cast artwork by the person's name, independently
+        // of the relative thumb path stored in the NFO.
+        foreach (var actor in actors.Where(actor => Actor.IsReplacementPortrait(actor.Thumb)))
+        {
+            token.ThrowIfCancellationRequested();
+            var name = actor.Name.Replace(' ', '_');
+            if (string.IsNullOrWhiteSpace(name) || name is "." or ".." ||
+                name.Any(character => char.IsControl(character) || "<>:\"/\\|?*".Contains(character)))
+                continue;
+            var source = Path.GetFullPath(Path.Combine(folder, actor.Thumb!));
+            if (!LibrarySources.PathComparer.Equals(Path.GetDirectoryName(source), Path.GetFullPath(actorFolder)) ||
+                !File.Exists(source)) continue;
+            var bytes = await File.ReadAllBytesAsync(source, token);
+            using var stream = new MemoryStream(bytes, writable: false);
+            using var codec = SKCodec.Create(stream);
+            if (codec is null) throw new InvalidDataException("Das Bild konnte nicht gelesen werden.");
+            // Kodi's local cast scan supports PNG/JPEG, including on versions
+            // whose local cast scan does not include WebP.
+            if (codec.EncodedFormat is not (SKEncodedImageFormat.Jpeg or SKEncodedImageFormat.Png))
+            {
+                using var bitmap = SKBitmap.Decode(bytes)
+                    ?? throw new InvalidDataException("Das Bild konnte nicht gelesen werden.");
+                using var image = SKImage.FromBitmap(bitmap);
+                using var png = image.Encode(SKEncodedImageFormat.Png, 100);
+                bytes = png.ToArray();
+            }
+            var extension = codec.EncodedFormat == SKEncodedImageFormat.Jpeg ? ".jpg" : ".png";
+            var destination = Path.Combine(actorFolder, name + extension);
+            if (File.Exists(destination))
+            {
+                var existing = await File.ReadAllBytesAsync(destination, token);
+                if (bytes.AsSpan().SequenceEqual(existing)) continue;
+            }
+            await ArtworkFiles.SaveNamedAsync(actorFolder, name, bytes, token);
+        }
     }
 }

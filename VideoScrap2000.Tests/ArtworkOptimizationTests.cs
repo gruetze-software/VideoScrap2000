@@ -94,6 +94,32 @@ public sealed class ArtworkOptimizationTests : IDisposable
         Assert.Equal(expectedWidth, portrait.Width);
         Assert.Equal(expectedHeight, portrait.Height);
         Assert.Equal(100, portrait.GetPixel(0, 0).Alpha);
+        Assert.Equal(saved, await File.ReadAllBytesAsync(Path.Combine(folder, ".actors", "Example.png"), token));
+    }
+
+    [Fact]
+    public async Task ExistingReplacementPortraitCreatesKodiNamedImageWithoutReselecting()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var actors = Directory.CreateDirectory(Path.Combine(folder, ".actors"));
+        using var bitmap = SKBitmap.Decode(Picture(500, 750, true));
+        using var image = SKImage.FromBitmap(bitmap);
+        using var webp = image.Encode(SKEncodedImageFormat.Webp, 90);
+        var original = webp.ToArray();
+        var path = Path.Combine(actors.FullName, "portrait-existing-1.webp");
+        await File.WriteAllBytesAsync(path, original, token);
+        var actor = new Actor { Name = "Example Actor", Thumb = ".actors/portrait-existing-1.webp" };
+
+        await ArtworkOptimizer.OptimizeActorPortraitsAsync(folder, [actor], ArtworkProfile.Original, token);
+
+        var kodiPath = Path.Combine(actors.FullName, "Example_Actor.png");
+        using var codec = SKCodec.Create(kodiPath);
+        Assert.Equal(SKEncodedImageFormat.Png, codec.EncodedFormat);
+        Assert.Equal(500, codec.Info.Width);
+        Assert.Equal(original, await File.ReadAllBytesAsync(path, token));
+        File.SetLastWriteTimeUtc(kodiPath, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        await ArtworkOptimizer.OptimizeActorPortraitsAsync(folder, [actor], ArtworkProfile.Original, token);
+        Assert.Equal(2020, File.GetLastWriteTimeUtc(kodiPath).Year);
     }
 
     [Fact]

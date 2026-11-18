@@ -19,8 +19,10 @@ public static class ArtworkFiles
     public static IEnumerable<string> MovieStems(string video, string type)
     {
         if (!ImageTypes.AllTypes.Contains(type)) throw new ArgumentException("Unbekannter Bildtyp.");
-        var suffix = type switch { ImageTypes.ClearLogo => "logo", ImageTypes.DiskArt => "discart", _ => type.ToLowerInvariant() };
-        return new[] { Path.GetFileNameWithoutExtension(video) + "-" + suffix, suffix, type.ToLowerInvariant() }.Distinct(StringComparer.OrdinalIgnoreCase);
+        var suffix = type == ImageTypes.DiskArt ? "discart" : type.ToLowerInvariant();
+        var legacy = type == ImageTypes.ClearLogo ? "logo" : suffix;
+        return new[] { Path.GetFileNameWithoutExtension(video) + "-" + suffix, suffix,
+            Path.GetFileNameWithoutExtension(video) + "-" + legacy, legacy, type.ToLowerInvariant() }.Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
     public static IEnumerable<string> SeriesStems(string key)
@@ -33,11 +35,24 @@ public static class ArtworkFiles
     {
         var suffix = image.Type switch
         {
-            ImageTypes.Poster => "poster", ImageTypes.Fanart => "fanart", ImageTypes.ClearLogo => "logo",
+            ImageTypes.Poster => "poster", ImageTypes.Fanart => "fanart", ImageTypes.ClearLogo => "clearlogo",
             ImageTypes.ClearArt => "clearart", ImageTypes.Banner => "banner", ImageTypes.Landscape => "landscape",
             ImageTypes.KeyArt => "keyart", ImageTypes.DiskArt => "discart", _ => throw new ArgumentException("Unbekannter Bildtyp.")
         };
         return SaveNamedAsync(folder, videoName + "-" + suffix, image.Data, token);
+    }
+
+    public static async Task EnsureKodiMovieArtworkAsync(string folder, string video, CancellationToken token)
+    {
+        var basename = Path.GetFileNameWithoutExtension(video);
+        var stem = basename + "-clearlogo";
+        var extensions = new[] { ".png", ".jpg", ".jpeg", ".webp" };
+        if (extensions.Any(extension => File.Exists(Path.Combine(folder, stem + extension)))) return;
+        var legacy = new[] { basename + "-logo", "clearlogo", "logo" }
+            .SelectMany(name => extensions.Select(extension => Path.Combine(folder, name + extension)))
+            .FirstOrDefault(File.Exists);
+        if (legacy is not null)
+            await SaveNamedAsync(folder, stem, await File.ReadAllBytesAsync(legacy, token), token);
     }
 
     public static async Task<string> SaveNamedAsync(string folder, string name, byte[] bytes, CancellationToken token)

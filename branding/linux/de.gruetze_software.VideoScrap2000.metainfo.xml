@@ -68,6 +68,12 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.4.3" type="stable" date="2026-11-18">
+      <description>
+        <p>Fixes Kodi discovery of replaced cast portraits and movie clearlogos. Saving also creates compatible files for existing replacements.</p>
+        <p xml:lang="de">Korrigiert die Kodi-Zuordnung ausgetauschter Darstellerbilder und Film-Clearlogos. Beim Speichern werden auch vorhandene Bilder passend ergänzt.</p>
+      </description>
+    </release>
     <release version="1.4.2" type="stable" date="2026-11-17">
       <description>
         <p>Adds a manual update check, Fanart.tv 4K backgrounds, and optional TheTVDB artwork for movies.</p>

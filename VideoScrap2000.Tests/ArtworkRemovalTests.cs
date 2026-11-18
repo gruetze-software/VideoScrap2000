@@ -17,6 +17,23 @@ public sealed class ArtworkRemovalTests : IDisposable
     }
 
     [Fact]
+    public async Task MovieClearlogoUsesKodiNameAndMigratesExistingLogo()
+    {
+        var bytes = Image();
+        await File.WriteAllBytesAsync(Path.Combine(root, "Test-logo.png"), bytes, Token);
+        await ArtworkFiles.EnsureKodiMovieArtworkAsync(root, "Test.mkv", Token);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(Path.Combine(root, "Test-clearlogo.png"), Token));
+        Assert.True(File.Exists(Path.Combine(root, "Test-logo.png")));
+        var artwork = Assert.Single(MainViewModel.FindArtwork(root, "Test.mkv", ImageTypes.ClearLogo));
+        Assert.Equal("Test-clearlogo.png", Path.GetFileName(artwork.Path));
+        await ArtworkFiles.SaveAsync(root, "New", new() { Type = ImageTypes.ClearLogo, Data = bytes }, Token);
+        Assert.True(File.Exists(Path.Combine(root, "New-clearlogo.png")));
+        ArtworkFiles.RemoveNamed(root, ArtworkFiles.MovieStems("Test.mkv", ImageTypes.ClearLogo), Token);
+        Assert.False(File.Exists(Path.Combine(root, "Test-logo.png")));
+        Assert.False(File.Exists(Path.Combine(root, "Test-clearlogo.png")));
+    }
+
+    [Fact]
     public void RemovalBacksUpOnlyMatchingImageNamesAndKeepsOtherFiles()
     {
         foreach (var name in new[] { "Test-poster.jpg", "poster.png", "fanart.jpg", "poster.nfo", "unrelated.png" })
