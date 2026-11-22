@@ -18,6 +18,71 @@ public sealed class LibraryTests : IDisposable
     }
 
     [Fact]
+    public async Task ActorMovieLookupUsesIdsAndSupportsNamesWithoutIds()
+    {
+        var service = await CreateAsync();
+        using var metadata = service.Metadata;
+        async Task Add(string title, int? id)
+        {
+            var folder = Path.Combine(root, title);
+            Directory.CreateDirectory(folder);
+            await metadata.SaveMovieAsync(new Movie
+            {
+                Title = title, Actors = [new Actor { Name = "Example Actor", TmdbId = id }]
+            }, folder, Path.Combine(folder, title + ".mkv"), false, Ct, writeFiles: false);
+        }
+        await Add("First", 42);
+        await Add("Second", 42);
+        await Add("Other", 99);
+        var movies = await metadata.LoadMoviesAsync();
+        var expected = movies.Where(movie => movie.Title is "First" or "Second").Select(movie => movie.Id).Order().ToArray();
+        Assert.Equal(expected, (await metadata.FindMovieIdsByActorAsync("Example Actor", 42, Ct)).Order());
+        Assert.Equal(3, (await metadata.FindMovieIdsByActorAsync("Example Actor", null, Ct)).Count);
+        Assert.Empty(await metadata.FindMovieIdsByActorAsync("Example", null, Ct));
+    }
+
+    [Fact]
+    public async Task SecondDeviceRescanImportsReplacedCastAndIdsFromSavedNfo()
+    {
+        var library = Path.Combine(root, "Movies");
+        var folder = Path.Combine(library, "Film");
+        Directory.CreateDirectory(folder);
+        var video = Path.Combine(folder, "Film.mkv");
+        await File.WriteAllBytesAsync(video, [0], Ct);
+        await MovieManager.SaveNfoFileAsync(new Movie
+        {
+            Title = "Film", Actors = [new Actor { Name = "Old Person", Role = "Old role" }]
+        }, folder, video, Ct);
+        var service = await CreateAsync();
+        using var metadata = service.Metadata;
+        await service.Scanner.ScanDirectoryAsync(library, Ct);
+        var cached = Assert.Single(await metadata.LoadMoviesAsync());
+        await cached.LoadFullDetailsAsync(metadata);
+        Assert.Equal("Old Person", Assert.Single(cached.FullMovieNFO!.Actors).Name);
+
+        var writerDatabase = new DatabaseManager(Path.Combine(root, "other-device.sqlite"));
+        await writerDatabase.InitializeDatabaseAsync();
+        using (var writer = new MetadataService(writerDatabase))
+            await writer.SaveMovieAsync(new Movie
+            {
+                Title = "Film",
+                Actors = [new Actor { Name = "New Person", Role = "New role", TmdbId = 12345, Thumb = ".actors/New_Person.jpg" }]
+            }, folder, video, false, Ct);
+
+        // An already loaded entry stays cached until the library is scanned again.
+        Assert.Equal("Old Person", Assert.Single(cached.FullMovieNFO.Actors).Name);
+        await service.Scanner.ScanDirectoryAsync(library, Ct);
+        var refreshed = Assert.Single(await metadata.LoadMoviesAsync());
+        await refreshed.LoadFullDetailsAsync(metadata);
+        var actor = Assert.Single(refreshed.FullMovieNFO!.Actors);
+        Assert.Equal("New Person", actor.Name);
+        Assert.Equal("New role", actor.Role);
+        Assert.Equal(12345, actor.TmdbId);
+        Assert.Equal(".actors/New_Person.jpg", actor.Thumb);
+        Assert.Equal(12345, Assert.Single(refreshed.Actors!).TmdbId);
+    }
+
+    [Fact]
     public async Task ScanImportsNfoWithoutChangingAnyLibraryFiles()
     {
         var folder = Path.Combine(root, "Filme", "Testfilm"); Directory.CreateDirectory(folder);

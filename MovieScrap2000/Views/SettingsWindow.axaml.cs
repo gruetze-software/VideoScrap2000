@@ -16,7 +16,7 @@ public partial class SettingsWindow : Window
         this.main = main;
         draft = new() { IsDemo = main?.IsDemo ?? false, LibraryPath = main?.LibraryPath ?? "", SeriesPath = main?.SeriesPath ?? "", ThemeIndex = main?.ThemeIndex ?? 0,
             LanguageIndex = main?.LanguageIndex ?? 0, MetadataLanguageIndex = main?.MetadataLanguageIndex ?? 0, ArtworkLanguageIndex = main?.ArtworkLanguageIndex ?? 0,
-            UseFanartBackground = main?.UseFanartBackground ?? false, ArtworkOptimizationProfile = main?.ArtworkOptimizationProfile ?? 0 };
+            UseFanartBackground = main?.UseFanartBackground ?? false, TabPosition = main?.TabPosition ?? 0, ArtworkOptimizationProfile = main?.ArtworkOptimizationProfile ?? 0 };
         DataContext = draft;
         draft.ScanOnStartup = main?.ScanOnStartup ?? false;
         draft.Scrapers = main?.Scrapers.Copy() ?? new();
@@ -44,6 +44,7 @@ public partial class SettingsWindow : Window
             }
             System.Diagnostics.Trace.WriteLine($"Folder picker: requesting {(series ? "TV" : "movie")} dialog after {elapsed.ElapsedMilliseconds} ms of preparation.");
             var folders = await StorageProvider.OpenFolderPickerAsync(options);
+            foreach (var folder in folders) await MacFolderAccess.RememberAsync(folder);
             System.Diagnostics.Trace.WriteLine($"Folder picker: returned after {elapsed.ElapsedMilliseconds} ms (including user selection).");
             var target = series ? draft.SeriesFolders : draft.MovieFolders;
             foreach (var path in MovieScrap2000.LibrarySources.Normalize(folders.Select(folder => folder.TryGetLocalPath()).OfType<string>()))
@@ -73,7 +74,7 @@ public partial class SettingsWindow : Window
     }
     private void Save(object? sender, RoutedEventArgs e)
     {
-        try { main?.ApplySettings(draft.MovieFolders, draft.SeriesFolders, draft.ThemeIndex, draft.LanguageIndex, draft.MetadataLanguageIndex, draft.ArtworkLanguageIndex, draft.UseFanartBackground, draft.ArtworkOptimizationProfile, draft.Scrapers, scanOnStartup: draft.ScanOnStartup); Close(); }
+        try { main?.ApplySettings(draft.MovieFolders, draft.SeriesFolders, draft.ThemeIndex, draft.LanguageIndex, draft.MetadataLanguageIndex, draft.ArtworkLanguageIndex, draft.UseFanartBackground, draft.ArtworkOptimizationProfile, draft.Scrapers, scanOnStartup: draft.ScanOnStartup, tabPosition: draft.TabPosition); Close(); }
         catch (Exception ex) { draft.Status = $"Einstellungen konnten nicht gespeichert werden: {ex.Message}"; }
     }
     private async void ConfigureScrapers(object? sender, RoutedEventArgs e)

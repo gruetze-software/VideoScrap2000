@@ -36,6 +36,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool scanOnStartup;
     public string ScanOnStartupLabel => Localization.Locale.T("Sammlung beim Start einlesen");
     [ObservableProperty] private int artworkOptimizationProfile;
+    [ObservableProperty] private int tabPosition;
+    public string TabPositionTitle => Localization.Locale.T("Reiterposition");
+    public IReadOnlyList<string> TabPositions => new[] { "Oben", "Links", "Rechts" }.Select(Localization.Locale.T).ToArray();
     public string OptimizationTitle => Localization.Locale.T("Artwork-Optimierung");
     public string OptimizationAction => Localization.Locale.T("Vorhandene Artworks optimieren …");
     public string OptimizationInfo => Localization.Locale.T("Optional für Android und schwächere Geräte. Wird beim Speichern neuer Artworks angewendet. Seitenverhältnis bleibt erhalten; kleine Bilder werden nicht vergrößert. Originale bleiben im Unterordner .artwork-originals erhalten. Transparente Bilder und Logos werden nicht verändert.") + " " + Localization.Locale.T("Darstellerbilder: 500 Pixel breit bei Kompakt und Ausgewogen.");

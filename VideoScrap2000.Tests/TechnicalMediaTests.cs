@@ -8,6 +8,16 @@ namespace VideoScrap2000.Tests;
 
 public sealed class TechnicalMediaTests
 {
+    [Fact]
+    public async Task ExplicitReadReportsMissingFileAndPreservesSilentAutomaticRead()
+    {
+        var missing = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "missing.mkv");
+        var token = TestContext.Current.CancellationToken;
+        Assert.Null(await TechnicalMediaReader.ReadAsync(missing, token));
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() =>
+            TechnicalMediaReader.ReadAsync(missing, token, reportFailure: true));
+    }
+
     [AvaloniaFact]
     public async Task NewMovieReadsVideoAndAudioAndWritesKodiStreamDetailsOnSave()
     {

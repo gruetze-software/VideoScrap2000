@@ -31,13 +31,24 @@
         <Button Content="Info" Click="ShowAbout" IsEnabled="{Binding !IsBusy}"/>
       </StackPanel>
     </Grid>
-    <TabControl Grid.Row="1" x:Name="LibraryTabs" SelectionChanged="LibraryTabChanged">
+    <TabControl Grid.Row="1" views:TabPositionLayout.Position="{Binding TabPosition}" x:Name="LibraryTabs" SelectionChanged="LibraryTabChanged">
+      <TabControl.Styles>
+        <Style Selector="TabControl#LibraryTabs > TabItem">
+          <Setter Property="Padding" Value="9,12"/>
+          <Setter Property="Margin" Value="8,0,0,6"/>
+        </Style>
+      </TabControl.Styles>
       <TabItem Header="{DynamicResource L59C2D9E82046}">
     <Grid ColumnDefinitions="310,16,*" Margin="0,10,0,0">
       <Border Classes="card" Padding="12">
         <Grid RowDefinitions="Auto,Auto,*">
           <TextBox Text="{Binding Query, Delay=250}" PlaceholderText="{DynamicResource L76DC8BF8BA74}" AutomationProperties.Name="{DynamicResource LF1047535290F}"/>
-          <StackPanel Grid.Row="1" Spacing="6" Margin="0,8,0,8"><ComboBox SelectedIndex="{Binding MovieSortIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{DynamicResource L188CA34ADC8E}"><ComboBoxItem Content="{DynamicResource LB5BC23B377E2}"/><ComboBoxItem Content="{DynamicResource LDCD1D5223F73}"/><ComboBoxItem Content="{DynamicResource L5ABCD5D493B6}"/></ComboBox><TextBlock Text="{Binding CountLabel}" Classes="secondary" Margin="4,0,0,0" FontSize="12"/></StackPanel>
+          <StackPanel Grid.Row="1" Spacing="6" Margin="0,8,0,8"><ComboBox SelectedIndex="{Binding MovieSortIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{DynamicResource L188CA34ADC8E}"><ComboBoxItem Content="{DynamicResource LB5BC23B377E2}"/><ComboBoxItem Content="{DynamicResource LDCD1D5223F73}"/><ComboBoxItem Content="{DynamicResource L5ABCD5D493B6}"/></ComboBox><TextBlock Text="{Binding CountLabel}" Classes="secondary" Margin="4,0,0,0" FontSize="12"/><Border IsVisible="{Binding HasActorFilter}" Background="{DynamicResource SubtleBrush}" CornerRadius="5" Padding="8,4">
+  <Grid ColumnDefinitions="*,Auto">
+    <StackPanel><TextBlock Text="{Binding ActorFilterTitle}" Classes="secondary" FontSize="11"/><TextBlock Text="{Binding ActorFilterName}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ActorFilterName}"/></StackPanel>
+    <Button Grid.Column="1" Content="×" Command="{Binding ClearActorFilterCommand}" ToolTip.Tip="{Binding ClearActorFilterTitle}" AutomationProperties.Name="{Binding ClearActorFilterTitle}" Padding="4" MinWidth="28" VerticalAlignment="Center"/>
+  </Grid>
+</Border></StackPanel>
           <ListBox x:Name="MovieList" Grid.Row="2" ItemsSource="{Binding Movies}" SelectedItem="{Binding SelectedMovie}" Background="Transparent" BorderThickness="0" IsEnabled="{Binding !IsBusy}"
                    ContainerPrepared="PrepareMovieRow" ContainerClearing="ClearMovieRow">
             <ListBox.ItemTemplate>
@@ -105,9 +116,9 @@
                   </Grid>
                 </StackPanel>
               </Grid>
-              <TabControl x:Name="MovieDetailTabs" Classes="detailTabs" SelectedIndex="{Binding DetailTabIndex, Mode=TwoWay}">
+              <TabControl views:TabPositionLayout.Position="{Binding TabPosition}" x:Name="MovieDetailTabs" Classes="detailTabs" SelectedIndex="{Binding DetailTabIndex, Mode=TwoWay}">
                 <TabControl.Styles>
-                  <Style Selector="TabItem"><Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="12,9"/><Setter Property="Margin" Value="0,0,6,8"/><Setter Property="CornerRadius" Value="7"/><Setter Property="Background" Value="{DynamicResource SubtleBrush}"/><Setter Property="Foreground" Value="{DynamicResource SecondaryBrush}"/></Style>
+                  <Style Selector="TabItem"><Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="9,12"/><Setter Property="Margin" Value="8,0,0,6"/><Setter Property="CornerRadius" Value="7"/><Setter Property="Background" Value="{DynamicResource SubtleBrush}"/><Setter Property="Foreground" Value="{DynamicResource SecondaryBrush}"/></Style>
                   <Style Selector="TabItem:selected"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource PageBrush}"/></Style>
                 </TabControl.Styles>
                 <TabItem Header="{DynamicResource L7EE7AC4448B5}">
@@ -147,7 +158,7 @@
                             <ListBox.ItemTemplate>
                               <DataTemplate x:DataType="vm:ActorEditor">
                                 <Grid ColumnDefinitions="2*,2*,72,28" Margin="8,3" DoubleTapped="OpenActorPhoto">
-                                  <Grid.ContextMenu><ContextMenu><MenuItem Header="{DynamicResource L84E45EE73411}" Click="EditActorEntry"/></ContextMenu></Grid.ContextMenu>
+                                  <Grid.ContextMenu><ContextMenu><MenuItem Header="{DynamicResource L84E45EE73411}" Click="EditActorEntry"/><MenuItem Header="{DynamicResource L07B4D31F598D}" Click="FilterMoviesByActor"/></ContextMenu></Grid.ContextMenu>
                                   <TextBlock Text="{Binding Name}" Classes.actorWithoutPicture="{Binding HasNoPicture}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" Margin="0,0,8,0"/>
                                   <TextBlock Grid.Column="1" Text="{Binding Role}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Role}" Margin="0,0,8,0"/>
                                   <TextBlock Grid.Column="2" Text="{Binding TmdbId}" VerticalAlignment="Center" Classes="secondary"/>

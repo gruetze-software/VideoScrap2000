@@ -17,6 +17,7 @@ public sealed class AppSettings
     public bool UseFanartBackground { get; set; }
     public bool ScanOnStartup { get; set; }
     public int ArtworkOptimizationProfile { get; set; }
+    public int TabPosition { get; set; }
     private ScraperSettings scrapers = new();
     public ScraperSettings Scrapers { get => scrapers; set => scrapers = value ?? new(); }
     private static string FilePath => Path.Combine(Utils.GetOptionsPath(), "settings.json");

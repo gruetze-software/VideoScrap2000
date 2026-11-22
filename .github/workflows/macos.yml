@@ -24,7 +24,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Verify signing and notarization control flow
         run: |
-          bash -n scripts/build-macos.sh scripts/build-macos-signed.sh scripts/package-macos.sh scripts/notarize-macos.sh
+          bash -n scripts/build-macos.sh scripts/build-macos-signed.sh scripts/package-macos.sh scripts/notarize-macos.sh scripts/package-mac-app-store.sh
           python3 scripts/test-macos-signing.py
       - name: Test application on native architecture
         run: dotnet test VideoScrap2000.Tests/VideoScrap2000.Tests.csproj -c Release -m:1

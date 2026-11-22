@@ -126,7 +126,7 @@ namespace MovieScrap2000.FanArtTvScraper
           if (fanArtResponse.Poster != null)
             foreach (var item in fanArtResponse.Poster) item.ImageType = ImageTypes.Poster;
           if (fanArtResponse.Thumb != null)
-            foreach (var item in fanArtResponse.Thumb) item.ImageType = ImageTypes.KeyArt;
+            foreach (var item in fanArtResponse.Thumb) item.ImageType = ImageTypes.Landscape;
         }
         return fanArtResponse;
       }

@@ -15,7 +15,14 @@ public partial class MainViewModel
         await RunAsync(async token =>
         {
             Status = "Technische Mediendaten werden gelesen …";
-            var info = await TechnicalMediaReader.ReadAsync(movie.VideoFilePath, token);
+            MovieFileInfo? info;
+            try { info = await TechnicalMediaReader.ReadAsync(movie.VideoFilePath, token, reportFailure: true); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                or DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+            {
+                Status = $"Technische Mediendaten konnten nicht gelesen werden: {ex.Message}";
+                return;
+            }
             if (info is null) { Status = "Technische Mediendaten konnten nicht gelesen werden."; return; }
             if (!ReferenceEquals(movie, SelectedMovie)) return;
             if (movie.FullMovieNFO is { } nfo) nfo.FileInfo = info;
@@ -44,7 +51,14 @@ public partial class SeriesViewModel
         await main.RunAsync(async token =>
         {
             main.Status = "Technische Mediendaten werden gelesen …";
-            var info = await TechnicalMediaReader.ReadAsync(episode.Episode.VideoPath, token);
+            MovieFileInfo? info;
+            try { info = await TechnicalMediaReader.ReadAsync(episode.Episode.VideoPath, token, reportFailure: true); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                or DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+            {
+                main.Status = $"Technische Mediendaten konnten nicht gelesen werden: {ex.Message}";
+                return;
+            }
             if (info is null) { main.Status = "Technische Mediendaten konnten nicht gelesen werden."; return; }
             episode.Editor.MediaInfo = info;
             main.Status = "Mediendetails neu eingelesen. Mit Änderungen speichern übernehmen.";

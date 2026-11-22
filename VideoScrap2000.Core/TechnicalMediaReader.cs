@@ -14,7 +14,7 @@ public static class TechnicalMediaReader
     public static bool HasVideoDetails(MovieFileInfo? info) =>
         info?.StreamDetails?.VideoStream is { Width: > 0, Height: > 0, Codec.Length: > 0 };
 
-    public static async Task<MovieFileInfo?> ReadAsync(string path, CancellationToken token)
+    public static async Task<MovieFileInfo?> ReadAsync(string path, CancellationToken token, bool reportFailure = false)
     {
         try
         {
@@ -22,20 +22,23 @@ public static class TechnicalMediaReader
                 FileShare.ReadWrite | FileShare.Delete, 65536, FileOptions.Asynchronous);
             var result = await Analyzer.AnalyzeAsync(stream, leaveOpen: true, cancellationToken: token);
             token.ThrowIfCancellationRequested();
-            if (!result.Success)
+            var info = result.Success ? Convert(result) : null;
+            if (HasVideoDetails(info)) return info;
+            var reason = result.Failure?.Message ?? "Keine lesbare Videospur mit Codec und Auflösung gefunden.";
+            System.Diagnostics.Trace.WriteLine($"MediaInfo: {path}: {reason}");
+            if (string.Equals(Path.GetExtension(path), ".mkv", StringComparison.OrdinalIgnoreCase))
             {
-                System.Diagnostics.Trace.WriteLine(result.Failure?.Message);
-                if (result.Failure?.Reason == AnalysisFailureReason.Timeout &&
-                    string.Equals(Path.GetExtension(path), ".mkv", StringComparison.OrdinalIgnoreCase))
-                    return await ReadMatroskaHeaderAsync(path, token);
-                return null;
+                var fallback = await ReadMatroskaHeaderAsync(path, token);
+                if (HasVideoDetails(fallback)) return fallback;
             }
-            return Convert(result);
+            if (reportFailure) throw new InvalidDataException(reason);
+            return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
             or DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
             System.Diagnostics.Trace.WriteLine(ex);
+            if (reportFailure) throw;
             return null;
         }
     }

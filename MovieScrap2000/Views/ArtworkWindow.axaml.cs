@@ -166,7 +166,15 @@ public partial class ArtworkWindow : Window
                 providerError = T("TMDB ist derzeit nicht erreichbar.");
             }
         }
-        var paths = type switch { ImageTypes.Poster => movieImages.Posters, ImageTypes.Fanart => movieImages.Backdrops, ImageTypes.ClearLogo => movieImages.Logos, _ => null };
+        var paths = type switch
+        {
+            ImageTypes.Poster => movieImages.Posters,
+            ImageTypes.KeyArt => movieImages.Posters.Where(image => string.IsNullOrWhiteSpace(image.Iso6391)
+                && image.Width > 0 && image.Height > image.Width).ToList(),
+            ImageTypes.Fanart => movieImages.Backdrops,
+            ImageTypes.ClearLogo => movieImages.Logos,
+            _ => null
+        };
         var kind = type switch { ImageTypes.Fanart => MovieScrap2000.TMDbScraper.ImageType.Backdrop, ImageTypes.ClearLogo => MovieScrap2000.TMDbScraper.ImageType.Logo, _ => MovieScrap2000.TMDbScraper.ImageType.Poster };
         var source = paths?
             .Select(p => new ArtworkSource(p.FilePath, null, kind, $"TMDb · {p.Iso6391 ?? "neutral"} · {p.Width} × {p.Height}", LanguagePriority(p.Iso6391))).ToList() ?? [];
@@ -180,7 +188,7 @@ public partial class ArtworkWindow : Window
         if (type == ImageTypes.Fanart && fanart?.Background4K is { } backgrounds4K)
             source.AddRange(backgrounds4K.Select(p => new ArtworkSource(null, p.Url, kind,
                 $"Fanart.tv · 4K · {p.Language}", LanguagePriority(p.Language))));
-        var list = type switch { ImageTypes.Poster => fanart?.Poster, ImageTypes.Fanart => fanart?.Background, ImageTypes.ClearLogo => fanart is null ? null : fanart.HdLogo.Concat(fanart.Logo).ToList(), ImageTypes.ClearArt => fanart?.ClearArt, ImageTypes.Banner => fanart?.Banner, ImageTypes.DiskArt => fanart?.Disc, ImageTypes.KeyArt or ImageTypes.Landscape => fanart?.Thumb, _ => null };
+        var list = type switch { ImageTypes.Poster => fanart?.Poster, ImageTypes.Fanart => fanart?.Background, ImageTypes.ClearLogo => fanart is null ? null : fanart.HdLogo.Concat(fanart.Logo).ToList(), ImageTypes.ClearArt => fanart?.ClearArt, ImageTypes.Banner => fanart?.Banner, ImageTypes.DiskArt => fanart?.Disc, ImageTypes.Landscape => fanart?.Thumb, _ => null };
         if (list is not null) source.AddRange(list.Select(p => new ArtworkSource(null, p.Url, kind, $"Fanart.tv · {p.Language}", LanguagePriority(p.Language))));
         if (scraper.Providers.EnableTvdb && !string.IsNullOrWhiteSpace(imdbId))
         {

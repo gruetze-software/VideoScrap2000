@@ -46,7 +46,11 @@ public partial class MainWindow : Window
         {
             startupScanPending = !model.IsDemo && model.ScanOnStartup;
             var startupDelay = startupScanPending ? Task.Delay(TimeSpan.FromSeconds(2)) : Task.CompletedTask;
+            string? accessError = null;
+            try { await MacFolderAccess.RestoreAsync(StorageProvider, model.MovieFolders.Concat(model.SeriesFolders)); }
+            catch (Exception ex) { accessError = ex.Message; startupScanPending = false; }
             await model.InitializeAsync();
+            if (accessError is not null) model.Status = accessError;
             if (!IsVisible) return;
             MovieList.SelectedIndex = model.Movies.Count > 0 ? 0 : -1;
             if (model.SelectedMovie is { } movie) MovieList.ScrollIntoView(movie);
@@ -65,6 +69,7 @@ public partial class MainWindow : Window
             SaveWindowPlacement();
             model.PropertyChanged -= OnModelPropertyChanged;
             model.Dispose();
+            MacFolderAccess.Release();
         };
     }
     private async void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -222,6 +227,12 @@ public partial class MainWindow : Window
     private async void EditActorEntry(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is ActorEditor actor) await EditActorAsync(actor);
+    }
+
+    private async void FilterMoviesByActor(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is ActorEditor actor)
+            await model.FilterByActorAsync(actor);
     }
 
     private async void EditSelectedActorPortrait(object? sender, RoutedEventArgs e)

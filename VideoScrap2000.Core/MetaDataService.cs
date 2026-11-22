@@ -15,6 +15,25 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class MetadataService : IDisposable
 {
+    public Task<HashSet<int>> FindMovieIdsByActorAsync(string name, int? tmdbId, CancellationToken token) =>
+        _dbManager.ExecuteAsync(async connection =>
+        {
+            using var command = connection.CreateCommand();
+            // Movie-specific cast metadata preserves identities even if the
+            // shared actor cache contains two people with the same name.
+            command.CommandText = @"SELECT DISTINCT M.Id FROM Movie M,
+                json_each(CASE WHEN json_valid(M.JsonMetadata) THEN M.JsonMetadata ELSE '{}' END, '$.Actors') A
+                WHERE (@tmdb > 0 AND CAST(json_extract(A.value, '$.TmdbId') AS INTEGER) = @tmdb)
+                   OR ((@tmdb <= 0 OR COALESCE(CAST(json_extract(A.value, '$.TmdbId') AS INTEGER),0) <= 0)
+                       AND json_extract(A.value, '$.Name') = @name COLLATE NOCASE)";
+            command.Parameters.AddWithValue("@tmdb", tmdbId.GetValueOrDefault());
+            command.Parameters.AddWithValue("@name", name.Trim());
+            var ids = new HashSet<int>();
+            using var reader = await command.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token)) ids.Add(reader.GetInt32(0));
+            return ids;
+        });
+
 	public Task RemoveCachedMovieAsync(int movieId, CancellationToken token) => _dbManager.ExecuteAsync(async connection =>
 	{
 		using var command = connection.CreateCommand();

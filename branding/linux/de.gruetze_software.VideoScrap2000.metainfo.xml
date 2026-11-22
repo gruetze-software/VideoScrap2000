@@ -68,6 +68,12 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.5.0" type="stable" date="2026-11-22">
+      <description>
+        <p>Adds cast filtering, configurable tab placement, corrected keyart selection, and improved technical media diagnostics.</p>
+        <p xml:lang="de">Ergänzt Darstellerfilter, einstellbare Reiterposition, korrigierte Keyart-Auswahl und verbesserte Mediendaten-Fehlermeldungen.</p>
+      </description>
+    </release>
     <release version="1.4.3" type="stable" date="2026-11-18">
       <description>
         <p>Fixes Kodi discovery of replaced cast portraits and movie clearlogos. Saving also creates compatible files for existing replacements.</p>

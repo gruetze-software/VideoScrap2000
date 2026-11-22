@@ -9,9 +9,13 @@ internal static class ReleaseUpdateCheck
     private const string Repository = "https://github.com/gruetze-software/VideoScrap2000";
     private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(10) };
 
-    internal static bool IsAvailable => OperatingSystem.IsWindows() ? !HasWindowsPackageIdentity()
+    internal static bool IsMacAppStore => OperatingSystem.IsMacOS() &&
+        (File.Exists(Path.Combine(AppContext.BaseDirectory, "..", "Resources", "mac-app-store")) ||
+         File.Exists(Path.Combine(AppContext.BaseDirectory, "..", "_MASReceipt", "receipt")));
+
+    internal static bool IsAvailable => !IsMacAppStore && (OperatingSystem.IsWindows() ? !HasWindowsPackageIdentity()
         : !(OperatingSystem.IsLinux() && (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("SNAP")) ||
-            (File.Exists("/.flatpak-info") && Environment.GetEnvironmentVariable("VIDEOSCRAP2000_GITHUB_BUNDLE") != "1")));
+            (File.Exists("/.flatpak-info") && Environment.GetEnvironmentVariable("VIDEOSCRAP2000_GITHUB_BUNDLE") != "1"))));
 
     internal static async Task<Version> GetLatestVersionAsync(CancellationToken token)
     {

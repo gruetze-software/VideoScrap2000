@@ -18,6 +18,8 @@ public partial class SeriesViewModel(MainViewModel main, Func<TMDbScraperManager
     private string? scannedPath;
     private TMDbScraperManager CreateScraper() => createScraper?.Invoke() ?? new TMDbScraperManager(settings: main.Scrapers);
     public ScraperSettings Scrapers => main.Scrapers;
+    public int TabPosition => main.TabPosition;
+    internal void RefreshTabPosition() => OnPropertyChanged(nameof(TabPosition));
     internal bool CanSearchActorPortraits => !main.IsDemo && Scrapers.EnableTmdbArtwork;
     internal string ArtworkLanguage => main.ArtworkLanguage;
     internal ArtworkProfile ActorPortraitProfile => (ArtworkProfile)main.ArtworkOptimizationProfile;

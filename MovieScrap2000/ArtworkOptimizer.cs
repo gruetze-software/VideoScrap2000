@@ -43,7 +43,8 @@ internal static class ArtworkOptimizer
         var swap = origin >= 5;
         var width = swap ? decoded.Height : decoded.Width;
         var height = swap ? decoded.Width : decoded.Height;
-        var portrait = kind.Equals("poster", StringComparison.OrdinalIgnoreCase);
+        var portrait = kind.Equals("poster", StringComparison.OrdinalIgnoreCase)
+            || kind.Equals("keyart", StringComparison.OrdinalIgnoreCase);
         var maxWidth = portrait ? profile == ArtworkProfile.Compact ? 600 : 1000 : profile == ArtworkProfile.Compact ? 1280 : 1920;
         var maxHeight = portrait ? profile == ArtworkProfile.Compact ? 900 : 1500 : profile == ArtworkProfile.Compact ? 720 : 1080;
         const int actorWidth = 500;

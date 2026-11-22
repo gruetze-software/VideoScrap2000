@@ -29,6 +29,8 @@
           <TextBlock Text="{DynamicResource L1DA7A3B4EEA2}" FontSize="17" FontWeight="SemiBold"/>
           <ComboBox SelectedIndex="{Binding ThemeIndex}" MinWidth="180" AutomationProperties.Name="{DynamicResource L1DA7A3B4EEA2}"><ComboBoxItem Content="{DynamicResource L6725E7BBCD28}"/><ComboBoxItem Content="{DynamicResource L8D586F8B60DF}"/><ComboBoxItem Content="{DynamicResource L368B231BE48A}"/></ComboBox>
           <CheckBox Content="{DynamicResource L021184804D3C}" IsChecked="{Binding UseFanartBackground}"/>
+          <TextBlock Text="{Binding TabPositionTitle}" Classes="label"/>
+          <ComboBox ItemsSource="{Binding TabPositions}" SelectedIndex="{Binding TabPosition}" MinWidth="180"/>
         </StackPanel></Border>
         <Border Classes="card" Padding="18" IsEnabled="{Binding !IsDemo}"><StackPanel>
           <TextBlock Text="{DynamicResource LDD0E6BDF21FC}" FontSize="17" FontWeight="SemiBold"/>

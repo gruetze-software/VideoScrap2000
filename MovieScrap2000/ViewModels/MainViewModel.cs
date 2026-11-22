@@ -46,6 +46,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int metadataLanguageIndex;
     [ObservableProperty] private int artworkLanguageIndex;
     public int ArtworkOptimizationProfile => Math.Clamp(settings.ArtworkOptimizationProfile, 0, 2);
+    public int TabPosition => Math.Clamp(settings.TabPosition, 0, 2);
     public string MetadataLanguage => LanguagePreferences.ResolveContent(settings.MetadataLanguage);
     public string ArtworkLanguage => LanguagePreferences.ResolveContent(settings.ArtworkLanguage);
     public ScraperSettings Scrapers => settings.Scrapers;
@@ -181,7 +182,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void ApplySettings(string movies, string series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0)
         => ApplySettings(new[] { movies }, new[] { series }, theme, language, metadataLanguage, artworkLanguage, useFanartBackground, artworkOptimizationProfile);
 
-    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0, ScraperSettings? scrapers = null, bool? scanOnStartup = null)
+    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0, ScraperSettings? scrapers = null, bool? scanOnStartup = null, int? tabPosition = null)
     {
         var scraperDraft = (scrapers ?? settings.Scrapers).Copy();
         scraperDraft.Normalize();
@@ -201,6 +202,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         settings.ArtworkLanguage = LanguagePreferences.ContentFromIndex(artworkLanguage);
         settings.UseFanartBackground = useFanartBackground;
         settings.ArtworkOptimizationProfile = Math.Clamp(artworkOptimizationProfile, 0, 2);
+        if (tabPosition.HasValue) settings.TabPosition = Math.Clamp(tabPosition.Value, 0, 2);
+        OnPropertyChanged(nameof(TabPosition));
+        Series.RefreshTabPosition();
         if (!IsDemo) settings.Save();
         UseFanartBackground = useFanartBackground;
         LanguageIndex = language; MetadataLanguageIndex = metadataLanguage; ArtworkLanguageIndex = artworkLanguage;
@@ -277,7 +281,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         var selected = SelectedMovie;
         var query = Query.Trim();
-        var grouped = allMovies.Where(movie => query.Length == 0 ||
+        var grouped = allMovies.Where(movie => actorMovieIds is null || actorMovieIds.Contains(movie.Id))
+            .Where(movie => query.Length == 0 ||
             $"{movie.Title} {movie.Year} {movie.GenresString}".Contains(query, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(movie => movie.MissingMetadata);
         var sorted = MovieSortIndex switch
@@ -320,6 +325,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var id = SelectedMovie?.Id;
         factsLoading?.Cancel();
         var loadedMovies = await Task.Run(() => metadata.LoadMoviesAsync(), cancellationToken);
+        await RefreshActorFilterAsync(cancellationToken);
         if (settings.MovieFolders is not null || MovieFolders.Count > 0)
             loadedMovies = loadedMovies.Where(movie => LibrarySources.ContainsFolder(MovieFolders, movie.FolderPath)).ToList();
         cancellationToken.ThrowIfCancellationRequested();
@@ -542,6 +548,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task RefreshSavedMovieAsync(int id)
     {
+        await RefreshActorFilterAsync(CancellationToken.None);
         var updated = await Task.Run(async () =>
         {
             var movie = (await metadata.LoadMoviesAsync([id])).Single();
