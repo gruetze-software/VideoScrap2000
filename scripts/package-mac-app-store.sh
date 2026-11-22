@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 022
 [[ $(uname -s) == Darwin && $# == 3 ]] || {
   echo 'Usage on macOS: package-mac-app-store.sh APP_ZIP PROFILE OUTPUT.pkg' >&2; exit 2;
 }
@@ -40,14 +41,57 @@ output.write_bytes(plistlib.dumps(entitlements))
 PY
 ditto "$PROFILE" "$APP/Contents/embedded.provisionprofile"
 printf 'Mac App Store\n' > "$APP/Contents/Resources/mac-app-store"
+cat > "$WORK/helper-entitlements.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>com.apple.security.app-sandbox</key><true/>
+<key>com.apple.security.inherit</key><true/>
+</dict></plist>
+PLIST
+# Files copied from a private profile or created under a restrictive umask
+# must remain readable after installation for every user.
+chmod -R u+rwX,go+rX "$APP"
 while IFS= read -r -d '' binary; do
   [[ "$binary" == "$APP/Contents/MacOS/VideoScrap2000" ]] && continue
-  if file -b "$binary" | grep -q 'Mach-O'; then
-    codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" "$binary"
+  format=$(file -b "$binary")
+  if [[ "$format" == *Mach-O* ]]; then
+    if [[ "$format" == *executable* ]]; then
+      codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" --entitlements "$WORK/helper-entitlements.plist" "$binary"
+    else
+      codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" "$binary"
+    fi
   fi
 done < <(find "$APP/Contents/MacOS" -type f -print0)
 codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" --entitlements "$WORK/entitlements.plist" "$APP"
 codesign --verify --deep --strict "$APP"
 productbuild --component "$APP" /Applications --sign "$MAC_APP_STORE_INSTALLER_IDENTITY" "$OUTPUT"
 pkgutil --check-signature "$OUTPUT"
+pkgutil --expand-full "$OUTPUT" "$WORK/expanded"
+PACKAGED_APP=$(find "$WORK/expanded" -type d -name 'VideoScrap 2000.app' -print -quit)
+[[ -n "$PACKAGED_APP" ]] || { echo 'Packaged app is missing.' >&2; exit 1; }
+python3 - "$PACKAGED_APP" <<'PY'
+import pathlib, stat, sys
+app = pathlib.Path(sys.argv[1])
+for path in [app, *app.rglob('*')]:
+    if path.is_symlink():
+        continue
+    mode = stat.S_IMODE(path.stat().st_mode)
+    if mode & 0o444 != 0o444 or (path.is_dir() and mode & 0o111 != 0o111):
+        raise SystemExit(f'Package contains a file or directory inaccessible to other users: {path}')
+PY
+codesign --verify --deep --strict "$PACKAGED_APP"
+while IFS= read -r -d '' binary; do
+  format=$(file -b "$binary")
+  if [[ "$format" == *Mach-O* && "$format" == *executable* ]]; then
+    codesign -d --entitlements - "$binary" > "$WORK/verify-entitlements.plist"
+    python3 - "$WORK/verify-entitlements.plist" "$binary" <<'PY'
+import pathlib, plistlib, sys
+entitlements = plistlib.loads(pathlib.Path(sys.argv[1]).read_bytes())
+if entitlements.get('com.apple.security.app-sandbox') is not True:
+    raise SystemExit(f'Executable has no App Sandbox entitlement: {sys.argv[2]}')
+if pathlib.Path(sys.argv[2]).name != 'VideoScrap2000' and entitlements.get('com.apple.security.inherit') is not True:
+    raise SystemExit(f'Helper has no sandbox inheritance entitlement: {sys.argv[2]}')
+PY
+  fi
+done < <(find "$PACKAGED_APP/Contents/MacOS" -type f -print0)
 echo "App Store Connect package: $OUTPUT"
