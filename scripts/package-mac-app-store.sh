@@ -83,7 +83,7 @@ codesign --verify --deep --strict "$PACKAGED_APP"
 while IFS= read -r -d '' binary; do
   format=$(file -b "$binary")
   if [[ "$format" == *Mach-O* && "$format" == *executable* ]]; then
-    codesign -d --entitlements - "$binary" > "$WORK/verify-entitlements.plist"
+    codesign -d --entitlements :- --xml "$binary" > "$WORK/verify-entitlements.plist"
     python3 - "$WORK/verify-entitlements.plist" "$binary" <<'PY'
 import pathlib, plistlib, sys
 entitlements = plistlib.loads(pathlib.Path(sys.argv[1]).read_bytes())
