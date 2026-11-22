@@ -86,7 +86,7 @@ while IFS= read -r -d '' binary; do
   format=$(file -b "$binary")
   if [[ "$format" == *Mach-O* || "$binary" == *.dll ]]; then
     codesign --verify --strict "$binary"
-    codesign -d --extract-certificates "$WORK/signing-certificate-" "$binary"
+    codesign -d --extract-certificates="$WORK/signing-certificate-" "$binary"
     python3 - "$WORK/signing-certificate-0" "$WORK/profile-certificates.txt" "$binary" <<'PY'
 import hashlib, pathlib, sys
 certificate = pathlib.Path(sys.argv[1])
