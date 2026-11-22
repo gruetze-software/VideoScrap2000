@@ -20,7 +20,7 @@ APP="$WORK/VideoScrap 2000.app"
 }
 security cms -D -i "$PROFILE" > "$WORK/profile.plist"
 python3 - "$APP" "$WORK/profile.plist" "$ROOT/branding/macos/store-entitlements.plist" "$WORK/entitlements.plist" <<'PY'
-import datetime, pathlib, plistlib, sys
+import datetime, hashlib, pathlib, plistlib, sys
 app, profile_path, template, output = map(pathlib.Path, sys.argv[1:])
 info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
 profile = plistlib.loads(profile_path.read_bytes())
@@ -38,6 +38,8 @@ for key in ('com.apple.application-identifier', 'application-identifier', 'com.a
     if key in granted:
         entitlements[key] = granted[key]
 output.write_bytes(plistlib.dumps(entitlements))
+(output.parent / 'profile-certificates.txt').write_text('\n'.join(
+    hashlib.sha1(certificate).hexdigest().upper() for certificate in profile['DeveloperCertificates']))
 PY
 ditto "$PROFILE" "$APP/Contents/embedded.provisionprofile"
 printf 'Mac App Store\n' > "$APP/Contents/Resources/mac-app-store"
@@ -54,8 +56,8 @@ chmod -R u+rwX,go+rX "$APP"
 while IFS= read -r -d '' binary; do
   [[ "$binary" == "$APP/Contents/MacOS/VideoScrap2000" ]] && continue
   format=$(file -b "$binary")
-  if [[ "$format" == *Mach-O* ]]; then
-    if [[ "$format" == *executable* ]]; then
+  if [[ "$format" == *Mach-O* || "$binary" == *.dll ]]; then
+    if [[ "$format" == *Mach-O* && "$format" == *executable* ]]; then
       codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" --entitlements "$WORK/helper-entitlements.plist" "$binary"
     else
       codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" "$binary"
@@ -82,6 +84,20 @@ PY
 codesign --verify --deep --strict "$PACKAGED_APP"
 while IFS= read -r -d '' binary; do
   format=$(file -b "$binary")
+  if [[ "$format" == *Mach-O* || "$binary" == *.dll ]]; then
+    codesign --verify --strict "$binary"
+    codesign -d --extract-certificates "$WORK/signing-certificate-" "$binary"
+    python3 - "$WORK/signing-certificate-0" "$WORK/profile-certificates.txt" "$binary" <<'PY'
+import hashlib, pathlib, sys
+certificate = pathlib.Path(sys.argv[1])
+if not certificate.is_file():
+    raise SystemExit(f'Signing certificate missing: {sys.argv[3]}')
+fingerprint = hashlib.sha1(certificate.read_bytes()).hexdigest().upper()
+if fingerprint not in pathlib.Path(sys.argv[2]).read_text().splitlines():
+    raise SystemExit(f'Signing certificate does not match provisioning profile: {sys.argv[3]}')
+PY
+    rm -f "$WORK/signing-certificate-"*
+  fi
   if [[ "$format" == *Mach-O* && "$format" == *executable* ]]; then
     codesign -d --entitlements :- --xml "$binary" > "$WORK/verify-entitlements.plist"
     python3 - "$WORK/verify-entitlements.plist" "$binary" <<'PY'
