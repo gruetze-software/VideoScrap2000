@@ -15,11 +15,12 @@ WORK=$(mktemp -d "${TMPDIR:-/tmp}/videoscrap-store.XXXXXX")
 trap 'rm -rf -- "$WORK"' EXIT
 remove_quarantine() {
   python3 - "$1" <<'PY'
-import os, pathlib, sys
+import pathlib, subprocess, sys
 app = pathlib.Path(sys.argv[1])
 for path in [app, *app.rglob('*')]:
-    if 'com.apple.quarantine' in os.listxattr(path, follow_symlinks=False):
-        os.removexattr(path, 'com.apple.quarantine', follow_symlinks=False)
+    attributes = subprocess.check_output(['xattr', '-s', str(path)], text=True).splitlines()
+    if 'com.apple.quarantine' in attributes:
+        subprocess.run(['xattr', '-s', '-d', 'com.apple.quarantine', str(path)], check=True)
 PY
 }
 ditto -x -k "$ARCHIVE" "$WORK"
@@ -94,10 +95,10 @@ pkgutil --expand-full "$OUTPUT" "$WORK/expanded"
 PACKAGED_APP=$(find "$WORK/expanded" -type d -name 'VideoScrap 2000.app' -print -quit)
 [[ -n "$PACKAGED_APP" ]] || { echo 'Packaged app is missing.' >&2; exit 1; }
 python3 - "$PACKAGED_APP" <<'PY'
-import os, pathlib, stat, sys
+import pathlib, stat, subprocess, sys
 app = pathlib.Path(sys.argv[1])
 for path in [app, *app.rglob('*')]:
-    if 'com.apple.quarantine' in os.listxattr(path, follow_symlinks=False):
+    if 'com.apple.quarantine' in subprocess.check_output(['xattr', '-s', str(path)], text=True).splitlines():
         raise SystemExit(f'Package contains a quarantined file: {path}')
     if path.is_symlink():
         continue
