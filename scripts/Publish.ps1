@@ -92,13 +92,14 @@ $fileCount = $files.Count
 if ($Runtime.StartsWith('osx-')) {
     if (!$IsMacOS) { throw 'Build macOS application bundles on macOS.' }
     $packageBase = Join-Path $run $packageName
-    bash (Join-Path $repository 'scripts/package-macos.sh') $output $Runtime $version $packageBase $selfContained
+    $macFormat = if ($MacAppStore) { 'store-input' } else { 'all' }
+    bash (Join-Path $repository 'scripts/package-macos.sh') $output $Runtime $version $packageBase $selfContained $macFormat
     if ($LASTEXITCODE -ne 0) { throw 'macOS signing or application packaging failed.' }
     $archive = $packageBase + '.zip'
     $bundleInfo = Get-Content -LiteralPath ($packageBase + '.bundle-info.json') -Raw | ConvertFrom-Json
     $bytes = $bundleInfo.installedBytes
     $fileCount = $bundleInfo.files
-    if (!$FrameworkDependent) {
+    if (!$FrameworkDependent -and !$MacAppStore) {
         $dmg = Get-Item -LiteralPath ($packageBase + '.dmg')
         $dmgHash = (Get-FileHash -LiteralPath $dmg.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
         [IO.File]::WriteAllText($dmg.FullName + '.sha256', "$dmgHash  $($dmg.Name)`n")

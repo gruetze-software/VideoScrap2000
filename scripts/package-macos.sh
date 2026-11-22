@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Wrap the already checked, architecture-specific publish output in an app.
 set -euo pipefail
-[[ $# == 5 ]] || { echo 'Usage: package-macos.sh PUBLISH_DIR RID VERSION PACKAGE_BASE SELF_CONTAINED' >&2; exit 2; }
+[[ $# == 5 || $# == 6 ]] || { echo 'Usage: package-macos.sh PUBLISH_DIR RID VERSION PACKAGE_BASE SELF_CONTAINED [all|store-input]' >&2; exit 2; }
 [[ $(uname -s) == Darwin ]] || { echo 'App packaging requires macOS.' >&2; exit 1; }
 PUBLISH=$1; RID=$2; VERSION=$3; BASE=$4; SELF_CONTAINED=$5
+FORMAT=${6:-all}
+case "$FORMAT" in all|store-input) ;; *) exit 2 ;; esac
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 source "$ROOT/scripts/apple-check-retry.sh"
 case "$RID" in osx-x64|osx-arm64) ;; *) exit 2 ;; esac
@@ -82,7 +84,7 @@ ditto -c -k --sequesterRsrc --keepParent "$APP" "$BASE.zip"
 ditto -x -k "$BASE.zip" "$WORK/extracted"
 codesign --verify --deep --strict "$WORK/extracted/VideoScrap 2000.app"
 if [[ $MODE == developer-id ]]; then retry_apple_check xcrun stapler validate "$WORK/extracted/VideoScrap 2000.app"; fi
-if [[ $SELF_CONTAINED == true ]]; then
+if [[ $SELF_CONTAINED == true && $FORMAT != store-input ]]; then
   mkdir "$WORK/dmg"
   chmod 755 "$WORK/dmg"
   ditto "$APP" "$WORK/dmg/VideoScrap 2000.app"
