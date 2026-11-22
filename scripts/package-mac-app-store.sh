@@ -13,6 +13,15 @@ PROFILE=$(cd -- "$(dirname -- "$2")" && pwd)/$(basename -- "$2")
 OUTPUT=$(cd -- "$(dirname -- "$3")" && pwd)/$(basename -- "$3")
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/videoscrap-store.XXXXXX")
 trap 'rm -rf -- "$WORK"' EXIT
+remove_quarantine() {
+  python3 - "$1" <<'PY'
+import os, pathlib, sys
+app = pathlib.Path(sys.argv[1])
+for path in [app, *app.rglob('*')]:
+    if 'com.apple.quarantine' in os.listxattr(path, follow_symlinks=False):
+        os.removexattr(path, 'com.apple.quarantine', follow_symlinks=False)
+PY
+}
 ditto -x -k "$ARCHIVE" "$WORK"
 APP="$WORK/VideoScrap 2000.app"
 [[ -f "$APP/Contents/MacOS/VideoScrap2000" && -f "$APP/Contents/MacOS/libAvaloniaNative.dylib" ]] || {
@@ -62,6 +71,9 @@ PLIST
 # Files copied from a private profile or created under a restrictive umask
 # must remain readable after installation for every user.
 chmod -R u+rwX,go+rX "$APP"
+# Browser-downloaded ZIPs and profiles can carry quarantine into the bundle.
+# Remove only this download attribute, preserving code-signing attributes.
+remove_quarantine "$APP"
 while IFS= read -r -d '' binary; do
   [[ "$binary" == "$APP/Contents/MacOS/VideoScrap2000" ]] && continue
   format=$(file -b "$binary")
@@ -74,6 +86,7 @@ while IFS= read -r -d '' binary; do
   fi
 done < <(find "$APP/Contents/MacOS" -type f -print0)
 codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" --entitlements "$WORK/entitlements.plist" "$APP"
+remove_quarantine "$APP"
 codesign --verify --deep --strict "$APP"
 productbuild --component "$APP" /Applications --sign "$MAC_APP_STORE_INSTALLER_IDENTITY" "$OUTPUT"
 pkgutil --check-signature "$OUTPUT"
@@ -81,9 +94,11 @@ pkgutil --expand-full "$OUTPUT" "$WORK/expanded"
 PACKAGED_APP=$(find "$WORK/expanded" -type d -name 'VideoScrap 2000.app' -print -quit)
 [[ -n "$PACKAGED_APP" ]] || { echo 'Packaged app is missing.' >&2; exit 1; }
 python3 - "$PACKAGED_APP" <<'PY'
-import pathlib, stat, sys
+import os, pathlib, stat, sys
 app = pathlib.Path(sys.argv[1])
 for path in [app, *app.rglob('*')]:
+    if 'com.apple.quarantine' in os.listxattr(path, follow_symlinks=False):
+        raise SystemExit(f'Package contains a quarantined file: {path}')
     if path.is_symlink():
         continue
     mode = stat.S_IMODE(path.stat().st_mode)
