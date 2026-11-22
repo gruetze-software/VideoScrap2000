@@ -18,6 +18,9 @@ APP="$WORK/VideoScrap 2000.app"
 [[ -f "$APP/Contents/MacOS/libcoreclr.dylib" ]] || {
   echo 'A self-contained macOS ZIP with bundled .NET is required.' >&2; exit 1;
 }
+[[ ! -f "$APP/Contents/MacOS/VideoScrap2000.dll" && ! -f "$APP/Contents/MacOS/VideoScrap2000.runtimeconfig.json" ]] || {
+  echo 'Use the single-file Store input ZIP built with Publish.ps1 -MacAppStore, not the public DMG ZIP. The multi-file runtime can abort during sandboxed AppKit initialization.' >&2; exit 1;
+}
 security cms -D -i "$PROFILE" > "$WORK/profile.plist"
 python3 - "$APP" "$WORK/profile.plist" "$ROOT/branding/macos/store-entitlements.plist" "$WORK/entitlements.plist" <<'PY'
 import datetime, hashlib, os, pathlib, plistlib, re, sys

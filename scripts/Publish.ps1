@@ -1,9 +1,13 @@
 param(
     [Parameter(Mandatory)][ValidateSet('win-x64','win-arm64','linux-x64','linux-arm64','osx-x64','osx-arm64')][string]$Runtime,
-    [switch]$FrameworkDependent
+    [switch]$FrameworkDependent,
+    [switch]$MacAppStore
 )
 $ErrorActionPreference = 'Stop'
 $repository = Split-Path -Parent $PSScriptRoot
+if ($MacAppStore -and (!$Runtime.StartsWith('osx-') -or $FrameworkDependent)) {
+    throw 'Mac App Store builds require a self-contained macOS runtime.'
+}
 $run = Join-Path $repository ('artifacts/' + $Runtime + '/' + [guid]::NewGuid().ToString('N'))
 $output = Join-Path $run 'VideoScrap2000'
 $selfContained = if ($FrameworkDependent) { 'false' } else { 'true' }
@@ -11,10 +15,15 @@ $project = Join-Path $repository 'MovieScrap2000/MovieScrap2000.csproj'
 [xml]$projectMetadata = Get-Content -LiteralPath $project -Raw
 $version = @($projectMetadata.Project.PropertyGroup.Version | Where-Object { $_ })[0]
 $flavor = if ($FrameworkDependent) { '-framework-dependent' } else { '' }
+if ($MacAppStore) { $flavor = '-store-input' }
 $packageName = "VideoScrap2000-$version-$Runtime$flavor"
 New-Item -ItemType Directory -Path $output -Force | Out-Null
-dotnet publish $project -c Release -r $Runtime --self-contained $selfContained -o $output -p:PublishTrimmed=false -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false -m:1 -nr:false
+$singleFile = if ($MacAppStore) { 'true' } else { 'false' }
+dotnet publish $project -c Release -r $Runtime --self-contained $selfContained -o $output -p:PublishTrimmed=false "-p:PublishSingleFile=$singleFile" -p:IncludeNativeLibrariesForSelfExtract=false -p:IncludeAllContentForSelfExtract=false -p:PublishReadyToRun=false -p:UseSharedCompilation=false -m:1 -nr:false
 if ($LASTEXITCODE -ne 0) { throw 'Publish fehlgeschlagen.' }
+if ($MacAppStore -and (Test-Path -LiteralPath (Join-Path $output 'VideoScrap2000.dll'))) {
+    throw 'The Mac App Store executable must bundle the managed application assemblies.'
+}
 if ($Runtime.StartsWith('linux-') -and !(Test-Path -LiteralPath (Join-Path $output 'Avalonia.Wayland.dll'))) {
     throw 'The Linux package must include the native Wayland backend.'
 }

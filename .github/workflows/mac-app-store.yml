@@ -1,0 +1,29 @@
+name: Build Mac App Store input
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  store-input:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build single-file Apple Silicon Store input
+        shell: pwsh
+        env:
+          FANART_TV_PROJECT_API_KEY: ${{ github.ref == 'refs/heads/main' && secrets.FANART_TV_PROJECT_API_KEY || '' }}
+          TVDB_PROJECT_API_KEY: ${{ github.ref == 'refs/heads/main' && secrets.TVDB_PROJECT_API_KEY || '' }}
+        run: |
+          if (!$env:FANART_TV_PROJECT_API_KEY -or !$env:TVDB_PROJECT_API_KEY) { throw 'Project credentials are required; run on main.' }
+          ./scripts/Publish.ps1 -Runtime osx-arm64 -MacAppStore
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: Mac-App-Store-input-arm64
+          path: |
+            artifacts/**/*-store-input.zip
+            artifacts/**/*-store-input.zip.sha256
+          if-no-files-found: error

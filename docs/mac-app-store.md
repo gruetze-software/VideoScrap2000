@@ -14,13 +14,17 @@ See Apple's instructions for [certificates](https://developer.apple.com/help/acc
 
 ## Build the upload package
 
-Download the self-contained macOS ZIP matching your architecture from release 1.5.0. Verify its SHA-256 checksum. Obtain this repository at tag v1.5.0 on the same Mac.
+Run the **Build Mac App Store input** GitHub Actions workflow on main. Download its **Mac-App-Store-input-arm64** artifact and extract it. Verify the ZIP against the included SHA-256 checksum. Obtain the same source revision on your Mac. This input bundles managed assemblies into one executable while keeping native libraries beside it. The public release ZIP uses a multi-file runtime and must not be used for Store signing: it can abort during sandboxed AppKit initialization ([upstream report](https://github.com/AvaloniaUI/Avalonia/issues/6529)).
 
 Confirm the exact application identity with **security find-identity -v -p codesigning**, and the installer identity in Keychain Access. Substitute the real names and profile path below.
 
     export MAC_APP_STORE_APPLICATION_IDENTITY='Apple Distribution: YOUR NAME (TEAMID)'
     export MAC_APP_STORE_INSTALLER_IDENTITY='3rd Party Mac Developer Installer: YOUR NAME (TEAMID)'
-    bash scripts/package-mac-app-store.sh +      "$HOME/Downloads/VideoScrap2000-1.5.0-osx-arm64.zip" +      "$HOME/Downloads/VideoScrap2000.provisionprofile" +      "$HOME/Downloads/VideoScrap2000-1.5.0-arm64-store.pkg"
+    export MAC_APP_STORE_BUILD_NUMBER='1.5.2'
+    bash scripts/package-mac-app-store.sh \
+      "$HOME/Downloads/VideoScrap2000-1.5.0-osx-arm64-store-input.zip" \
+      "$HOME/Downloads/VideoScrap2000_App_Store.provisionprofile" \
+      "$HOME/Downloads/VideoScrap2000-1.5.0-arm64-store.pkg"
 
 The script checks the profile's bundle ID and expiry, embeds the profile, enables App Sandbox, signs native code and the app, and generates the signed .pkg. Signing identities must have their private keys in your Mac's keychain.
 
