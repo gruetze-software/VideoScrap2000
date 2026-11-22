@@ -46,7 +46,7 @@ while IFS= read -r -d '' binary; do
     codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" "$binary"
   fi
 done < <(find "$APP/Contents/MacOS" -type f -print0)
-codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" +  --entitlements "$WORK/entitlements.plist" "$APP"
+codesign --force --timestamp --options runtime --sign "$MAC_APP_STORE_APPLICATION_IDENTITY" --entitlements "$WORK/entitlements.plist" "$APP"
 codesign --verify --deep --strict "$APP"
 productbuild --component "$APP" /Applications --sign "$MAC_APP_STORE_INSTALLER_IDENTITY" "$OUTPUT"
 pkgutil --check-signature "$OUTPUT"
