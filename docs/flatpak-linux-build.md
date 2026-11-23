@@ -1,5 +1,40 @@
 # Build and test on Linux
 
+## Prebuilt release inputs (1.5.0 and later)
+
+Linux release archives now include `VideoScrap2000/linux-integration/` with the
+desktop file, AppStream metadata, application icon and binary installer. License
+files and third-party notices are already included with the application. README
+screenshots and branding source files are excluded.
+
+For the existing 1.5.0 release, the separately named
+`VideoScrap2000-1.5.0-linux-{x64,arm64}-flatpak.tar.gz` assets add these installation
+files to the original, unchanged application binaries. Their checksums are listed
+in `SHA256SUMS-flatpak.txt`. The original release archives and tag stay unchanged.
+Later Linux archives include the integration files directly.
+
+In the publisher's independently maintained binary manifest, keep the native
+libzen/libmediainfo modules and select the appropriate archive for each CPU.
+Keep `strip-components: 0`, remove the extra application Git source, and replace
+the application installation commands with this single command:
+
+```sh
+bash VideoScrap2000/linux-integration/install.sh
+```
+
+The installer uses the native libraries built into `/app/lib`, creates relative
+app-local links for .NET, installs desktop integration and licenses, and checks
+MediaInfo's dependencies. Its launcher does not override `LD_LIBRARY_PATH`.
+
+The `Package and test Flatpak binary inputs` workflow repackages the two 1.5.0
+architectures, verifies that original files are unchanged, and builds the native
+modules from the publisher's manifest. It tests installation, MediaInfo reading
+a real audio sample and application startup inside the matching Flatpak SDK.
+After updating the manifest, also perform a complete `flatpak-builder` build and
+test folder access, metadata and artwork in a graphical session.
+
+## Earlier source-build preparation
+
 The upstream installer, desktop integration, icon, AppStream metadata and offline NuGet sources are included. Native Wayland and X11 fallback have passed window/dialog checks. A complete Flatpak build still depends on the publisher's independently maintained manifest and native dependency inputs.
 
 ## Prepare the human-authored manifest

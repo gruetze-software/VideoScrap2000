@@ -64,6 +64,16 @@ if ($Runtime.StartsWith('osx-') -and $IsMacOS) {
 Copy-Item -LiteralPath (Join-Path $repository 'THIRD-PARTY-NOTICES.md') -Destination $output
 Copy-Item -LiteralPath (Join-Path $repository 'LICENSE') -Destination $output
 Copy-Item -LiteralPath (Join-Path $repository 'licenses') -Destination $output -Recurse
+if ($Runtime.StartsWith('linux-')) {
+    $integration = Join-Path $output 'linux-integration'
+    New-Item -ItemType Directory -Path $integration -Force | Out-Null
+    $appId = 'de.gruetze_software.VideoScrap2000'
+    foreach ($extension in @('desktop', 'metainfo.xml')) {
+        Copy-Item -LiteralPath (Join-Path $repository "branding/linux/$appId.$extension") -Destination $integration
+    }
+    Copy-Item -LiteralPath (Join-Path $repository 'MovieScrap2000/Assets/videoscrap-2000.png') -Destination (Join-Path $integration "$appId.png")
+    Copy-Item -LiteralPath (Join-Path $repository 'scripts/install-flatpak-binary.sh') -Destination (Join-Path $integration 'install.sh')
+}
 # Preserve notices supplied by the exact restored dependency versions as well.
 $assets = Get-Content (Join-Path $repository 'MovieScrap2000/obj/project.assets.json') -Raw | ConvertFrom-Json
 foreach ($library in $assets.libraries.PSObject.Properties) {

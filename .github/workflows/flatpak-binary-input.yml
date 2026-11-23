@@ -1,0 +1,99 @@
+name: Package and test Flatpak binary inputs
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            rid: linux-x64
+            sha256: 1cd21999837e61f3bd0bf0928d11508feccc09371ff4704b183ace70c7980c2e
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+            sha256: e8216fbc7801706ce9e139c372399a86f0d6f64927159c1d810c957db30b967d
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Package existing 1.5.0 binaries with installation metadata
+        env:
+          RID: ${{ matrix.rid }}
+          EXPECTED_SHA256: ${{ matrix.sha256 }}
+        run: |
+          set -euo pipefail
+          archive="VideoScrap2000-1.5.0-$RID.tar.gz"
+          curl --fail --location --retry 3 "https://github.com/gruetze-software/VideoScrap2000/releases/download/v1.5.0/$archive" -o "$archive"
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$archive" | sha256sum --check
+          bash -n scripts/install-flatpak-binary.sh scripts/package-flatpak-input.sh
+          bash scripts/package-flatpak-input.sh "$archive" "artifacts/VideoScrap2000-1.5.0-$RID-flatpak.tar.gz"
+          mkdir stage original
+          tar -xzf "artifacts/VideoScrap2000-1.5.0-$RID-flatpak.tar.gz" -C stage
+          tar -xzf "$archive" -C original
+          diff --recursive --no-dereference --exclude=linux-integration original stage
+          if find stage -type f | grep -E '/(README[^/]*|screenshots/)|\.(pdn|cs|csproj)$'; then
+            echo 'Unexpected documentation or branding sources in release input'; exit 1
+          fi
+          (cd artifacts && sha256sum *.tar.gz > SHA256SUMS-flatpak.txt)
+      - name: Install Flatpak test tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y flatpak flatpak-builder xvfb xauth
+          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+      - name: Build native modules from the publisher's manifest
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://raw.githubusercontent.com/gruetze-software/flathub/videoscrap2000/de.gruetze_software.VideoScrap2000.yml -o publisher.yml
+          sha256sum publisher.yml
+          flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse --force-clean --stop-at=videoscrap2000 build-flatpak publisher.yml
+      - name: Install and test without a custom library search path
+        run: |
+          set -euo pipefail
+          flatpak build --filesystem="$PWD/stage:ro" build-flatpak bash "$PWD/stage/VideoScrap2000/linux-integration/install.sh"
+          flatpak build build-flatpak sh -ec '
+            ! grep -q LD_LIBRARY_PATH /app/bin/videoscrap2000
+            test -f /app/share/applications/de.gruetze_software.VideoScrap2000.desktop
+            test -f /app/share/metainfo/de.gruetze_software.VideoScrap2000.metainfo.xml
+            test -f /app/share/icons/hicolor/256x256/apps/de.gruetze_software.VideoScrap2000.png
+            test -d /app/share/licenses/de.gruetze_software.VideoScrap2000/third-party
+            test "$(readlink /app/lib/videoscrap2000/libmediainfo.so)" = ../libmediainfo.so
+            test "$(readlink /app/lib/videoscrap2000/libzen.so.0)" = ../libzen.so.0
+            dependencies=$(ldd /app/lib/videoscrap2000/libmediainfo.so)
+            printf "%s\n" "$dependencies"
+            ! printf "%s\n" "$dependencies" | grep -q "not found"
+          '
+          flatpak build build-flatpak python3 - <<'PY'
+          import ctypes, tempfile, wave
+          media = ctypes.CDLL('/app/lib/videoscrap2000/libmediainfo.so')
+          media.MediaInfoA_New.restype = ctypes.c_void_p
+          media.MediaInfoA_Open.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+          media.MediaInfoA_Open.restype = ctypes.c_size_t
+          media.MediaInfoA_Get.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t, ctypes.c_char_p, ctypes.c_size_t, ctypes.c_size_t]
+          media.MediaInfoA_Get.restype = ctypes.c_char_p
+          media.MediaInfoA_Delete.argtypes = [ctypes.c_void_p]
+          handle = media.MediaInfoA_New()
+          assert handle
+          try:
+              with tempfile.NamedTemporaryFile(suffix='.wav') as sample:
+                  with wave.open(sample.name, 'wb') as audio:
+                      audio.setparams((1, 2, 44100, 0, 'NONE', 'not compressed'))
+                      audio.writeframes(b'\0\0' * 44100)
+                  assert media.MediaInfoA_Open(handle, sample.name.encode())
+                  rate = media.MediaInfoA_Get(handle, 2, 0, b'SamplingRate', 1, 0)
+                  assert rate == b'44100', rate
+                  print('MediaInfo read real audio metadata:', rate.decode())
+          finally:
+              media.MediaInfoA_Delete(handle)
+          PY
+          xvfb-run -a flatpak build --share=ipc --socket=x11 build-flatpak /app/bin/videoscrap2000 --startup-check
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: Flatpak-binary-input-${{ matrix.rid }}
+          path: |
+            artifacts/*-flatpak.tar.gz
+            artifacts/SHA256SUMS-flatpak.txt
+            publisher.yml
+          if-no-files-found: error
