@@ -97,7 +97,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(CanGenerateOutline))]
     private string plot = "";
     [ObservableProperty] private string tagline = "";
-    [ObservableProperty] private string imdb = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ImdbLink), nameof(CanOpenImdbLink))]
+    private string imdb = "";
     [ObservableProperty] private string directors = "";
     [ObservableProperty] private Bitmap? poster;
     [ObservableProperty] private Bitmap? fanartBackground;
@@ -171,7 +173,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
     partial void OnQueryChanged(string value) => Filter();
     partial void OnSeriesPathChanged(string value) => Series.ResetLibrary();
     public IReadOnlyList<string> MovieFolders => LibrarySources.Normalize(settings.MovieFolders ?? [LibraryPath]);
-    public bool ScanOnStartup => settings.ScanOnStartup;
     public IReadOnlyList<string> SeriesFolders => LibrarySources.Normalize(settings.SeriesFolders ?? [SeriesPath]);
     partial void OnUseFanartBackgroundChanged(bool value) => Series.RefreshAppearance();
     partial void OnThemeIndexChanged(int value)
@@ -182,7 +183,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void ApplySettings(string movies, string series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0)
         => ApplySettings(new[] { movies }, new[] { series }, theme, language, metadataLanguage, artworkLanguage, useFanartBackground, artworkOptimizationProfile);
 
-    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0, ScraperSettings? scrapers = null, bool? scanOnStartup = null, int? tabPosition = null)
+    public void ApplySettings(IEnumerable<string> movies, IEnumerable<string> series, int theme, int language = 0, int metadataLanguage = 0, int artworkLanguage = 0, bool useFanartBackground = false, int artworkOptimizationProfile = 0, ScraperSettings? scrapers = null, int? tabPosition = null)
     {
         var scraperDraft = (scrapers ?? settings.Scrapers).Copy();
         scraperDraft.Normalize();
@@ -190,7 +191,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var previousSeries = SeriesFolders;
         if (!IsDemo)
         {
-            if (scanOnStartup.HasValue) settings.ScanOnStartup = scanOnStartup.Value;
             settings.MovieFolders = LibrarySources.Normalize(movies);
             settings.SeriesFolders = LibrarySources.Normalize(series);
             settings.LibraryPath = settings.MovieFolders.FirstOrDefault() ?? "";

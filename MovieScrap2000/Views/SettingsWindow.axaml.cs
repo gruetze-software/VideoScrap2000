@@ -18,7 +18,6 @@ public partial class SettingsWindow : Window
             LanguageIndex = main?.LanguageIndex ?? 0, MetadataLanguageIndex = main?.MetadataLanguageIndex ?? 0, ArtworkLanguageIndex = main?.ArtworkLanguageIndex ?? 0,
             UseFanartBackground = main?.UseFanartBackground ?? false, TabPosition = main?.TabPosition ?? 0, ArtworkOptimizationProfile = main?.ArtworkOptimizationProfile ?? 0 };
         DataContext = draft;
-        draft.ScanOnStartup = main?.ScanOnStartup ?? false;
         draft.Scrapers = main?.Scrapers.Copy() ?? new();
         if (main is not null)
         {
@@ -74,7 +73,7 @@ public partial class SettingsWindow : Window
     }
     private void Save(object? sender, RoutedEventArgs e)
     {
-        try { main?.ApplySettings(draft.MovieFolders, draft.SeriesFolders, draft.ThemeIndex, draft.LanguageIndex, draft.MetadataLanguageIndex, draft.ArtworkLanguageIndex, draft.UseFanartBackground, draft.ArtworkOptimizationProfile, draft.Scrapers, scanOnStartup: draft.ScanOnStartup, tabPosition: draft.TabPosition); Close(); }
+        try { main?.ApplySettings(draft.MovieFolders, draft.SeriesFolders, draft.ThemeIndex, draft.LanguageIndex, draft.MetadataLanguageIndex, draft.ArtworkLanguageIndex, draft.UseFanartBackground, draft.ArtworkOptimizationProfile, draft.Scrapers, tabPosition: draft.TabPosition); Close(); }
         catch (Exception ex) { draft.Status = $"Einstellungen konnten nicht gespeichert werden: {ex.Message}"; }
     }
     private async void ConfigureScrapers(object? sender, RoutedEventArgs e)

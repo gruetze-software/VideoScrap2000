@@ -137,9 +137,15 @@ jobs:
     uses: ./.github/workflows/snap.yml
     secrets: inherit
 
+  mac-app-store:
+    if: (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && !inputs.windows_linux_x64_only
+    needs: [verify, linux-display]
+    uses: ./.github/workflows/mac-app-store.yml
+    secrets: inherit
+
   release:
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && (inputs.create_release_draft || inputs.replace_published_release))
-    needs: [package, deb, macos, snap]
+    needs: [package, deb, macos, snap, mac-app-store]
     runs-on: ubuntu-latest
     permissions:
       contents: write

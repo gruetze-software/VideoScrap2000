@@ -111,8 +111,20 @@
                   <TextBlock Text="{DynamicResource LD92244697AF0}" Classes="label"/><TextBox Text="{Binding OriginalTitle}" IsEnabled="{Binding CanEdit}"/>
                   <Grid ColumnDefinitions="100,12,*,12,*">
                     <StackPanel><TextBlock Text="{DynamicResource LED1AD93B8967}" Classes="label"/><TextBox Text="{Binding Year}" IsEnabled="{Binding CanEdit}"/></StackPanel>
-                    <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L6AAA60B94AF9}" Classes="label"/><TextBox Text="{Binding Imdb}" IsEnabled="{Binding CanEdit}"/></StackPanel>
-                    <StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource L9A9E55D41F32}" Classes="label"/><TextBox Text="{Binding Tmdb}" IsEnabled="{Binding CanEdit}"/></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource L6AAA60B94AF9}" Classes="label"/>
+                      <TextBox Text="{Binding Imdb}" IsEnabled="{Binding CanEdit}">
+                        <TextBox.InnerRightContent><Button Content="↗" Tag="{Binding ImdbLink}" Click="OpenMetadataLink" IsEnabled="{Binding CanOpenImdbLink}" ToolTip.Tip="IMDb" AutomationProperties.Name="IMDb" Background="Transparent" BorderThickness="0" Padding="7,0" MinHeight="28" Foreground="{DynamicResource AccentBrush}" Cursor="Hand"/></TextBox.InnerRightContent>
+                      </TextBox>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource L9A9E55D41F32}" Classes="label"/>
+                      <TextBox Text="{Binding Tmdb}" IsEnabled="{Binding CanEdit}">
+                        <TextBox.InnerRightContent><Button Content="↗" Tag="{Binding TmdbLink}" Click="OpenMetadataLink" IsEnabled="{Binding CanOpenTmdbLink}" ToolTip.Tip="TMDb" AutomationProperties.Name="TMDb" Background="Transparent" BorderThickness="0" Padding="7,0" MinHeight="28" Foreground="{DynamicResource AccentBrush}" Cursor="Hand"/></TextBox.InnerRightContent>
+                      </TextBox>
+                    </StackPanel>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,12,*">
+                    <StackPanel><TextBlock Text="{DynamicResource L98C628646F7C}" Classes="label"/><TextBox Text="{Binding Directors}" IsEnabled="{Binding CanEdit}"/></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource LEE1AD0C07BF2}" Classes="label"/><TextBox Text="{Binding Certification}" IsEnabled="{Binding CanEdit}"/></StackPanel>
                   </Grid>
                 </StackPanel>
               </Grid>
@@ -188,9 +200,7 @@
                                       ItemsPanel="{StaticResource RatingStarsPanel}" ItemTemplate="{StaticResource RatingStar}"/>
                       </StackPanel>
                     </Grid>
-                    <TextBlock Text="{DynamicResource L98C628646F7C}" Classes="label"/><TextBox Text="{Binding Directors}"/>
                     <TextBlock Text="{DynamicResource LD25E58A7A89D}" Classes="label"/><TextBox Text="{Binding Credits}"/>
-                    <TextBlock Text="{DynamicResource LEE1AD0C07BF2}" Classes="label"/><TextBox Text="{Binding Certification}"/>
                     <TextBlock Text="{DynamicResource L0DB6193FEC07}" Classes="label"/><TextBox Text="{Binding Countries}"/>
                     <Grid ColumnDefinitions="*,12,*">
                       <StackPanel>

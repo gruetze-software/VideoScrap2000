@@ -14,7 +14,9 @@ public partial class MainViewModel
     [ObservableProperty] private DateTimeOffset? premiere;
     [ObservableProperty] private string outline = "";
     [ObservableProperty] private string credits = "";
-    [ObservableProperty] private string tmdb = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TmdbLink), nameof(CanOpenTmdbLink))]
+    private string tmdb = "";
     [ObservableProperty] private string collection = "";
     [ObservableProperty] private string collectionId = "";
     [ObservableProperty] private string certification = "";
@@ -23,6 +25,13 @@ public partial class MainViewModel
     [ObservableProperty] private string tags = "";
     [ObservableProperty] private string runtime = "";
     [ObservableProperty] private string rating = "";
+    public Uri? ImdbLink => System.Text.RegularExpressions.Regex.IsMatch(Imdb.Trim(), "^tt[0-9]+$",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant)
+        ? new Uri("https://www.imdb.com/title/" + Imdb.Trim() + "/") : null;
+    public Uri? TmdbLink => int.TryParse(Tmdb.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var id) && id > 0
+        ? new Uri("https://www.themoviedb.org/movie/" + id.ToString(CultureInfo.InvariantCulture)) : null;
+    public bool CanOpenImdbLink => ImdbLink is not null;
+    public bool CanOpenTmdbLink => TmdbLink is not null;
     [ObservableProperty] private string technicalDetails = "";
     [ObservableProperty] private ActorEditor? selectedActor;
     [ObservableProperty] private Bitmap? actorPhoto;

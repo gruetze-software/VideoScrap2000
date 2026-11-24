@@ -1,12 +1,15 @@
 name: Build Mac App Store input
 on:
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 jobs:
   store-input:
     runs-on: macos-15
     timeout-minutes: 45
+    env:
+      MAC_APP_STORE_BUILD_NUMBER: '1.5.4'
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-dotnet@v6.1.0
@@ -15,11 +18,28 @@ jobs:
       - name: Build single-file Apple Silicon Store input
         shell: pwsh
         env:
-          FANART_TV_PROJECT_API_KEY: ${{ github.ref == 'refs/heads/main' && secrets.FANART_TV_PROJECT_API_KEY || '' }}
-          TVDB_PROJECT_API_KEY: ${{ github.ref == 'refs/heads/main' && secrets.TVDB_PROJECT_API_KEY || '' }}
+          FANART_TV_PROJECT_API_KEY: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.FANART_TV_PROJECT_API_KEY || '' }}
+          TVDB_PROJECT_API_KEY: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.TVDB_PROJECT_API_KEY || '' }}
         run: |
-          if (!$env:FANART_TV_PROJECT_API_KEY -or !$env:TVDB_PROJECT_API_KEY) { throw 'Project credentials are required; run on main.' }
+          if (!$env:FANART_TV_PROJECT_API_KEY -or !$env:TVDB_PROJECT_API_KEY) { throw 'Project credentials are required; run on main or a release tag.' }
           ./scripts/Publish.ps1 -Runtime osx-arm64 -MacAppStore
+      - name: Verify Store version and single-file layout
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, plistlib, zipfile, xml.etree.ElementTree as ET
+          version = ET.parse('MovieScrap2000/MovieScrap2000.csproj').findtext('./PropertyGroup/Version')
+          archives = list(pathlib.Path('artifacts').rglob('*-store-input.zip'))
+          assert len(archives) == 1, archives
+          with zipfile.ZipFile(archives[0]) as archive:
+              prefix = 'VideoScrap 2000.app/Contents/'
+              info = plistlib.loads(archive.read(prefix + 'Info.plist'))
+              assert info['CFBundleShortVersionString'] == version, info
+              assert info['CFBundleVersion'] == os.environ['MAC_APP_STORE_BUILD_NUMBER'], info
+              assert prefix + 'MacOS/libAvaloniaNative.dylib' in archive.namelist()
+              assert prefix + 'MacOS/VideoScrap2000.dll' not in archive.namelist()
+              assert prefix + 'MacOS/VideoScrap2000.runtimeconfig.json' not in archive.namelist()
+              print('Verified Store version', version, 'build', info['CFBundleVersion'])
+          PY
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: Mac-App-Store-input-arm64

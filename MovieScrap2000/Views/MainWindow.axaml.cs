@@ -14,6 +14,16 @@ namespace VideoScrap2000.Views;
 
 public partial class MainWindow : Window
 {
+    private async void OpenMetadataLink(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.Tag is not Uri uri) return;
+        try
+        {
+            if (!await Launcher.LaunchUriAsync(uri)) model.Status = "Der Link konnte nicht geöffnet werden.";
+        }
+        catch (Exception ex) { model.Status = ex.Message; }
+        e.Handled = true;
+    }
     private void RemoveArtwork(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is ArtworkViewModel image)
@@ -27,7 +37,6 @@ public partial class MainWindow : Window
     private readonly MainViewModel model;
     private LibraryProgressWindow? progressWindow;
     private bool artworkSearchActive;
-    private bool startupScanPending;
     public MainWindow() : this(new MainViewModel(), true) { }
     public MainWindow(MainViewModel model, bool initialize, WindowPlacementStore? placementStore = null)
     {
@@ -44,21 +53,14 @@ public partial class MainWindow : Window
         model.PropertyChanged += OnModelPropertyChanged;
         if (initialize) Opened += async (_, _) =>
         {
-            startupScanPending = !model.IsDemo && model.ScanOnStartup;
-            var startupDelay = startupScanPending ? Task.Delay(TimeSpan.FromSeconds(2)) : Task.CompletedTask;
             string? accessError = null;
             try { await MacFolderAccess.RestoreAsync(StorageProvider, model.MovieFolders.Concat(model.SeriesFolders)); }
-            catch (Exception ex) { accessError = ex.Message; startupScanPending = false; }
+            catch (Exception ex) { accessError = ex.Message; }
             await model.InitializeAsync();
             if (accessError is not null) model.Status = accessError;
             if (!IsVisible) return;
             MovieList.SelectedIndex = model.Movies.Count > 0 ? 0 : -1;
             if (model.SelectedMovie is { } movie) MovieList.ScrollIntoView(movie);
-            await startupDelay;
-            if (!startupScanPending || !model.ScanOnStartup || !CanUseAppMenu) return;
-            startupScanPending = false;
-            if (model.MovieFolders.Count > 0) await model.ScanCommand.ExecuteAsync(null);
-            if (IsVisible && model.SeriesFolders.Count > 0 && model.Series.NeedsScan) await model.Series.ScanAsync();
         };
         Closing += (_, e) =>
         {
@@ -127,7 +129,6 @@ public partial class MainWindow : Window
 
     internal async Task ScanActiveLibraryAsync()
     {
-        startupScanPending = false;
         var series = LibraryTabs.SelectedIndex == 1;
         if ((series ? model.SeriesFolders : model.MovieFolders).Count == 0)
         {

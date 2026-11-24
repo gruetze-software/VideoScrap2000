@@ -10,6 +10,11 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 source "$ROOT/scripts/apple-check-retry.sh"
 case "$RID" in osx-x64|osx-arm64) ;; *) exit 2 ;; esac
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 2
+BUNDLE_VERSION=$VERSION
+if [[ $FORMAT == store-input && -n ${MAC_APP_STORE_BUILD_NUMBER:-} ]]; then
+  [[ $MAC_APP_STORE_BUILD_NUMBER =~ ^[0-9]{1,4}(\.[0-9]{1,2}){0,2}$ ]] || { echo 'Invalid Store build number.' >&2; exit 2; }
+  BUNDLE_VERSION=$MAC_APP_STORE_BUILD_NUMBER
+fi
 MODE=${MACOS_SIGNING_MODE:-adhoc}
 case "$MODE" in
   adhoc) SIGN=(--force --sign -) ;;
@@ -47,7 +52,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>CFBundleIdentifier</key><string>de.gruetze-software.VideoScrap2000</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$VERSION</string>
-<key>CFBundleVersion</key><string>$VERSION</string>
+<key>CFBundleVersion</key><string>$BUNDLE_VERSION</string>
 <key>CFBundleIconFile</key><string>videoscrap-2000.icns</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.video</string>
 <key>CFBundleDevelopmentRegion</key><string>en</string>

@@ -8,7 +8,7 @@ VideoScrap 2000 1.5 includes a separate App Store packaging script. The signed a
 2. In Certificates, Identifiers & Profiles, register the explicit macOS bundle ID **de.gruetze-software.VideoScrap2000**.
 3. Create an **Apple Distribution** or **Mac App Distribution** application certificate, plus a **Mac Installer Distribution** certificate. Generate the certificate requests on that Mac so their private keys remain in its keychain.
 4. Create a **Mac App Store Connect** distribution profile for that bundle ID and application certificate, and download the .provisionprofile file.
-5. In App Store Connect, create a macOS app record with that bundle ID and version **1.5.0**.
+5. In App Store Connect, use the macOS app record with that bundle ID and version **1.5.1**.
 
 See Apple's instructions for [certificates](https://developer.apple.com/help/account/certificates/certificates-overview), [profiles](https://developer.apple.com/help/account/provisioning-profiles/create-an-app-store-provisioning-profile) and [Store packaging](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
 
@@ -20,13 +20,13 @@ Confirm the exact application identity with **security find-identity -v -p codes
 
     export MAC_APP_STORE_APPLICATION_IDENTITY='Apple Distribution: YOUR NAME (TEAMID)'
     export MAC_APP_STORE_INSTALLER_IDENTITY='3rd Party Mac Developer Installer: YOUR NAME (TEAMID)'
-    export MAC_APP_STORE_BUILD_NUMBER='1.5.2'
+    export MAC_APP_STORE_BUILD_NUMBER='1.5.4'
     bash scripts/package-mac-app-store.sh \
-      "$HOME/Downloads/VideoScrap2000-1.5.0-osx-arm64-store-input.zip" \
+      "$HOME/Downloads/VideoScrap2000-1.5.1-osx-arm64-store-input.zip" \
       "$HOME/Downloads/VideoScrap2000_App_Store.provisionprofile" \
-      "$HOME/Downloads/VideoScrap2000-1.5.0-arm64-store.pkg"
+      "$HOME/Downloads/VideoScrap2000-1.5.1-arm64-store.pkg"
 
-The script checks the profile's bundle ID and expiry, embeds the profile, enables App Sandbox, signs native code and the app, and generates the signed .pkg. Signing identities must have their private keys in your Mac's keychain.
+The release workflow also builds this Store input automatically. Version 1.5.1 uses Store build 1.5.4. It remains an Actions artifact, separate from the public downloads. The Store signing script checks the profile's bundle ID and expiry, embeds the profile, enables App Sandbox, signs native code and the app, and generates the signed .pkg. It preserves the helper entitlements, readable file permissions, certificate checks and quarantine removal required by the previous TestFlight fixes. Signing identities must have their private keys in your Mac's keychain.
 
 The Store variant enables outgoing network access and read/write access to folders chosen through the system picker. Security-scoped bookmarks preserve access to configured library folders after restart. GitHub update checks are hidden.
 

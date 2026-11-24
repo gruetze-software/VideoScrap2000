@@ -15,7 +15,6 @@ public sealed class AppSettings
     public string MetadataLanguage { get; set; } = "System";
     public string ArtworkLanguage { get; set; } = "System";
     public bool UseFanartBackground { get; set; }
-    public bool ScanOnStartup { get; set; }
     public int ArtworkOptimizationProfile { get; set; }
     public int TabPosition { get; set; }
     private ScraperSettings scrapers = new();

@@ -68,6 +68,11 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.5.1" type="stable" date="2026-11-24">
+      <description>
+        <p>Move director and age certification to the movie header, add IMDb and TMDb links, remove automatic startup scanning and simplify Flatpak packaging.</p>
+      </description>
+    </release>
     <release version="1.5.0" type="stable" date="2026-11-22">
       <description>
         <p>Adds cast filtering, configurable tab placement, corrected keyart selection, and improved technical media diagnostics.</p>
